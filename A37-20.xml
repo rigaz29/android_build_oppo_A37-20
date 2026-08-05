@@ -4,7 +4,9 @@
 
   BASIS MANIFEST BUKAN LineageOS/android, TAPI LineageOS-UL/android:
 
-      repo init -u https://github.com/LineageOS-UL/android.git -b lineage-20.0 --git-lfs
+      repo init -u https://github.com/LineageOS-UL/android.git -b lineage-20.0
+      (sertakan flag git-lfs; ditulis tanpa tanda hubung ganda karena XML
+       melarang '-' berturut di dalam komentar)
 
   LineageOS-UL ("Ultra Legacy") sudah memasang 37 fork legacy lewat
   .repo/manifests/snippets/losul.xml. Yang di 19.1 harus kita repopick manual
@@ -96,6 +98,45 @@
   <project name="LineageOS/android_hardware_qcom_media" path="hardware/qcom-caf/msm8916/media"
            remote="gh" revision="bf62f596b10d39caf9c4208ce767a7deed662a1c"
            upstream="lineage-19.0-caf-msm8916" />
+
+  <!-- ================================================================
+       Pin anti-hanyut (upstream drift)
+       ================================================================
+       MASALAHNYA, ditemukan saat Fase 2 (5 Agustus 2026):
+
+       Manifest LineageOS-UL menyematkan project ke BRANCH, bukan SHA
+       (default revision="refs/heads/lineage-20.0"). Lini UL sendiri BEKU sejak
+       2025-04-04, tapi repo LineageOS hulu TERUS BERGERAK di branch yang sama.
+       Akibatnya `repo sync` menarik kode yang jauh lebih baru daripada fork UL
+       yang mengelilinginya, tanpa peringatan apa pun.
+
+       Terukur: 34 project yang dipin ke branch sudah bergerak melewati
+       2025-05-01. Sebagian besar tidak ikut dibangun (wiki, website, scripts,
+       crowdin, charter, hudson, mirror), tapi sisanya kode sungguhan.
+
+       Yang SUDAH terbukti memutus build:
+
+         external/dng_sdk
+           Commit 624d019 "Crude DNG SDK 1.7.1 upgrade" (2025-12-12 — delapan
+           bulan SETELAH UL beku) menambahkan sdk_version: "current" pada
+           libdng_sdk berikut dependensi ke libjpeg. external/libjpeg-turbo
+           (AOSP, dipin ke tag android-13.0.0_r75) tidak menyediakan varian
+           sdk:sdk, jadi soong berhenti dengan:
+               error: external/dng_sdk/Android.bp:165:1: dependency "libjpeg"
+               of "libdng_sdk" missing variant:
+                 os:android,image:,arch:arm_armv8-a_cortex-a53,sdk:sdk,link:shared
+           Dipin ke 880b683 — commit tepat sebelum upgrade itu, bertanggal
+           2025-04-17, sezaman dengan pembekuan UL.
+
+       Deteksi ulang kapan saja: tools/check-drift.sh
+       Tambahkan pin baru di sini HANYA kalau sebuah project terbukti memutus
+       build — jangan memin 34-34-nya secara preventif, karena itu membekukan
+       perbaikan keamanan aplikasi yang masih sah. -->
+  <remove-project name="LineageOS/android_external_dng_sdk" />
+  <project name="LineageOS/android_external_dng_sdk" path="external/dng_sdk"
+           groups="pdk" remote="gh"
+           revision="880b6833f9d5e131a8d9f92d6d0a836514fc711e"
+           upstream="lineage-20.0" />
 
   <!-- CATATAN guard hardware/qcom-caf/msm8916/Android.mk.
 

@@ -1,13 +1,13 @@
-# Siapkan environment build LineageOS 19.1 untuk OPPO A37.
+# Siapkan environment build LineageOS 20 (Android 13) untuk OPPO A37.
 #
 # HARUS di-source, bukan dijalankan:
-#     cd /root/los19 && source /root/a37-19.1/tools/envsetup-a37.sh
+#     cd /root/los20 && source /root/a37-20/tools/envsetup-a37.sh
 #
 # Gunanya satu: membuang variabel environment sisa proyek lain sebelum
 # `lunch`, lalu lunch. Tanpa ini nama ROM ikut tercemar.
 
 if [ ! -f build/envsetup.sh ]; then
-    echo "error: source dari root tree LineageOS 19.1 (mis. /root/los19)" >&2
+    echo "error: source dari root tree LineageOS 20 (mis. /root/los20)" >&2
     return 1 2>/dev/null || exit 1
 fi
 
@@ -17,7 +17,7 @@ fi
 #
 #   TARGET_UNOFFICIAL_BUILD_ID  nama ROM jadi "...-UNOFFICIAL-microG-ReSukiSU-A37"
 #                               padahal microG dan KernelSU tidak dibangun
-#   WITH_GMS                    di tree 19.1 ini efektif inert (partner_gms.mk
+#   WITH_GMS                    di tree ini efektif inert (partner_gms.mk
 #                               memakai inherit-product-if-exists dan
 #                               vendor/partner_gms tidak ada; WITH_GMS_COMMS_SUITE
 #                               tidak punya konsumen), tapi akan aktif diam-diam
@@ -33,6 +33,7 @@ done
 # identitas build dan tidak mengubah isi ROM.
 
 source build/envsetup.sh
-# userdebug, bukan eng — lihat komentar di work/bacon.sh (StrictMode
-# penaltyFlashScreen tanpa syarat di build eng).
+# userdebug, bukan eng — StrictMode memasang penaltyFlashScreen TANPA SYARAT
+# di build eng (StrictMode.java, cabang Build.IS_ENG). Itu penyebab "kotak merah
+# di tepi layar" yang ditriase sebagai 10.F di proyek 19.1.
 lunch lineage_A37-userdebug

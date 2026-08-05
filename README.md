@@ -51,6 +51,8 @@ setelah boot pertama. Rinciannya di `PLAN.md` §1.1 dan §1.4.
 | [`A37-20.xml`](A37-20.xml) | Local manifest. Seluruh SHA diverifikasi 5 Agustus 2026 |
 | **[`ref/evidence/`](ref/evidence/)** | **Hasil bedah ROM LOS 20 msm8916 yang terbukti boot** — `build.prop`, VINTF, fstab, `init*.rc`, daftar sepolicy, header boot.img |
 | [`tools/repo-doctor.sh`](tools/repo-doctor.sh) | Perbaiki dua kegagalan `repo sync` yang benar-benar dialami saat menyiapkan tree ini |
+| [`tools/check-drift.sh`](tools/check-drift.sh) | Deteksi project yang hanyut dari era LineageOS-UL — penyebab pemblokir build pertama Fase 2 |
+| [`tools/apply-legacy-patches.sh`](tools/apply-legacy-patches.sh) | 2 tambalan + 5 penjaga regresi. **Wajib dijalankan ulang tiap habis `repo sync`** |
 | `tools/build-kernel-zip.sh` | Bangun kernel + bungkus zip AnyKernel3 — uji kernel tanpa membangun ROM penuh |
 | `tools/envsetup-a37.sh` | Bersihkan environment sisa proyek lain lalu `lunch`. Source ini, jangan `lunch` langsung |
 | `tools/verify-rom.sh` | Verifikasi ROM **sebelum** flash |

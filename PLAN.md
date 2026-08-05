@@ -675,27 +675,108 @@ basis kernel membuang bukti "kernel ini boot di perangkat ini".
 
 ---
 
-## Fase 2 — Manifest & basis source
+## Fase 2 — Manifest & basis source ✅ **SELESAI 5 Agustus 2026**
 
-- [ ] **2.1** `repo init -u https://github.com/LineageOS-UL/android.git -b lineage-20.0 --git-lfs`
-- [ ] **2.2** Pasang `A37-20.xml` ke `.repo/local_manifests/`.
-- [ ] **2.3** `repo sync -c -j8 --force-sync --no-clone-bundle` (ingat §0.3).
-- [ ] **2.4** **Periksa apa yang masih perlu ditambal**, satu per satu — jangan mewarisi
-      daftar 19.1 secara buta:
+Kriteria keluar terpenuhi: **`lunch lineage_A37-userdebug` berhasil.**
 
-      | Item 19.1 | Cara memeriksa di tree 20 |
+```
+PLATFORM_VERSION=13            LINEAGE_VERSION=20.0-20260805_100248-UNOFFICIAL-A37
+TARGET_PRODUCT=lineage_A37     TARGET_BUILD_VARIANT=userdebug
+TARGET_ARCH=arm                TARGET_ARCH_VARIANT=armv8-a  TARGET_CPU_VARIANT=cortex-a53
+PRODUCT_SOONG_NAMESPACES=vendor/oppo/A37 hardware/qcom-caf/msm8916 ...
+```
+
+- [x] **2.0 Prasyarat 0.4** — branch `lineage-20` dibuat di `rb_device_oppo_A37` dari
+      `ce39cf5` (belum disunting; Fase 3 yang menyuntingnya). ✅
+- [x] **2.1** Tree sudah di-init ke `LineageOS-UL/android` `lineage-20.0`. ✅
+- [x] **2.2** `A37-20.xml` terpasang di `.repo/local_manifests/`. ✅
+
+      ⚠️ **Bug yang ditemukan saat memasang:** manifest gagal diparse karena XML
+      **melarang `--` di dalam komentar**, dan draf pertama memakai `--` sebagai tanda
+      pisah di beberapa tempat. Sekarang seluruh komentar memakai em-dash. Validasi
+      cepat sebelum menyalin ke `.repo/local_manifests/`:
+      `python3 -c "import xml.etree.ElementTree as E;E.parse('A37-20.xml')"`
+- [x] **2.3** `repo sync` — keenam project A37 masuk, tree tetap sehat (1213 project,
+      0 HEAD kosong). ✅
+
+      | path | HEAD |
       |---|---|
-      | revert `libbfqio` (`8f67d055`) | `grep -rn libbfqio vendor/lineage/` — kalau modulnya ada, tidak perlu revert |
-      | `sysfs_disk_stat` | common meghs punya dua commit berlawanan (`Define` lalu `don't define`) — periksa `device/qcom/sepolicy-legacy` dan tree kita, jangan sampai ganda |
-      | guard `hardware/qcom-caf/msm8916/Android.mk` | salin `os_pickup.mk`; harmless tapi paritas dengan hulu |
-      | 9 repopick | **tidak ada lagi** — §1.1 |
-      | 23 patch Camera HAL1 | **tidak ada lagi** — §1.1 |
-- [ ] **2.5** `tools/apply-legacy-patches.sh` ditulis ulang untuk 20: isinya kemungkinan
-      besar hanya guard CAF (dan revert `libbfqio` kalau 2.4 membuktikan perlu).
-      **Wajib idempoten** dan dijalankan tiap habis `repo sync` — bug idempotensi
-      di skrip 19.1 (§5.3 dok lama) sudah pernah menggagalkan build.
-- [ ] **2.6** `source tools/envsetup-a37.sh` lalu `lunch lineage_A37-userdebug`.
-      **`userdebug`, bukan `eng`** — 10.F.
+      | `device/oppo/A37` | `ce39cf5` |
+      | `kernel/oppo/msm8939` | `8cc1519` ← hasil Fase 1 |
+      | `vendor/oppo` | `2e5c6f7` |
+      | `hardware/qcom-caf/msm8916/{audio,display,media}` | `e0e79d6` / `984ff8f` / `bf62f59` |
+
+- [x] **2.4 Verifikasi apa yang MASIH perlu ditambal — hasilnya menyusut drastis.** ✅
+
+      | Item 19.1 | Status di LOS 20 | Bukti |
+      |---|---|---|
+      | 9 repopick Gerrit | **tidak perlu** | fork UL, §1.1 |
+      | 23 patch Camera HAL1 | **tidak perlu** | `case 1: DeviceInfo1` ada |
+      | `sysfs_disk_stat` | **tidak perlu lagi** | platform sendiri yang mendefinisikan di `system/sepolicy/public/file.te:20`. Mendefinisikan ulang di device tree justru **duplikat dan menggagalkan build** |
+      | revert `libbfqio` | **MASIH PERLU** | `hardware/qcom-caf/msm8916/display/libhwcomposer/Android.mk:20` masih menautkannya; `vendor/lineage` LOS 20 tidak menyediakannya |
+      | guard `qcom-caf/msm8916/Android.mk` | dipasang, paritas | `os_pickup.mk` |
+
+- [x] **2.5 `tools/apply-legacy-patches.sh` ditulis ulang** — dari 4 kelompok besar jadi
+      **2 langkah**, plus **5 penjaga regresi** yang memeriksa asumsi yang bisa berubah
+      diam-diam (fork UL dipin ke branch): `transport_legacy.cpp`, direktori
+      `device1/`, `case 1: DeviceInfo1`, `GLES = 1`, dan `sysfs_disk_stat` platform.
+      **Idempotensi diuji** — dijalankan dua kali, jalan kedua nol perubahan. ✅
+- [x] **2.6** `tools/envsetup-a37.sh` diadaptasi ke `los20`, `lunch` berhasil. ✅
+
+### 2.7 Temuan besar Fase 2 — **hanyutnya hulu (upstream drift)**
+
+Ini masalah struktural yang tidak terlihat di dokumen mana pun sebelumnya, dan sudah
+**terbukti memutus build**, bukan dugaan.
+
+Manifest UL menyematkan project ke **branch**, bukan SHA (`revision="refs/heads/lineage-20.0"`).
+Lini UL **beku 2025-04-04**, tapi repo LineageOS hulu **terus bergerak di branch bernama
+sama**. Jadi `repo sync` menarik kode yang jauh lebih baru daripada fork UL di sekelilingnya.
+
+**Korban pertama, `external/dng_sdk`:**
+
+```
+error: external/dng_sdk/Android.bp:165:1: dependency "libjpeg" of "libdng_sdk"
+       missing variant: os:android,...,sdk:sdk,link:shared
+```
+
+Rantainya: commit `624d019` *"Crude DNG SDK 1.7.1 upgrade"* (**2025-12-12** — delapan bulan
+setelah UL beku) menambahkan `sdk_version: "current"` pada `libdng_sdk` beserta dependensi
+ke `libjpeg`. `external/libjpeg-turbo` (AOSP, dipin ke tag `android-13.0.0_r75`) tidak
+menyediakan varian `sdk:sdk`. Soong berhenti sebelum sempat menyentuh kode A37 sama sekali.
+
+**Perbaikan:** dipin ke `880b683` (2025-04-17) di `A37-20.xml` lewat
+`<remove-project>` + `<project revision="...">`. Setelah itu soong lolos.
+
+**Alat baru: `tools/check-drift.sh`.** Melaporkan project yang bergerak melewati tanggal
+batas, memisahkan yang ikut dibangun dari yang tidak. Keadaan sekarang:
+
+```
+dipin ke SHA (aman)      : 5
+remote aosp / tag (aman) : 939
+HANYUT melewati 2025-05-01 : 35  (dibangun: 27)
+```
+
+⚠️ **Kebijakan: pin hanya yang terbukti memutus build.** Memin ke-27-nya secara preventif
+ikut membekukan perbaikan keamanan aplikasi yang masih sah — dan itu justru memperburuk
+posisi kita yang sudah tertinggal di ASB 2025-03 (§1.1).
+
+### 2.8 Pengintaian untuk Fase 3 — `m nothing`
+
+Dijalankan **bukan** sebagai bagian Fase 2, tapi untuk memberi Fase 3 daftar pemblokir yang
+konkret. Setelah pin `dng_sdk`, soong lolos dan kati berjalan 6 menit sebelum berhenti di:
+
+```
+build/make/core/base_rules.mk:338: error: device/oppo/A37/gps/utils:
+MODULE.TARGET.SHARED_LIBRARIES.android.hidl.base@1.0 already defined by hardware/lineage/compat
+```
+
+Device tree kita membangun dummy `android.hidl.base@1.0` (`libhidl/Android.mk:18`,
+dipasang lewat `device.mk:586`) untuk blob era Oreo. **LineageOS 20 kini menyediakannya
+sendiri** di `hardware/lineage/compat/Android.bp:228`.
+
+meghs sudah menyelesaikan ini persis begitu — commit `031a09a`
+*Revert "Build a dummy android.hidl.base@1.0 for Oreo blobs"*, membuang 5 baris `device.mk`
+dan 29 baris `hidl/Android.mk`. **Masuk sebagai butir pertama Fase 3.1.**
 
 ---
 
@@ -705,6 +786,10 @@ Basis: `lineage-19.1-rb` @ `ce39cf5`. Buat branch `lineage-20`.
 
 ### 3.1 Wajib — jangan sampai terlewat
 
+- [ ] **Buang dummy `android.hidl.base@1.0`** — **pemblokir build yang sudah terbukti**,
+      lihat §2.8. LineageOS 20 menyediakannya di `hardware/lineage/compat/Android.bp:228`.
+      Hapus `libhidl/Android.mk` dan baris `android.hidl.base@1.0 \` di `device.mk:586`.
+      Sepadan dengan commit meghs `031a09a`.
 - [ ] `BUILD_BROKEN_PHONY_TARGETS` dibuang (§3.1 — satu-satunya variabel usang kita).
 - [ ] `TARGET_KERNEL_LLVM_BINUTILS := false` ditambahkan eksplisit (§3.4).
 - [ ] Pastikan `PRODUCT_SHIPPING_API_LEVEL := 21` **dan**
