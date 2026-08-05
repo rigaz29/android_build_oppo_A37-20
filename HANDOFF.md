@@ -3,10 +3,9 @@
 Berkas ini ditulis supaya siapa pun (manusia atau LLM) bisa melanjutkan **tanpa** riwayat
 percakapan sebelumnya. Baca ini dulu, lalu `PLAN.md`.
 
-Terakhir diperbarui: 5 Agustus 2026 — Fase 3-6 selesai. Fase 6 (Vendor blobs): set 19.1
-dipertahankan (320 terpasang, nol hilang); deklarasi HAL iop dibuang (hidl.base pindah ke
-system_ext yang tak terjangkau namespace vendor); 64-bit/protobuf aman; verify-rom.sh
-diperluas.
+Terakhir diperbarui: 5 Agustus 2026 — Fase 3-7 selesai. Fase 7 (Init & rootdir): nol
+perubahan source; kelima rc file lolos parser init A13; gerbang ueventd.rc masih terbuka
+untuk API 21.
 
 ---
 
@@ -37,7 +36,8 @@ yang bisa diverifikasi ulang. Kalau ada konflik antara berkas ini dan `PLAN.md`,
 | **4 VINTF** | ✅ **selesai** — nol perubahan source; sepolicy 33.0 ter-injeksi otomatis, manifest terakit identik ROM jangkar. Catatan `check_vintf_compatible` di PLAN §4.7 |
 | **5 SEPolicy** | ✅ **selesai** — `m selinux_policy` exit 0; layout identik ROM yang boot (detail PLAN §5.1b–5.1d). ⚠️ **Jalankan `tools/apply-legacy-patches.sh` ulang pasca `repo sync`** — langkah 3 (buang sysfs_disk_stat) baru |
 | **6 Vendor blobs** | ✅ **selesai** — set 320 blob 19.1 dipertahankan; deklarasi HAL iop dibuang (PLAN §6.2); 64-bit/protobuf aman; `verify-rom.sh` diperluas (blob hilang + lokasi sepolicy) |
-| 7–10 | belum |
+| **7 Init & rootdir** | ✅ **selesai** — nol perubahan source; rc file lolos verifier init A13; ueventd gate API 21 terbuka (PLAN §7) |
+| 8–10 | belum |
 
 ### Repo kerja (semuanya milik akun GitHub `rigaz29`)
 

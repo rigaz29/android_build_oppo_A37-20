@@ -4,7 +4,7 @@ Rencana dan build kit **LineageOS 20 (Android 13, SDK 33)** untuk
 **OPPO A37 / A37f / A37fw** — Qualcomm MSM8916 (Snapdragon 410), kernel 3.10.108,
 2 GB RAM, Adreno 306.
 
-> ## Status: **Fase 1–6 selesai** (5 Agustus 2026)
+> ## Status: **Fase 1–7 selesai** (5 Agustus 2026)
 >
 > | Fase | Status |
 > |---|---|
@@ -14,7 +14,8 @@ Rencana dan build kit **LineageOS 20 (Android 13, SDK 33)** untuk
 > | **4 VINTF** | ✅ **nol perubahan source** — sepolicy 33.0 ter-injeksi `assemble_vintf`; manifest terakit identik ROM jangkar. Catatan `check_vintf_compatible` → PLAN §4.7 |
 > | **5 SEPolicy** | ✅ **`m selinux_policy` exit 0** — layout sepolicy identik ROM yang boot; tiga pemblokir dibereskan (PLAN §5.1b–5.1d). ⚠️ `apply-legacy-patches.sh` punya langkah baru |
 > | **6 Vendor blobs** | ✅ **set 19.1 dipertahankan** (320 terpasang, nol hilang); HAL iop dibuang dari manifest (PLAN §6.2); `verify-rom.sh` diperluas |
-> | 7 Init & rootdir | berikutnya |
+> | **7 Init & rootdir** | ✅ **nol perubahan source** — rc file lolos verifier init A13; ueventd gate API 21 terbuka |
+> | 8 Build | berikutnya |
 >
 > ⚠️ **Baca lingkupnya dengan benar:** `m nothing` hanya **membaca makefile**, tidak
 > mengompilasi apa pun. Kegagalan kompilasi nyata belum tersentuh — validasi

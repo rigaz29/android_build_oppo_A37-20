@@ -1081,13 +1081,37 @@ gejala muncul di perangkat.
 
 ## Fase 7 — Init & rootdir
 
-- [ ] **7.1** Di 19.1 fase ini **nol perubahan**; harapannya sama di 20.
-- [ ] **7.2** `fstab.qcom`: buang `encryptable=`/`forceencrypt=` (§3.7). meghs melakukannya
-      di commit terpisah untuk twrp fstab juga.
-- [ ] **7.3** Pastikan servis `ppd` tetap **tidak ada** (10.C).
-- [ ] **7.4** `/vendor/ueventd.rc` — 220 aturan; pembacaannya bergantung pada 3.1
-      (`first_api_level`). Verifikasi di perangkat dengan `ls -l /dev/kgsl-3d0`
-      (harus `crw-rw-rw- system system`, bukan `crw------- root root`).
+Selesai 5 Agustus 2026. **Nol perubahan source** — persis seperti yang
+diharapkan 7.1. Semua butir diverifikasi, bukan diasumsikan:
+
+- [x] **7.1** Nol perubahan — dibuktikan dengan pengujian, bukan "harapan":
+      - `host_init_verifier` (parser init A13) menerima **kelima** rc file kita
+        (init.qcom, init.qcom.power, init.qcom.ssr, init.qcom.usb,
+        init.target). Peringatan: verifier **tidak** untuk format ueventd —
+        menolak juga `system/core/rootdir/ueventd.rc` platform (uji silang,
+        false positive).
+      - `libinit_msm8916` (TARGET_INIT_VENDOR_LIB) ter-build, exit 0.
+      - Rantai import valid di LOS 20: `init.rc:9-10`
+        (`import /vendor/etc/init/hw/init.${ro.hardware}.rc`,
+        `ro.hardware=qcom` dari `BoardConfig.mk:179`) →
+        `init.qcom.rc:28-31` mengimpor power/ssr/usb/target — semua dipasang
+        ke `/vendor/etc/init/hw/` (`rootdir/Android.mk:21-59`).
+- [x] **7.2** `fstab.qcom` — `encryptable=`/`forceencrypt=` **nol sisa** (hanya
+      komentar penjelas di baris 26-30). Dikerjakan di Fase 3 (dua baris
+      `/data`) + commit `7938923` (entri SD card). TWRP fstab di luar scope
+      (recovery tidak dibangun ulang).
+- [x] **7.3** Servis `ppd` **tidak ada** — yang tersisa hanya komentar
+      (init.qcom.rc:272-282). Dihapus sejak 19.1 (`f5b96e5`), 10.C.
+- [x] **7.4** `ueventd.qcom.rc` — 274 baris (dipasang sebagai `/vendor/ueventd.rc`,
+      `rootdir/Android.mk:71-76`); aturan `kgsl-3d0` = `0666 system system` ada.
+      Gerbang pembacaan `/vendor/ueventd.rc` **masih terbuka untuk API 21 di
+      LOS 20**: `system/core/init/ueventd.cpp:306`
+      `GetIntProperty("ro.product.first_api_level", 10000) < __ANDROID_API_T__`
+      (A12: `<= __ANDROID_API_S__`; efek sama untuk nilai 21). Pasangan
+      `PRODUCT_SHIPPING_API_LEVEL := 21` + `BOARD_PROPERTY_OVERRIDES_SPLIT_ENABLED`
+      tetap terpasang.
+      ⚠️ Konfirmasi terakhir tetap di perangkat (Fase 9):
+      `ls -l /dev/kgsl-3d0` harus `crw-rw-rw- system system`.
 
 ---
 
