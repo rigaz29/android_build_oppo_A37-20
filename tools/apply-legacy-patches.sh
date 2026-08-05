@@ -15,10 +15,11 @@
 #   system/bpf, system/netd -> gerbang kernel < 4.9 ADA      (= Gerrit 320591/320592)
 #   art, external/perfetto  -> gerbang memfd_create ADA      (= Gerrit 318097/287706)
 #
-# Dan `sysfs_disk_stat` kini didefinisikan platform sendiri di
-# system/sepolicy/public/file.te:20, jadi perbaikan yatim dari 19.1 (Fase 5.2)
-# TIDAK diperlukan lagi -- mendefinisikannya ulang di device tree justru
-# menghasilkan duplikat dan menggagalkan build.
+# Dan `sysfs_disk_stat`: fork UL sempat mendefinisikannya di
+# system/sepolicy/public/file.te, tapi dengan posisi yang tak konsisten terhadap
+# snapshot bekunya sehingga memutus sepolicy_freeze_test (Fase 5). Hulu sudah
+# membuang tipe itu; langkah 3 di bawah menyelaraskan fork UL dengan hulu.
+# Device tree tetap TIDAK boleh mendefinisikannya (duplikat).
 #
 # Yang TERSISA hanya dua, dan keduanya sudah dibuktikan masih perlu:
 #   1. revert "Remove libbfqio"  -- hardware/qcom-caf/msm8916/display/libhwcomposer/
@@ -26,6 +27,7 @@
 #                                   vendor/lineage LOS 20 tidak lagi menyediakannya
 #   2. guard hardware/qcom-caf/msm8916/Android.mk -- paritas dengan board qcom-caf
 #                                   lain; harmless, lihat catatan di A37-20.xml
+# plus langkah 3: buang sysfs_disk_stat dari system/sepolicy (Fase 5).
 #
 # Pemakaian:
 #   tools/apply-legacy-patches.sh [/path/ke/tree]     # default: /root/los20
@@ -94,7 +96,56 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 3. Penjaga regresi -- bukan patch, tapi memeriksa asumsi yang bisa berubah
+# 3. system/sepolicy: buang tipe mati sysfs_disk_stat (pemblokir Fase 5)
+# ---------------------------------------------------------------------------
+# Fork UL LineageOS-UL/android_system_sepolicy lineage-20.0 membeku dengan
+# inkonsistensi internal: cherry-pick 2018 "Fix storaged access to
+# /sys/block/mmcblk0/stat" (a6cfe58e0) menaruh tipe sysfs_disk_stat di posisi
+# berbeda antara public/private dan snapshot beku prebuilts/api/33.0. Akibatnya
+# sepolicy_freeze_test gagal (dipaksa hanya bila PLATFORM_SEPOLICY_VERSION !=
+# TOT_SEPOLICY_VERSION; system/sepolicy/Android.mk:359-362):
+#
+#   FAILED: sepolicy_freeze_test
+#   Files system/sepolicy/public/file.te and .../api/33.0/public/file.te differ
+#
+# Hulu LineageOS lineage-20.0 TIDAK punya tipe ini sama sekali (sudah dibuang);
+# tipe ini juga tidak dipakai device tree A37 (nol referensi di device/oppo/A37
+# dan vendor/oppo). Jadi penyelesaiannya: selaraskan dengan hulu — buang tipe
+# dari system/sepolicy (public, private, dan snapshot 29.0-33.0: 32 berkas)
+# serta referensinya di device/qcom/sepolicy-legacy/legacy-common/file_contexts
+# (2 baris label mmcblk/sdhci). Dengan itu public/ == snapshot 33.0 dan
+# private/ == snapshot 33.0, dan vendor_file_contexts_test lolos.
+SEPOLICY_PATCHED=1
+
+SEPOLICY_DIRS="system/sepolicy device/qcom/sepolicy-legacy"
+
+if [ ! -d system/sepolicy ]; then
+    c_no "system/sepolicy tidak ada -- periksa manifest"; rc=1
+elif ! grep -rq "sysfs_disk_stat" $SEPOLICY_DIRS 2>/dev/null; then
+    c_ok "sepolicy: sysfs_disk_stat sudah dibuang"
+elif [ "$CHECK" = 1 ]; then
+    c_do "sepolicy: PERLU buang sysfs_disk_stat ($(grep -rl "sysfs_disk_stat" $SEPOLICY_DIRS | wc -l) berkas)"
+else
+    c_do "sepolicy: buang sysfs_disk_stat"
+    # Baris yang dihapus (semua baris yang memuat string -- jenisnya hanya:
+    #   file.te       : type sysfs_disk_stat, fs_type, sysfs_type;
+    #   storaged.te   : blok komentar + r_dir_file(storaged, sysfs_disk_stat)
+    #   *.ignore.cil  : "    sysfs_disk_stat"
+    #   file_contexts : label u:object_r:sysfs_disk_stat:s0
+    # Tidak ada baris lain yang sah memuat string ini di kedua repo.)
+    grep -rl "sysfs_disk_stat" $SEPOLICY_DIRS | while read -r f; do
+        sed -i '/sysfs_disk_stat/d' "$f" \
+            || { c_no "sepolicy: gagal mengedit $f"; rc=1; }
+    done
+    if grep -rq "sysfs_disk_stat" $SEPOLICY_DIRS 2>/dev/null; then
+        c_no "sepolicy: masih tersisa -- periksa manual"; rc=1
+    else
+        c_ok "sepolicy: sysfs_disk_stat dibuang (freeze test + file_contexts_test)"
+    fi
+fi
+
+# ---------------------------------------------------------------------------
+# 4. Penjaga regresi -- bukan patch, tapi memeriksa asumsi yang bisa berubah
 #    diam-diam kalau LineageOS-UL suatu saat cair lagi (fork dipin ke BRANCH,
 #    bukan SHA, di snippets/losul.xml).
 # ---------------------------------------------------------------------------
@@ -118,8 +169,21 @@ chk_grep frameworks/av/services/camera/libcameraservice/common/CameraProviderMan
 chk_grep frameworks/native/libs/renderengine/include/renderengine/RenderEngine.h \
          "GLES = 1" \
          "RenderEngine: backend GLES masih ada (= perbaikan 10.B)"
-chk_grep system/sepolicy/public/file.te "type sysfs_disk_stat" \
-         "sepolicy: sysfs_disk_stat didefinisikan platform (jangan definisikan ulang)"
+if grep -rq "sysfs_disk_stat" system/sepolicy/public system/sepolicy/private 2>/dev/null; then
+    c_no "sepolicy: sysfs_disk_stat masih di platform -- langkah 3 belum jalan / hulu cair lagi"; rc=1
+else
+    c_ok "sepolicy: sysfs_disk_stat sudah dibuang dari platform"
+fi
+if grep -rq "sysfs_disk_stat" device/qcom/sepolicy-legacy 2>/dev/null; then
+    c_no "sepolicy: sysfs_disk_stat masih di sepolicy-legacy -- langkah 3 belum jalan"; rc=1
+else
+    c_ok "sepolicy: sepolicy-legacy bersih dari sysfs_disk_stat"
+fi
+if grep -rq "sysfs_disk_stat" device/oppo/A37 vendor/oppo 2>/dev/null; then
+    c_no "sepolicy: sysfs_disk_stat terdefinisi di device tree -- duplikat"; rc=1
+else
+    c_ok "sepolicy: device tree tidak mendefinisikan sysfs_disk_stat"
+fi
 
 echo
 [ "$rc" = 0 ] && c_ok "selesai -- semua langkah beres" || c_no "selesai dengan peringatan (rc=$rc)"

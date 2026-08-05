@@ -3,8 +3,9 @@
 Berkas ini ditulis supaya siapa pun (manusia atau LLM) bisa melanjutkan **tanpa** riwayat
 percakapan sebelumnya. Baca ini dulu, lalu `PLAN.md`.
 
-Terakhir diperbarui: 5 Agustus 2026 — Fase 3 (device tree) dan Fase 4 (VINTF) selesai.
-Fase 4: nol perubahan source; manifest terakit identik dengan ROM jangkar (sepolicy 33.0).
+Terakhir diperbarui: 5 Agustus 2026 — Fase 3-5 selesai. Fase 5 (SEPolicy): `m selinux_policy`
+exit 0, layout identik ROM jangkar; tiga pemblokir dibereskan (freeze test fork UL,
+healthd.te, file_contexts sepolicy-legacy).
 
 ---
 
@@ -33,7 +34,8 @@ yang bisa diverifikasi ulang. Kalau ada konflik antara berkas ini dan `PLAN.md`,
 | **2 Manifest & sync** | ✅ **selesai.** `lunch lineage_A37-userdebug` berhasil, `PLATFORM_VERSION=13` |
 | **3 Device tree** | ✅ **selesai** — pemblokir kati beres, `m nothing` exit 0, @ `7938923` (detail §6) |
 | **4 VINTF** | ✅ **selesai** — nol perubahan source; sepolicy 33.0 ter-injeksi otomatis, manifest terakit identik ROM jangkar. Catatan `check_vintf_compatible` di PLAN §4.7 |
-| 5–10 | belum |
+| **5 SEPolicy** | ✅ **selesai** — `m selinux_policy` exit 0; layout identik ROM yang boot (detail PLAN §5.1b–5.1d). ⚠️ **Jalankan `tools/apply-legacy-patches.sh` ulang pasca `repo sync`** — langkah 3 (buang sysfs_disk_stat) baru |
+| 6–10 | belum |
 
 ### Repo kerja (semuanya milik akun GitHub `rigaz29`)
 

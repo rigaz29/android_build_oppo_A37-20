@@ -968,21 +968,62 @@ ulang.
 
 ## Fase 5 — SEPolicy
 
-- [ ] **5.1** Basis 19.1 dipakai apa adanya; di 19.1 hanya ada **satu** cacat
-      (`sysfs_disk_stat` yatim).
-- [ ] **5.2** `SYSTEM_EXT_PRIVATE_SEPOLICY_DIRS` — pastikan tidak ada sisa
-      `BOARD_PLAT_PRIVATE_SEPOLICY_DIR` (§3.1).
-- [ ] **5.3** Verifikasi lokasi sepolicy hasil build terhadap **daftar nyata dari ROM yang
-      boot** (`ref/evidence/selinux-list/`, §3.2): `/sepolicy` monolitik di root +
-      `*.cil` di `/system/etc/selinux/`. Bootloop meghs berasal dari sini.
-- [ ] **5.4** `m selinux_policy` harus lolos sebelum `mka bacon`.
-- [ ] **5.5** ROM tetap **permissive** untuk boot pertama
-      (`androidboot.selinux=permissive`), sama seperti meghs, a6010, dan ROM referensi 19.1.
+Selesai 5 Agustus 2026. `m selinux_policy` exit 0; layout hasil build **identik**
+dengan ROM yang boot. Tiga pemblokir ditemukan dan dibereskan (5.1b–5.1d).
 
-      ⚠️ **Tapi catat targetnya:** ROM gt58wifi yang boot **tidak permissive** — cmdline-nya
-      tidak memuat flag itu sama sekali (§1.5), dan `ro.secure=1`. Jadi enforcing di msm8916
-      Android 13 **terbukti bisa dicapai**, bukan cita-cita kosong. Jadikan fase tersendiri
-      setelah boot stabil, dengan gt58wifi sebagai bukti bahwa itu realistis.
+- [x] **5.1** Basis 19.1 dipakai apa adanya; cacat `sysfs_disk_stat` yatim dari 19.1
+      diselesaikan dengan cara berbeda dari 19.1 — lihat 5.1b.
+- [x] **5.2** Tidak ada sisa `BOARD_PLAT_PRIVATE_SEPOLICY_DIR` (grep device+ vendor:
+      nol). Sejak basis 19.1 sudah memakai `BOARD_VENDOR_SEPOLICY_DIRS` (§3.1).
+- [x] **5.3** Layout hasil build vs daftar nyata ROM (diff programatik, IDENTIK
+      dua-duanya):
+      - `/sepolicy` monolitik di root (961963 B vs 958950 B ROM — beda wajar),
+      - `/system/etc/selinux/` 11/11 berkas (termasuk `bug_map`, `mapping/`),
+      - `/vendor/etc/selinux/` 14/14 berkas (`precompiled_sepolicy`, `*.cil`, ...).
+      Bootloop meghs tidak terulang — lokasinya sama dengan ROM yang boot.
+- [x] **5.4** `m selinux_policy` exit 0 (log: `work/fase5-selinux4.log`).
+- [x] **5.5** Tetap permissive untuk boot pertama: `androidboot.selinux=permissive`
+      (`BoardConfig.mk:185`). Target enforcing pasca-boot stabil — gt58wifi buktinya.
+
+### 5.1b Pemblokir 1: `sepolicy_freeze_test` — inkonsistensi bawaan fork UL
+
+Fork UL `system/sepolicy lineage-20.0` (beku 2024-09-21, HEAD `9c0053142`) membeku
+dengan inkonsistensi internal: cherry-pick `a6cfe58e0` (2018) menaruh tipe
+`sysfs_disk_stat` di **posisi berbeda** antara `public/private` dan snapshot beku
+`prebuilts/api/33.0` (juga `private/compat/29.0/29.0.ignore.cil`). `sepolicy_freeze_test`
+(gerebang `PLATFORM_SEPOLICY_VERSION != TOT_SEPOLICY_VERSION`,
+`system/sepolicy/Android.mk:359-362`) lalu gagal:
+
+```
+Files system/sepolicy/public/file.te and .../api/33.0/public/file.te differ
+```
+
+Hulu LineageOS `lineage-20.0` **tidak punya tipe ini sama sekali**; device tree A37 juga
+tidak menggunakannya. **Perbaikan:** buang `sysfs_disk_stat` dari 32 berkas
+`system/sepolicy` + `device/qcom/sepolicy-legacy/legacy-common/file_contexts` (2 baris
+label mmcblk/sdhci) — menyelaraskan fork UL dengan hulu. Setelah itu
+`public/ == snapshot 33.0` dan `private/ == snapshot 33.0` (diff exit 0).
+Dipasang sebagai **langkah 3** di `tools/apply-legacy-patches.sh` (idempoten, wajib
+dijalankan ulang pasca `repo sync`) + penjaga regresi diperbarui.
+
+### 5.1c Pemblokir 2: `healthd_exec` tak dikenal — peninggalan 19.1 di tree kita
+
+`sepolicy/healthd.te` kita memanggil `init_daemon_domain(healthd)`; di LOS 20 platform
+hanya mempertahankan **tipe** `healthd` ("kept for backwards compatibility",
+`system/sepolicy/public/healthd.te`), `healthd_exec` sudah dicabut. Error checkpolicy:
+`unknown type healthd_exec`. Health kini dilayani `android.hardware.health@2.1-service`
+(bukan daemon healthd). **Perbaikan:** `sepolicy/healthd.te` dihapus (commit device tree).
+
+### 5.1d Pemblokir 3: `vendor_file_contexts_test` — sepolicy-legacy masih melabeli disk stats
+
+`device/qcom/sepolicy-legacy/legacy-common/file_contexts:87-88` masih menandai
+`/sys/.../block/mmcblk[0-9]/stat` dengan `u:object_r:sysfs_disk_stat:s0` — tipe yang
+sudah dibuang. `checkfc` menolak: `type sysfs_disk_stat is not defined`. Dibereskan oleh
+langkah 3 yang sama (2 baris dihapus).
+
+⚠️ **Yang TIDAK dikerjakan di Fase 5:** enforcing SELinux. gt58wifi membuktikan itu
+realistis di msm8916 A13, tapi untuk boot pertama tetap permissive — satu variabel
+pada satu waktu. Fase tersendiri setelah stabil.
 
 ---
 
