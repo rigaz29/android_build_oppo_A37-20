@@ -72,8 +72,31 @@ perangkat ini**, dengan enam akar masalah yang sudah terbukti.
 ### 1.1 Jangkar A — LineageOS-UL, dan verifikasi isinya
 
 `LineageOS-UL` (fork "Ultra Legacy" oleh Khalvat-M) menyediakan `android` (manifest) dengan
-branch `lineage-20.0`, terpelihara sampai **commit `0f52348` "Track our own forks for 2026-06
-ASB patching"** — aktif, bukan arsip.
+branch `lineage-20.0`.
+
+⚠️ **Koreksi terhadap draf pertama dokumen ini.** Draf itu menyebut UL "terpelihara sampai
+ASB 2026-06, aktif bukan arsip". **Itu salah** — commit tersebut berasal dari checkout
+manifest LineageOS hulu yang sempat tercampur saat `repo init` pertama gagal (§0.3). Fakta
+yang benar, dibaca dari `.repo/manifests` dan dari HEAD tiap fork di `/root/los20`:
+
+| | Terakhir bergerak |
+|---|---|
+| `LineageOS-UL/android` branch `lineage-20.0` | **2025-04-04** (`03ea6ac`) |
+| ASB terbaru yang dilacak branch itu | **2025-03** (`b76ffb8`) |
+| `frameworks/base`, `frameworks/native`, `system/core`, `vendor/lineage` | 2025-04-04 |
+| `frameworks/av` | 2024-09-21 |
+| `packages/modules/adb` | 2023-06-21 |
+| branch `lineage-19.1` dan `lineage-21.0` | **2025-04-04 juga** — ketiganya beku bersamaan |
+
+Jadi per Agustus 2026 seluruh lini UL **beku ± 16 bulan**. Ini tidak membatalkan nilainya —
+fungsi legacy yang kita butuhkan sudah ada di dalamnya dan terbukti jalan di ROM gt58wifi
+(§1.5) — tapi mengubah dua hal:
+
+1. **Patch keamanan berhenti di ASB 2025-03** untuk komponen yang di-fork UL. Bukan pemblokir
+   boot; harus dinyatakan terbuka.
+2. **Set patch retiredtab jadi lebih relevan, bukan kurang** (§1.4). ROM gt58wifi bertanggal
+   2026-05 dengan `security_patch=2026-05-01` justru karena retiredtab menambal sendiri di
+   atas basis UL yang beku.
 
 `.repo/manifests/snippets/losul.xml` memasang **37 project** ke remote `losul`. Nama repo
 bukan bukti isinya, jadi setiap fungsi kritis diperiksa langsung:
@@ -169,10 +192,19 @@ pembukanya menutup perdebatan soal basis manifest:
 revert `libbfqio` masih relevan — **tapi periksa dulu**: fork `vendor/lineage` UL mungkin
 sudah memuatnya (Fase 2.4).
 
-⚠️ Resep retiredtab mencantumkan sejumlah `git am` patch besar (`frameworks_av-aug-2024.patch`
-1,7 MB, `frameworks-base-june-2024.patch` 746 KB). Itu patch **milik retiredtab untuk
-bulan tertentu**, bukan syarat umum. Jangan diterapkan borongan — cek dulu apakah isinya
-sudah ada di fork UL yang sekarang (yang sudah maju sampai ASB 2026-06).
+Resep retiredtab mencantumkan sejumlah `git am` patch besar (`frameworks_av-aug-2024.patch`
+1,7 MB, `frameworks-base-june-2024.patch` 746 KB) di `20/UL-patches-2024/`.
+
+⚠️ **Bobotnya naik setelah koreksi §1.1.** Draf pertama menyarankan mengabaikannya karena
+"fork UL sudah lebih maju". Basis UL ternyata beku di 2025-04 / ASB 2025-03, sedangkan ROM
+gt58wifi bertanggal 2026-05 — selisih itu **justru diisi oleh patch-patch ini**. Jadi:
+
+- Untuk sekadar **boot**: tidak diperlukan. UL apa adanya sudah cukup.
+- Untuk **paritas keamanan** dengan ROM gt58wifi: inilah jalannya, dan retiredtab sudah
+  mendokumentasikan urutan stash → sync → `git am` di `20-msm8916-build-instructions.txt`.
+
+Tetap jangan diterapkan borongan tanpa membaca — beberapa patch device-spesifik Samsung.
+Kerjakan setelah boot pertama berhasil, sebagai fase tersendiri.
 
 ### 1.5 Jangkar E — ROM LineageOS 20 yang terbukti boot di msm8916 (dibedah)
 
@@ -583,24 +615,59 @@ memakai satu variabel usang. Tree meghs membawa `first_api_level=19` dan audio `
 
 ---
 
-## Fase 1 — Kernel · **hampir selesai**
+## Fase 1 — Kernel ✅ **SELESAI di sisi build — 5 Agustus 2026**
 
 Basis: `rigaz29/kernel_oppo_msm8939` `lineage-19.1` @ `bf222bf`.
+Hasil: branch **`lineage-20`** @ `8cc1519`, sudah di-push.
 
-- [ ] **1.1** Buat branch `lineage-20` dari `bf222bf`.
-- [ ] **1.2** Terapkan satu-satunya perubahan fungsional dari §3.6:
-      `down_read`/`up_read` → `down_write`/`up_write` pada `mm->mmap_sem` di
-      `binder_update_page_range()`, `drivers/staging/android/binder_alloc.c`.
-      Referensi: `k-rt` `origin/lineage-20.0:drivers/staging/android/binder_alloc.c`.
-- [ ] **1.3** Opsional, **hanya kalau log binder membanjiri dmesg**: `CONFIG_BINDER_SHUT_UP`
-      + `pr_info_ratelimited`. Jangan preventif — ia menyembunyikan diagnostik yang mungkin
-      dibutuhkan di Fase 9–10.
-- [ ] **1.4** Opsional: `CONFIG_RD_XZ=y` + `BOARD_RAMDISK_USE_XZ := true` (a6010 & retiredtab
-      keduanya). Menghemat ruang boot.img. Bukan syarat boot.
-- [ ] **1.5** **Uji kernel dulu, sebelum ROM.** Bangun zip AnyKernel3 dengan
-      `tools/build-kernel-zip.sh` (dibawa dari 19.1) dan flash **di atas ROM 19.1 yang sudah
-      boot**. Ini memisahkan variabel kernel dari variabel userspace — metode yang terbukti
-      berharga di 19.1 (§9.1 dok lama) karena membuktikan kernel tidak bersalah atas 10.A–10.D.
+- [x] **1.1** Branch `lineage-20` dibuat dari `bf222bf`. ✅
+- [x] **1.2** `down_read`/`up_read` → `down_write`/`up_write` pada `mm->mmap_sem` di
+      `binder_update_page_range()` — **3 baris**, commit `8cc1519`. ✅
+
+      Terverifikasi berlapis:
+      - Fungsi `binder_update_page_range()` kini berbeda **nol baris fungsional** dari
+        `retiredtab/android_kernel_samsung_msm8916` `lineage-20.0`. Sisa selisih hanya
+        `CONFIG_BINDER_SHUT_UP` dan perutean `pr_err` → `binder_alloc_debug`.
+      - **Di biner**, bukan cuma di source: `nm -u out/drivers/staging/android/binder_alloc.o`
+        merujuk `U down_write` dan `U up_write` saja — **tidak ada sisa `down_read`/`up_read`**.
+- [x] **1.3 dilewati, disengaja.** `CONFIG_BINDER_SHUT_UP` menyembunyikan diagnostik yang
+      justru dibutuhkan Fase 9–10. Pasang hanya kalau log binder terbukti membanjiri dmesg. ✅
+- [x] **1.4 dilewati, disengaja.** `CONFIG_RD_XZ` + `BOARD_RAMDISK_USE_XZ` adalah pasangan,
+      dan pasangannya ada di device tree (Fase 3). Memasang sisi kernelnya sekarang menaruh
+      **dua variabel dalam satu uji 1.5** — melanggar metode §0. Kerjakan bersama Fase 3. ✅
+- [x] **1.5a Build + paket — SELESAI.** ✅
+
+      ```
+      Image    18294392 byte, Linux kernel ARM64 boot executable
+      dt.img   210944 byte  — SAMA PERSIS dengan ROM referensi
+      zip      A37-kernel-3.10.108-lineageos-lineage-20-8cc1519b65d-20260805-0517.zip
+      sha256   b2cc1a4fc2a7904bd9fd8b05d6b2445600cb9be910d8a8af8e0994dac842253d
+      ```
+
+      Verifikasi `build-kernel-zip.sh` lolos seluruhnya: `binder_alloc` ter-link (11 simbol
+      di System.map), jalur `BINDER_SET_CONTEXT_MGR` (security context A12) ada,
+      `SECCOMP_FILTER`/`ANDROID_BINDER_IPC`/`PSTORE_RAM`/`IKCONFIG_PROC` = y, jalur LMK
+      punya sumber tekanan.
+
+      Toolchain: `prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9` **dari tree
+      LOS 20** — tidak perlu unduh toolchain terpisah (§3.4 terbukti benar).
+      Arsip: `/root/a37-dl/` + `SHA256SUMS-kernel-20-20260805.txt`.
+
+- [ ] **1.5b Uji di perangkat — MENUNGGU PEMILIK PERANGKAT.**
+
+      Flash zip di atas ROM **19.1 yang sudah terpasang** (bukan ROM 20 — belum ada).
+      Zip memakai `split_boot`: ia mengganti Image + dt.img dan **membiarkan ramdisk apa
+      adanya**, jadi satu variabel yang diuji hanyalah kernel.
+
+      | Hasil | Artinya |
+      |---|---|
+      | Boot normal sampai homescreen | binder tidak regresi di userspace Android nyata → lanjut Fase 2 |
+      | Bootloop | tahan Power → recovery → `adb shell cat /sys/fs/pstore/console-ramoops-0`, lalu flash balik kernel lama |
+
+      ⚠️ **Yang TIDAK dibuktikan uji ini:** jalur security context Android 12/13 sendiri.
+      keystore2 hanya ada di A12+; A11 memakai keystore1 dan tidak pernah menyetel
+      `FLAT_BINDER_FLAG_TXN_SECURITY_CTX`. Boot mulus di 19.1 = **tidak ada regresi**,
+      bukan bukti fitur A13-nya benar. Itu baru terjawab di Fase 9.
 
 ⚠️ **Yang TIDAK dikerjakan di kernel:** rebase ke 32-bit, ganti basis ke a6010/retiredtab,
 backport eBPF/PSI/cgroup-v2/BinderFS. Tidak satu pun dituntut Android 13 (§3.6), dan mengganti
@@ -824,7 +891,8 @@ di A37 pada Android 12+. Jangan jadikan RIL sebagai kriteria keberhasilan Fase 9
 | Kernel gt58wifi 32-bit, A37 arm64 | Temuan kernel tidak bisa disalin langsung | Delta kernel diukur terhadap **source** retiredtab (§3.6), bukan terhadap boot.img-nya; `CONFIG_IKCONFIG` mati di ROM itu sehingga `.config`-nya memang tidak tersedia |
 | Disk 126 GB tanpa margin | Build gagal di 95% | §0.1 — bersihkan sebelum `mka bacon` |
 | Audio | Tidak ada suara | §3.8 — tetap `@6.0`, pasangan yang sudah konsisten. Bukan pemblokir boot |
-| Fork UL bergerak (ASB bulanan) | Regresi diam-diam setelah `repo sync` | Pin SHA di `A37-20.xml` untuk repo kita; catat SHA manifest UL tiap build berhasil |
+| **Fork UL beku sejak 2025-04 (ASB 2025-03)** | Userspace tertinggal ± 16 bulan dari ASB terkini | §1.1 — bukan pemblokir boot. Paritas keamanan lewat set patch retiredtab (§1.4), dikerjakan setelah boot pertama |
+| Fork UL dipin ke **branch**, bukan SHA, di `snippets/losul.xml` | Kalau UL cair lagi, `repo sync` menarik perubahan tanpa peringatan | Catat SHA tiap fork saat build berhasil; pin SHA repo kita sendiri di `A37-20.xml` |
 | RIL | Tidak ada sinyal | Diakui terbuka, bukan kriteria Fase 9 |
 | `/data` tanpa enkripsi | Keamanan | Dinyatakan terbuka (§3.7); perangkat uji saja |
 | Blob 2016 di framework 2022 | Crash HAL beragam | Triase Fase 6; jangan adopsi daftar blob orang lain borongan |

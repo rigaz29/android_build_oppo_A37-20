@@ -33,7 +33,13 @@ dari namanya:
 | Gerbang `memfd_create` | repopick 318097 + 287706 | ✅ fork `art`, `external/perfetto` |
 | `sepolicy-legacy` | pin manual | ✅ `device/qcom/sepolicy-legacy` @ `lineage-20.0-legacy` |
 
-**9 repopick + 23 patch kamera → nol.** Manifest UL terpelihara sampai ASB **2026-06**.
+**9 repopick + 23 patch kamera → nol.**
+
+⚠️ Tapi catat: lini `lineage-20.0` UL **beku sejak 2025-04-04**, ASB terbaru yang dilacaknya
+**2025-03** (branch `lineage-19.1` dan `lineage-21.0` beku di tanggal yang sama). Fungsi
+legacy yang kita butuhkan sudah lengkap di dalamnya dan terbukti jalan di ROM gt58wifi —
+tapi untuk paritas keamanan perlu set patch retiredtab (`20/UL-patches-2024/`), dikerjakan
+setelah boot pertama. Rinciannya di `PLAN.md` §1.1 dan §1.4.
 
 ---
 
