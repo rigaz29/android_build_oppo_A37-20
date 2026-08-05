@@ -3,7 +3,8 @@
 Berkas ini ditulis supaya siapa pun (manusia atau LLM) bisa melanjutkan **tanpa** riwayat
 percakapan sebelumnya. Baca ini dulu, lalu `PLAN.md`.
 
-Terakhir diperbarui: 5 Agustus 2026, setelah Fase 2 selesai.
+Terakhir diperbarui: 5 Agustus 2026 — Fase 3 (device tree) sedang dikerjakan, semua
+pemblokir kati selesai, `m nothing` lolos.
 
 ---
 
@@ -30,7 +31,7 @@ yang bisa diverifikasi ulang. Kalau ada konflik antara berkas ini dan `PLAN.md`,
 | **1 Kernel** | ✅ **selesai di sisi build.** Branch `lineage-20` @ `8cc1519`. Zip AnyKernel3 sudah dibuat |
 | 1.5b uji di perangkat | ⏳ **menunggu pemilik perangkat** — hanya bisa dilakukan manusia yang memegang A37 |
 | **2 Manifest & sync** | ✅ **selesai.** `lunch lineage_A37-userdebug` berhasil, `PLATFORM_VERSION=13` |
-| **3 Device tree** | ⬅️ **BERIKUTNYA.** Pemblokir pertama sudah diketahui pasti (lihat §6) |
+| **3 Device tree** | 🔧 **sedang dikerjakan** — semua pemblokir kati beres, `m nothing` exit 0 (detail §6) |
 | 4–10 | belum |
 
 ### Repo kerja (semuanya milik akun GitHub `rigaz29`)
@@ -69,7 +70,7 @@ Semuanya diturunkan dari bukti, bukan preferensi. Rinciannya di `PLAN.md` §0–
 | Device tree = **milik kita sendiri** (`lineage-19.1-rb` @ `ce39cf5`), **bukan** tree `meghs-playground` | tree kita mandiri (tanpa `msm8916-common`), membawa 6 perbaikan terverifikasi, dan hanya memakai 1 dari 53 variabel build yang usang |
 | Kernel tetap **arm64**, basis kernel A37 sendiri | Android 13 tidak menuntut fitur kernel baru (diukur: delta binder 233 baris, 1 fungsional) |
 | Audio HAL **tetap `@6.0`** | ROM msm8916 A13 yang boot pakai `@2.0`; rentang 2.0–7.1 semua jalan. Yang wajib: versi manifest **cocok** dengan `-impl` yang dibangun |
-| **Pertahankan `cryptfshw`**; `/data` polos lewat **fstab tanpa `encryptable=`** | ROM yang boot melakukan persis itu. Mencabut HAL menyentuh 3 berkas untuk efek yang bisa dicapai 1 baris |
+| ~~**Pertahankan `cryptfshw`**~~ → **DICABUT di Fase 3** | ⚠️ **DIBATALKAN oleh bukti baru 5 Agustus 2026:** modul `cryptfshw` tidak ada sama sekali di tree LOS 20 (hulu mencabut source-nya setelah 19.1; diverifikasi: 0 definisi di seluruh tree). ROM gt58wifi yang boot pun **tidak mengirim biner cryptfshw** — deklarasinya di VINTF hanya sisa. Premis keputusan lama ("HAL sudah ada, mencabut = 3 berkas") gugur. `/data` tetap polos lewat fstab tanpa `encryptable=` — bagian ini tetap |
 | Casefold: **defensif saja**, bukan syarat | `emulated_storage.mk` tidak di-inherit target nyata mana pun di LOS 20 |
 | `PRODUCT_SHIPPING_API_LEVEL := 21` **+** `BOARD_PROPERTY_OVERRIDES_SPLIT_ENABLED := true` | **pasangan** perbaikan 10.A. Menghapus salah satunya mengembalikan crash-loop SurfaceFlinger |
 | `lunch ...-userdebug`, **bukan `-eng`** | build `eng` memasang StrictMode `penaltyFlashScreen()` tanpa syarat (bug 10.F) |
@@ -128,23 +129,40 @@ Semuanya benar-benar terjadi di proyek ini, bukan teori.
 
 ---
 
-## 6. Fase 3 — pemblokir pertama sudah diketahui
+## 6. Fase 3 — status 5 Agustus 2026
 
-`m nothing` berhenti di:
+Pemblokir pertama (`android.hidl.base@1.0` duplikat) dan seluruh pemblokir kati
+berikutnya **sudah diselesaikan**; `m nothing` kini exit 0, dan dua modul uji
+(`libwcnss_qmi`, `android.hardware.drm@1.4-service.clearkey`) ter-build. Rincian:
 
-```
-build/make/core/base_rules.mk:338: error: device/oppo/A37/gps/utils:
-MODULE.TARGET.SHARED_LIBRARIES.android.hidl.base@1.0 already defined by hardware/lineage/compat
-```
+1. **Dummy `android.hidl.base@1.0` dibuang** — `libhidl/Android.mk` dihapus,
+   dua baris `device.mk` dibuang. LOS 20 menyediakan keduanya di
+   `hardware/lineage/compat/Android.bp:228,236`. Sepadan dengan meghs `031a09a`.
 
-Device tree kita membangun dummy `android.hidl.base@1.0` (`libhidl/Android.mk:18`, dipasang
-lewat `device.mk:586`) untuk blob era Oreo. **LineageOS 20 kini menyediakannya sendiri** di
-`hardware/lineage/compat/Android.bp:228`. Buang milik kita.
-Sepadan dengan commit meghs `031a09a` *Revert "Build a dummy android.hidl.base@1.0..."*.
+2. **Pemblokir kedua: `wcnss_service` menautkan QMI.** Fork UL
+   `hardware/qcom-caf/wlan lineage-20.0-caf` menghilangkan gerbang `QCPATH`
+   yang ada di `lineage-19.1-caf`, sehingga `wcnss_service` menautkan
+   `libqmi_cci`/`libqmi_common_so`/`libmdmdetect` — tidak ada sebagai modul di
+   LOS 20. Perbaikan: `TARGET_PROVIDES_WCNSS_QMI := true` di BoardConfig
+   (sama dengan meghs BoardConfig.mk:91) → jalur `-DWCNSS_QMI_OSS` + libdl,
+   persis build 19.1. Baca `PLAN.md` Fase 3.3 baru.
 
-⚠️ **Ini pemblokir pertama, bukan satu-satunya.** kati berhenti di error pertama, jadi
-Fase 3 kemungkinan besar memunculkan beberapa lagi berurutan. Daftar lengkap butir Fase 3
-ada di `PLAN.md` Fase 3.1–3.3.
+3. **Pemeriksaan baru LOS 20: `vendor/lineage/config/common.mk:104`**
+   (`enforce-product-packages-exist`) — 19.1 tidak memilikinya. Menangkap
+   **10 entri `PRODUCT_PACKAGES` yang tidak pernah dibangun** di 19.1 pun
+   (diverifikasi dari log build 19.1: nol baris build/install):
+   `libgenlock`, `libOmxVdecHevc`, `libOmxSwVencHevc`, `sensord`, `accelcal`,
+   `AccCalibration`, `textclassifier.bundle1`, `libhidltransport.vendor`,
+   `libhwbinder.vendor`, dan `android.hardware.drm@1.3-service.clearkey`
+   (yang terakhir DIGANTI `@1.4-service.clearkey` — biner yang sama dengan
+   ROM gt58wifi; fqname manifest dinaikkan ke @1.4). Semua dibuang dari
+   `device.mk` kecuali clearkey yang diganti.
+
+4. **Koreksi `cryptfshw`** — lihat tabel §3. Keputusan lama gugur oleh bukti:
+   hulu mencabut source-nya di LOS 20; ROM jangkar tidak mengirim binernya.
+
+Belum diuji di perangkat apa pun — semua kesimpulan di atas dari log build
+19.1, tree LOS 20, dan ROM gt58wifi.
 
 ---
 

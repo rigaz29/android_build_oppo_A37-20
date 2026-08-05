@@ -29,7 +29,7 @@ referensi msm8916 yang di-clone — bukan dari asumsi.
 | 3 | `adb` mustahil muncul tanpa Gerrit 326385 (§1.6 dok 19.1) | **Sudah ada di fork UL.** `packages/modules/adb/transport_legacy.cpp` ada | §1.1 |
 | 4 | Device tree A37 mandiri, di-rebase dari 18.1 | **Tetap mandiri**, di-rebase dari `lineage-19.1-rb` @ `ce39cf5`. **Tidak** mengadopsi tree `meghs-playground` yang menggantung pada `device/cyanogen/msm8916-common` | §2.1, §3.9 |
 | 5 | Backport binder = satu-satunya pekerjaan kernel yang benar-benar baru | **Kernel praktis selesai.** `binder.c` kita hanya beda **233 baris** dari kernel LOS 20 retiredtab; delta 19.1→20.0 milik retiredtab sendiri 1363 baris | §3.6, Fase 1 |
-| 6 | Enkripsi: FDE aktif (`cryptfshw@1.0`) | **`/data` tidak dienkripsi** — tapi caranya bukan "cabut HAL". ROM msm8916 A13 yang boot **tetap mendeklarasikan `cryptfshw@1.0`**, dan yang membuat `/data` polos adalah **tidak adanya `encryptable=` di fstab**. Dua hal berbeda | §3.7 |
+| 6 | Enkripsi: FDE aktif (`cryptfshw@1.0`) | **`/data` tidak dienkripsi** — dan yang membuat `/data` polos adalah **tidak adanya `encryptable=` di fstab**. ⚠️ Koreksi Fase 3: ROM gt58wifi yang boot **mendeklarasikan** `cryptfshw@1.0` di VINTF tapi **tidak mengirim binernya**, dan source HAL-nya sudah dicabut hulu di LOS 20 — jadi deklarasi di tree kita ikut dicabut (aturan 10.C), sementara `/data` polos tetap via fstab | §3.7 |
 | 7 | Audio HAL `@6.0-impl` + manifest `@6.0` (pasangan konsisten di tree) | **Tetap `@6.0`.** Rekomendasi `@7.1` di draf pertama dokumen ini **dibatalkan** — ROM msm8916 A13 yang boot justru memakai `@2.0`. Tidak ada versi "benar"; yang wajib adalah versi manifest **cocok dengan `-impl` yang dibangun** | §3.8 |
 | 8 | `PRODUCT_SHIPPING_API_LEVEL := 21` ditemukan lewat kegagalan 10.A | **Dipertahankan 21.** Selain memperbaiki 10.A, nilai ini secara struktural mematikan gerbang `PRODUCT_OTA_ENFORCE_VINTF_KERNEL_REQUIREMENTS` (aktif hanya bila ≥ 29) dan `PRODUCT_SET_DEBUGFS_RESTRICTIONS` (≥ 31) — dua pemblokir yang harus di-hack oleh porter lain | `build/make/core/product_config.mk:468-478` |
 
@@ -503,6 +503,19 @@ HAL. retiredtab membangun dan mendeklarasikan HAL-nya, tapi tidak pernah mengakt
 yang sudah terbukti boot. Mencabut HAL berarti menyentuh BoardConfig, `device.mk`, dan
 `manifest.xml` sekaligus — tiga tempat untuk satu efek yang bisa dicapai di satu baris fstab.
 
+⚠️ **Koreksi kedua terhadap draf ini — Fase 3, 5 Agustus 2026: pertahanan itu tidak lagi
+mungkin.** Premisnya ("HAL sudah ada di tree 19.1 kita") tidak berlaku untuk LOS 20:
+hulu **mencabut source cryptfshw** setelah 19.1. Di 19.1 modul
+`vendor.qti.hardware.cryptfshw@1.0-base` + `-service-qti.qsee` dibangun dari
+`hardware/lineage/interfaces/cryptfshw` dan `vendor/qcom/opensource/interfaces/cryptfshw`
+(terverifikasi dari log build `bacon4.log:36680-36741`); **kedua direktori tidak ada di
+tree LOS 20** (grep seluruh tree: nol definisi modul). ROM gt58wifi yang boot juga
+**tidak mengirim biner cryptfshw** (diverifikasi dari system.img-nya) — deklarasinya di
+VINTF hanyalah sisa. `TARGET_HW_DISK_ENCRYPTION` tidak dikonsumsi apa pun di LOS 20
+(grep `*.mk`/`*.bp`: nol). Jadi di Fase 3: cryptfshw dicabut dari `device.mk` dan
+`manifest.xml` (mengikuti meghs yang boot), dan `/data` tetap polos lewat fstab tanpa
+`encryptable=` — bagian keputusan yang **tidak** berubah.
+
 Konsekuensi yang harus disebut terang-terangan: **`/data` tidak terenkripsi.** Untuk ROM
 eksperimental di perangkat uji ini diterima; jangan dipakai untuk data pribadi.
 Catatan: FBE di kernel 3.10 adalah proyek tersendiri dan tetap di luar lingkup.
@@ -786,22 +799,56 @@ Basis: `lineage-19.1-rb` @ `ce39cf5`. Buat branch `lineage-20`.
 
 ### 3.1 Wajib — jangan sampai terlewat
 
-- [ ] **Buang dummy `android.hidl.base@1.0`** — **pemblokir build yang sudah terbukti**,
-      lihat §2.8. LineageOS 20 menyediakannya di `hardware/lineage/compat/Android.bp:228`.
-      Hapus `libhidl/Android.mk` dan baris `android.hidl.base@1.0 \` di `device.mk:586`.
+Semua butir di bawah selesai 5 Agustus 2026; `m nothing` exit 0 setelahnya.
+
+- [x] **Buang dummy `android.hidl.base@1.0`** — **pemblokir build yang sudah terbukti**,
+      lihat §2.8. `libhidl/Android.mk` dihapus; dua baris (`android.hidl.base@1.0`,
+      `android.hidl.manager@1.0`) dibuang dari `device.mk` PRODUCT_PACKAGES. LOS 20
+      menyediakan keduanya di `hardware/lineage/compat/Android.bp:228` dan `:236`.
       Sepadan dengan commit meghs `031a09a`.
-- [ ] `BUILD_BROKEN_PHONY_TARGETS` dibuang (§3.1 — satu-satunya variabel usang kita).
-- [ ] `TARGET_KERNEL_LLVM_BINUTILS := false` ditambahkan eksplisit (§3.4).
-- [ ] Pastikan `PRODUCT_SHIPPING_API_LEVEL := 21` **dan**
+- [x] `BUILD_BROKEN_PHONY_TARGETS` dibuang (§3.1 — satu-satunya variabel usang kita).
+      Sudah dibuang sejak basis 19.1 (sisa: komentar di `BoardConfig.mk:53`).
+- [x] `TARGET_KERNEL_LLVM_BINUTILS := false` ditambahkan eksplisit (§3.4).
+- [x] Pastikan `PRODUCT_SHIPPING_API_LEVEL := 21` **dan**
       `BOARD_PROPERTY_OVERRIDES_SPLIT_ENABLED := true` tetap ada. Keduanya pasangan
-      perbaikan 10.A. Menghapus salah satunya mengembalikan crash-loop SurfaceFlinger.
-- [ ] Enkripsi dicabut (§3.7): `TARGET_HW_DISK_ENCRYPTION`,
-      `cryptfshw@1.0-service-qti.qsee`, dan entri `cryptfshw` di `manifest.xml`.
-      fstab: buang `encryptable=`/`forceencrypt=` pada `/data`.
-- [ ] `vendor.lineage.health-service.default` ditambahkan + tiga
+      perbaikan 10.A. Terverifikasi ada: `lineage_A37.mk:103`, `BoardConfig.mk:127`.
+- [x] Enkripsi (§3.7 — **koreksi Fase 3**): cryptfshw **dicabut** dari `device.mk`
+      (blok PRODUCT_PACKAGES) dan `manifest.xml` (deklarasi HAL) — source-nya sudah
+      tidak ada di tree LOS 20 (lihat §3.7 "koreksi kedua"). `TARGET_HW_DISK_ENCRYPTION`
+      dipertahankan (tidak dikonsumsi apa pun; retiredtab juga mempertahankan).
+      fstab: `encryptable=footer` dibuang dari kedua baris `/data`.
+- [x] `vendor.lineage.health-service.default` ditambahkan + tiga
       `TARGET_HEALTH_CHARGING_CONTROL_*` (baru di 20; meghs & a6010 sepakat).
-- [ ] Aplikasi kamera: `Aperture` (sudah ada di tree LOS 20) menggantikan `Snap`
-      yang sudah ditinggalkan di 19.1.
+      Path `/sys/class/power_supply/battery/charging_enabled` **diverifikasi di kernel
+      kita**: `qpnp-linear-charger.c:206,1672-1679,1554-1566,3372,3382-3383` +
+      `power_supply_sysfs.c:148`.
+- [x] Aplikasi kamera: **`Aperture`** (modul ada di `packages/apps/Aperture/app/Android.bp:11`)
+      menggantikan `Camera2` — sama dengan meghs dan a6010 untuk LOS 20.
+
+### 3.1b Pemblokir kati tambahan yang ditemukan di Fase 3 (semua selesai)
+
+kati maju satu per satu; semuanya beres, `m nothing` exit 0:
+
+- [x] **`wcnss_service` menautkan QMI** — fork UL `hardware/qcom-caf/wlan`
+      `lineage-20.0-caf` menghilangkan gerbang `ifneq ($(QCPATH),)` dari
+      `lineage-19.1-caf` (di 19.1 QCPATH kosong → jalur `-DWCNSS_QMI_OSS` + libdl).
+      Tanpa gerbang itu, `TARGET_USES_QCOM_WCNSS_QMI := true` memaksa tautan
+      `libqmi_cci`/`libqmi_common_so`/`libmdmdetect` — nol definisi di LOS 20.
+      Perbaikan: `TARGET_PROVIDES_WCNSS_QMI := true` (meghs `BoardConfig.mk:91`
+      memakai yang sama dan boot). Hanya dibaca
+      `hardware/qcom-caf/wlan/wcnss-service/Android.mk:15`.
+- [x] **Pemeriksaan `enforce-product-packages-exist` — BARU di LOS 20**
+      (`vendor/lineage/config/common.mk:104`; 19.1 tidak memilikinya). Menangkap
+      entri PRODUCT_PACKAGES yang tidak pernah dibangun — diverifikasi dari log
+      build 19.1 (nol baris build/install untuk semuanya): `libgenlock`,
+      `libOmxVdecHevc`, `libOmxSwVencHevc`, `sensord`, `accelcal`, `AccCalibration`,
+      `textclassifier.bundle1`, `libhidltransport.vendor`, `libhwbinder.vendor`
+      (dibuang; varian polos `libhidltransport`/`libhwbinder` dipertahankan — itulah
+      yang terpasang di 19.1 dan dipakai a6010/meghs).
+- [x] **`android.hardware.drm@1.3-service.clearkey` tidak ada di LOS 20** — tersedia
+      `@1.2-` dan `@1.4-service.clearkey`. Diganti `@1.4-service.clearkey` (non-lazy,
+      biner yang sama dengan ROM gt58wifi) + fqname manifest dinaikkan ke `@1.4`
+      (konsisten dengan fragment VINTF bawaan modul).
 
 ### 3.2 Diwarisi dari 19.1 — pertahankan, jangan diutak-atik
 
@@ -825,11 +872,20 @@ androidboot.init_fatal_reboot_target=recovery + ramoops.* di cmdline
 
 ### 3.3 Kandidat dari a6010 — evaluasi, jangan salin borongan
 
-- `androidboot.memcg=true` — hanya bila `CONFIG_MEMCG=y` di defconfig kita. §1.2 dok 19.1
-  memperingatkan: **pilih satu jalur** (LMK in-kernel **atau** memcg), jangan campur.
-- `TARGET_KERNEL_ADDITIONAL_FLAGS := HOSTCFLAGS=...` — hanya bila build kernel gagal di host.
-- `PRODUCT_ENFORCE_VINTF_MANIFEST_OVERRIDE := true` — hati-hati, 10.C bergantung pada
-  enforcement VINTF **aktif** agar `getService` gagal cepat. Jangan melemahkannya.
+- `androidboot.memcg=true` — **LEWATKAN (dievaluasi Fase 3, 5 Agustus 2026):** flag ini
+  **tidak dikonsumsi siapa pun di Android 13**. lmkd membaca
+  `ro.config.per_app_memcg` (`system/memory/lmkd/lmkd.cpp:3728`), dengan default
+  `low_ram_device` — yang di tree kita sudah `true` via `ro.config.low_ram=true`
+  (`lmkd.cpp:3722`, `device.mk:558`). `/dev/memcg` di-mount otomatis oleh first-stage
+  init dari `cgroups.json` (controller `memory`, `Optional: true`) — `CONFIG_MEMCG=y`
+  di defconfig kita (`lineageos_a37f_defconfig:18`). Jadi mekanisme memcg **sudah
+  aktif tanpa flag apa pun**; `androidboot.memcg=true` milik a6010 adalah peninggalan.
+- `TARGET_KERNEL_ADDITIONAL_FLAGS := HOSTCFLAGS=...` — **sudah ada** di tree kita
+  (`BoardConfig.mk:198`, diturunkan dari msm8916-common 18.1). Hanya dipakai bila
+  build kernel gagal di host.
+- `PRODUCT_ENFORCE_VINTF_MANIFEST_OVERRIDE := true` — **dipertahankan**
+  (`device.mk`); 10.C bergantung pada enforcement VINTF aktif agar `getService`
+  gagal cepat.
 - `HWUI_COMPILE_FOR_PERF`, tuning SurfaceFlinger, `go_defaults` untuk 2 GB — **Fase 11**,
   setelah boot. Bukan sekarang.
 
@@ -852,7 +908,8 @@ androidboot.init_fatal_reboot_target=recovery + ramoops.* di cmdline
       membunuh `system_server` tiap ~2 menit di 19.1 kita. **Jangan diambil.**
 - [ ] **4.4** Bandingkan tiga daftar HAL (kita 19.1, meghs 20, a6010 20) dan untuk setiap
       selisih tanyakan: *servisnya ada di blob kita?* Bukan: *apakah tree lain punya?*
-- [ ] **4.5** Cabut `cryptfshw` (§3.7).
+- [ ] **4.5** Cabut `cryptfshw` (§3.7). — ✅ **sudah dikerjakan di Fase 3** (deklarasi
+      `manifest.xml` dibuang; tidak ada lagi entri di `device.mk`).
 
 ---
 
