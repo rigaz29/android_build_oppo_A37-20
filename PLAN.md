@@ -1117,14 +1117,84 @@ diharapkan 7.1. Semua butir diverifikasi, bukan diasumsikan:
 
 ## Fase 8 — Build
 
-- [ ] **8.1** `source tools/envsetup-a37.sh` → `lunch lineage_A37-userdebug` → `mka bacon`.
-- [ ] **8.2** `tools/verify-rom.sh` sebelum flash. Karena split properti aktif (10.A),
-      skrip **harus membaca keempat partisi**, bukan hanya `system/build.prop` —
-      146 properti berpindah ke `vendor/build.prop`, termasuk `ro.zygote`.
-- [ ] **8.3** Periksa header `boot.img`: `dt_size` khas Qualcomm (QCDT v2),
-      base `0x80000000`, pagesize 2048, ramdisk_offset `0x01000000`, tags `0x00000100`.
-      `unpack_bootimg.py` bawaan AOSP akan gagal dengan `UnicodeDecodeError` — itu **benign**,
-      pakai `tools/qbootimg.py`.
+Selesai 5 Agustus 2026: **`m -j6 bacon` exit 0** — `lineage-20.0-20260805_185028-UNOFFICIAL-A37.zip`
+(588 MB). Log: `work/fase8-bacon10.log`. Tujuh pemblokir dibereskan (8.1a–8.1d).
+
+- [x] **8.1** `m -j6 bacon` (JOBS=6, konvensi 19.1 — RAM 11 GB). Resume inkremental
+      antar percobaan lewat ninja; peluncuran memakai `setsid` (sesi terpisah —
+      build yang diluncurkan dengan `sleep` panjang dalam satu perintah shell
+      sempat kena SIGTERM saat perintah itu selesai).
+- [x] **8.2** `verify-rom.sh` — **SEMUA VERIFIKASI LOLOS**: properti (sdk 33,
+      zygote32, eBPF false, vndk current), **320 blob lengkap**, lokasi sepolicy,
+      adbd FunctionFS legacy, boot.img, paket. Dua bug skrip diperbaiki selama
+      Fase 8 (pemetaan path non-treble + lokasi `/sepolicy` di ramdisk).
+- [x] **8.3** boot.img: pagesize 2048, kernel_addr 0x80008000, **dt_size 210944
+      (identik referensi)**, ramdisk_offset/tags 0x01000000/0x00000100 (via
+      `tools/qbootimg.py`).
+
+### 8.1a Pemblokir 1: generator kernel headers (generated_kernel_includes)
+
+Regresi LOS 20: `-fuse-ld=lld` dipindah dari `HOSTCFLAGS` ke `HOSTLDFLAGS`
+(`vendor/lineage/config/BoardConfigKernel.mk:167`), padahal rule `host-csingle`
+kernel 3.10 (`scripts/Makefile.host:117`, dipakai fixdep) TIDAK memakai
+HOSTLDFLAGS → HOSTCC=clang mencari `ld` polos yang tidak ada di PATH sandbox:
+
+```
+clang-14: error: unable to execute command: Executable "ld" doesn't exist!
+make[2]: *** [scripts/Makefile.host:118: scripts/basic/fixdep] Error 1
+```
+
+19.1 lolos karena HOSTCFLAGS memuat `-fuse-ld=lld` (BoardConfigKernel.mk 19.1:140),
+dan `TARGET_KERNEL_ADDITIONAL_FLAGS` kita tidak sampai ke generator soong
+(ekspor di BoardConfigSoong.mk terjadi sebelum tasks/kernel.mk menggabungkannya).
+**Perbaikan:** `HOSTCFLAGS="-fuse-ld=lld -Wno-unused-command-line-argument"`
+ditambahkan langsung ke cmd generator (`vendor/lineage/build/soong/Android.bp:24`),
+langkah 4 `apply-legacy-patches.sh`. Diverifikasi: headers_install exit 0
+(448+35 header).
+
+### 8.1b Pemblokir 2: clang 14 vs kode CAF 2015 (enum-enum-conversion)
+
+LOS 20 memakai clang-r450784d (clang 14); 19.1 memakai clang-r416183b1
+(clang 12). Clang 14 menaruh `-Wenum-enum-conversion` di `-Wall`, dan display HAL
+memaksa `-Werror` (`hardware/qcom-caf/msm8916/display/common.mk:9`):
+
+```
+copybit_c2d.cpp:259: error: bitwise operation between different enumeration types
+```
+
+**Perbaikan:** `-Wno-error=enum-enum-conversion` di common.mk display, langkah 5
+`apply-legacy-patches.sh`. Tidak bisa via `BOARD_GLOBAL_CFLAGS` — `-Werror` lokal
+display datang setelah flag global dan menaikkan lagi peringatan itu.
+
+### 8.1c Pemblokir 3-7: hanyutan hulu (upstream drift) — lima pin baru di A37-20.xml
+
+Pola yang sama berulang: proyek hulu yang bergerak melewati pembekuan UL
+(2025-04-04) memakai API/atribut yang tidak ada di fork UL yang beku. Semua
+diverifikasi `m <modul>` exit 0 sebelum di-pin:
+
+| Proyek | Pin | Commit | Gejala | Akar |
+|---|---|---|---|---|
+| `external/skia` | r28 merge | `0c334c1c2f` | `unknown type name 'dng_area_task_progress'` | skia hanyut butuh API dng_sdk 1.7.1; dng_sdk dipin pra-1.7.1 (Fase 2.7); versi dng terbaru memutus libjpeg sdk-variant |
+| `packages/services/Mms` | pra-hanyut | `0cc94f1` | `does not override abstract method addMultimediaMessageDraft(String,Uri)` | Mms hulu (fbb2828, 2024-07) menambah callingUser yang tak ada di IMms fork UL |
+| `packages/services/Telephony` | r28 merge | `288c28358` | `cannot find symbol isShell(int)` | commit 2026-01-27 memakai method yang tidak ada di fork UL opt/telephony |
+| `packages/apps/Trebuchet` | pra-hanyut | `1273734a5f` | `onBackEvent` tidak override | 3560be863c (2025-08) mengubah signature onBackEvent (displayId) |
+| `packages/apps/Settings` | r26 merge | `823af438e1` | `cannot find symbol setClassNameIfItIsConfirmDeviceCredentialActivity()` | method itu tidak PERNAH ada di fork UL (BiometricPrompt terakhir berubah 2022) |
+
+Aturan r28/r26 dipilih karena sezaman dengan pembekuan UL (skia/dng_sdk/Mms/
+Telephony semua r28); Settings butuh r26 karena r28-nya sudah memakai method
+yang tidak ada. Sesuai kebijakan: pin hanya yang terbukti memutus build.
+
+### 8.1d Properti `ro.vndk.version=current` dikembalikan
+
+Hilang saat rebase 19.1→20 (19.1 menetapkannya di `system_prop.mk:65`). Tanpa
+nilai ini linkerconfig tidak membangun namespace VNDK
+(`system/linkerconfig/modules/environment.cc:27`). ROM 19.1 kita
+(system-build.prop:180) dan gt58wifi (system-build.prop:69) sama-sama
+`current`. Dipasang via `PRODUCT_PROPERTY_OVERRIDES` di device.mk (bukan
+`BOARD_VNDK_VERSION` — itu ikut membangun `vndk_package` yang tidak dipakai).
+
+⚠️ **Belum diuji di perangkat** — semua verifikasi di atas level artifact build.
+Langkah berikutnya: protokol Fase 9 (kernel AnyKernel3 dulu).
 
 ---
 

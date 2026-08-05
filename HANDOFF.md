@@ -3,9 +3,9 @@
 Berkas ini ditulis supaya siapa pun (manusia atau LLM) bisa melanjutkan **tanpa** riwayat
 percakapan sebelumnya. Baca ini dulu, lalu `PLAN.md`.
 
-Terakhir diperbarui: 5 Agustus 2026 — Fase 3-7 selesai. Fase 7 (Init & rootdir): nol
-perubahan source; kelima rc file lolos parser init A13; gerbang ueventd.rc masih terbuka
-untuk API 21.
+Terakhir diperbarui: 5 Agustus 2026 — Fase 3-8 selesai. Fase 8: **build ROM penuh sukses**
+(`m -j6 bacon` rc=0, zip 588 MB), verify-rom.sh LOLOS semua. Tujuh pemblokir dibereskan
+termasuk lima pin anti-hanyut baru (PLAN §8.1c). Belum diuji di perangkat.
 
 ---
 
@@ -37,7 +37,8 @@ yang bisa diverifikasi ulang. Kalau ada konflik antara berkas ini dan `PLAN.md`,
 | **5 SEPolicy** | ✅ **selesai** — `m selinux_policy` exit 0; layout identik ROM yang boot (detail PLAN §5.1b–5.1d). ⚠️ **Jalankan `tools/apply-legacy-patches.sh` ulang pasca `repo sync`** — langkah 3 (buang sysfs_disk_stat) baru |
 | **6 Vendor blobs** | ✅ **selesai** — set 320 blob 19.1 dipertahankan; deklarasi HAL iop dibuang (PLAN §6.2); 64-bit/protobuf aman; `verify-rom.sh` diperluas (blob hilang + lokasi sepolicy) |
 | **7 Init & rootdir** | ✅ **selesai** — nol perubahan source; rc file lolos verifier init A13; ueventd gate API 21 terbuka (PLAN §7) |
-| 8–10 | belum |
+| **8 Build** | ✅ **selesai** — `m -j6 bacon` rc=0, zip 588 MB, verify-rom.sh LOLOS. 7 pemblokir dibereskan (PLAN §8.1a-d) — termasuk **5 pin anti-hanyut baru di A37-20.xml** |
+| 9 Boot pertama | ⬅️ berikutnya — tunggu pemilik perangkat |
 
 ### Repo kerja (semuanya milik akun GitHub `rigaz29`)
 

@@ -145,7 +145,74 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 4. Penjaga regresi -- bukan patch, tapi memeriksa asumsi yang bisa berubah
+# 4. vendor/lineage/build/soong/Android.bp: HOSTCFLAGS untuk generator
+#    generated_kernel_includes (pemblokir Fase 8)
+# ---------------------------------------------------------------------------
+# LOS 20 menaruh -fuse-ld=lld hanya di HOSTLDFLAGS (config/BoardConfigKernel.mk:167).
+# Kernel 3.10 tidak memakai HOSTLDFLAGS untuk rule host-csingle
+# (scripts/Makefile.host:117) yang dipakai fixdep, sehingga clang mencari `ld`
+# polos yang tidak ada di PATH sandbox soong:
+#
+#   FAILED: generated_kernel_includes
+#   clang-14: error: unable to execute command: Executable "ld" doesn't exist!
+#
+# Di 19.1 perbaikan ini datang dari TARGET_KERNEL_ADDITIONAL_FLAGS (HOSTCFLAGS),
+# tapi itu digabung ke KERNEL_MAKE_FLAGS di tasks/kernel.mk yang TERLAMBAT —
+# ekspor ke soong (BoardConfigSoong.mk) sudah terjadi lebih dulu, jadi generator
+# tidak pernah melihatnya. Ditambahkan langsung ke cmd generator di sini.
+GENBP=vendor/lineage/build/soong/Android.bp
+GENBP_PAT='HOSTCFLAGS=\\"-fuse-ld=lld -Wno-unused-command-line-argument\\"'
+
+if [ ! -f "$GENBP" ]; then
+    c_no "$GENBP tidak ada -- periksa manifest"; rc=1
+elif grep -q "$GENBP_PAT" "$GENBP"; then
+    c_ok "kernel headers generator: HOSTCFLAGS sudah terpasang"
+elif [ "$CHECK" = 1 ]; then
+    c_do "kernel headers generator: PERLU tambah HOSTCFLAGS"
+else
+    c_do "kernel headers generator: tambah HOSTCFLAGS"
+    if sed -i 's|\(cmd: "\$PATH_OVERRIDE_SOONG.*\$KERNEL_MAKE_FLAGS\) \(.*headers_install"\),|\1 HOSTCFLAGS=\\"-fuse-ld=lld -Wno-unused-command-line-argument\\" \2,|' "$GENBP" \
+        && grep -q "$GENBP_PAT" "$GENBP"; then
+        c_ok "kernel headers generator: HOSTCFLAGS ditambahkan"
+    else
+        c_no "kernel headers generator: sed GAGAL -- patch manual"; rc=1
+    fi
+fi
+
+# ---------------------------------------------------------------------------
+# 5. hardware/qcom-caf/msm8916/display/common.mk: -Wno-error=enum-enum-conversion
+# ---------------------------------------------------------------------------
+# Clang 14 (clang-r450784d, dipakai LOS 20) menaruh -Wenum-enum-conversion di
+# -Wall; display HAL CAF 2015 mencampur enum (mis. copybit_c2d.cpp:259)
+# C2D_RGB_FORMAT | C2D_FORMAT_MODE, dan common.mk memaksa -Werror:
+#
+#   error: bitwise operation between different enumeration types
+#   [-Werror,-Wenum-enum-conversion]
+#
+# Di 19.1 (clang 12, clang-r416183b1) warning ini belum ada di -Wall sehingga
+# file yang sama lolos. Tidak boleh via BOARD_GLOBAL_CFLAGS: -Werror lokal
+# display datang SETELAH flag global dan menaikkan lagi peringatan ini.
+DISP_COMMON=hardware/qcom-caf/msm8916/display/common.mk
+DISP_PAT='-Wno-error=enum-enum-conversion'
+
+if [ ! -f "$DISP_COMMON" ]; then
+    c_no "$DISP_COMMON tidak ada -- periksa manifest"; rc=1
+elif grep -qe "$DISP_PAT" "$DISP_COMMON"; then
+    c_ok "display common.mk: enum-enum-conversion sudah diredam"
+elif [ "$CHECK" = 1 ]; then
+    c_do "display common.mk: PERLU tambah -Wno-error=enum-enum-conversion"
+else
+    c_do "display common.mk: tambah -Wno-error=enum-enum-conversion"
+    if sed -i 's|\(common_flags += -Wconversion -Wall -Werror -Wno-sign-conversion\)|\1 -Wno-error=enum-enum-conversion|' "$DISP_COMMON" \
+        && grep -qe "$DISP_PAT" "$DISP_COMMON"; then
+        c_ok "display common.mk: enum-enum-conversion diredam"
+    else
+        c_no "display common.mk: sed GAGAL -- patch manual"; rc=1
+    fi
+fi
+
+# ---------------------------------------------------------------------------
+# 6. Penjaga regresi -- bukan patch, tapi memeriksa asumsi yang bisa berubah
 #    diam-diam kalau LineageOS-UL suatu saat cair lagi (fork dipin ke BRANCH,
 #    bukan SHA, di snippets/losul.xml).
 # ---------------------------------------------------------------------------

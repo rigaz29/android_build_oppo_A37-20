@@ -62,25 +62,28 @@ VMK="$(cd "$OUT" && pwd)/../../../../vendor/oppo/A37/A37-vendor.mk"
 [ -f "$VMK" ] || VMK=/root/los20/vendor/oppo/A37/A37-vendor.mk
 if [ -f "$VMK" ]; then
     missing=0; total=0
+    # Peta partisi -> direktori di image. Non-treble: VENDOR = system/vendor.
+    # Perhatian: ganti SYSTEM_EXT dulu, karena polanya mengandung SYSTEM.
     while read -r src dst; do
         [ -z "$src" ] && continue
         total=$((total+1))
         [ -f "$OUT/$dst" ] || { bad "blob hilang di image: $dst"; missing=$((missing+1)); }
     done < <(grep -oE 'vendor/oppo/A37/proprietary/[^:]+:\$\(TARGET_COPY_OUT_[A-Z]+\)/[^ \\]+' "$VMK" \
-             | sed -E 's#vendor/oppo/A37/proprietary/([^:]+):\$\(TARGET_COPY_OUT_([A-Z]+)\)/(.*)#\1 \2/\3#')
+             | sed -E 's#\$\(TARGET_COPY_OUT_SYSTEM_EXT\)#system/system_ext#; s#\$\(TARGET_COPY_OUT_SYSTEM\)#system#; s#\$\(TARGET_COPY_OUT_VENDOR\)#system/vendor#; s#\$\(TARGET_COPY_OUT_PRODUCT\)#system/product#; s#\$\(TARGET_COPY_OUT_ODM\)#system/vendor/odm#' \
+             | sed -E 's#vendor/oppo/A37/proprietary/([^:]+):(.*)#\1 \2#')
     [ "$missing" = 0 ] && ok "$total blob lengkap di image"
 else
     bad "A37-vendor.mk tidak ditemukan ($VMK)"
 fi
 
 # ----------------------------------------------------------------- sepolicy ---
-# Lokasi sepolicy hasil build harus sama dengan ROM yang boot (PLAN §5.3):
-# /sepolicy monolitik di root + *.cil di system/etc/selinux + precompiled di
-# vendor/etc/selinux. Bootloop meghs berasal dari berkas sepolicy yang pindah
-# tempat antara A12 dan A13.
+# Lokasi sepolicy hasil build harus sama dengan ROM yang boot (PLAN §5.3).
+# Device ini NON-system-as-root: /sepolicy monolitik berada di RAMDISK
+# (out/.../root/sepolicy), bukan di root system.img — sama seperti 19.1.
+# Yang dibandingkan dengan ROM gt58wifi: keberadaan monolitik + *.cil.
 inf "lokasi sepolicy"
-[ -f "$OUT/system/sepolicy" ] && ok "/sepolicy monolitik di root" \
-    || bad "/sepolicy tidak ada di root image"
+[ -f "$OUT/root/sepolicy" ] && ok "/sepolicy monolitik di ramdisk (root/sepolicy)" \
+    || bad "/sepolicy tidak ada di root/ (ramdisk)"
 [ -f "$OUT/system/etc/selinux/plat_sepolicy.cil" ] && [ -f "$OUT/system/etc/selinux/plat_sepolicy_and_mapping.sha256" ] \
     && ok "system/etc/selinux berisi plat_sepolicy.cil + mapping" \
     || bad "system/etc/selinux tidak lengkap (lihat PLAN §5.3 / ref/evidence/selinux-list/)"

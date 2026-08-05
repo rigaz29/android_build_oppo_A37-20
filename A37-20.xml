@@ -138,6 +138,108 @@
            revision="880b6833f9d5e131a8d9f92d6d0a836514fc711e"
            upstream="lineage-20.0" />
 
+  <!-- Pin anti-hanyut: external/skia @ 0c334c1c2f (merge security r28).
+
+       Ditemukan di Fase 8: skia yang hanyut (HEAD 926265bb27 "Backport DNG
+       SDK 1.7.1 support in SkRawCodec", 2025-08-07 — SETELAH pembekuan UL)
+       menuntut API dng_sdk 1.7.1, padahal dng_sdk dipin ke 880b683
+       (pra-1.7.1, lihat pin di atas). Gejalanya:
+
+         external/skia/src/codec/SkRawCodec.cpp:99:69:
+           error: unknown type name 'dng_area_task_progress'
+
+       Memperbarui dng_sdk ke 34e0a65 (versi 1.7.1 terbaru) TIDAK bisa:
+       Android.bp-nya memakai sdk_version:"current" + dep libjpeg yang
+       memutus soong (error varian sdk:sdk — alasan pin dng_sdk ada).
+
+       Commit 0c334c1c2f = merge tag android-security-13.0.0_r28 — pasangan
+       sezaman dng_sdk 880b683 (r28 juga). Diverifikasi: m libskia exit 0
+       dengan pasangan ini. Pin sesuai kebijakan: yang terbukti memutus build. -->
+  <remove-project name="LineageOS/android_external_skia" />
+  <project name="LineageOS/android_external_skia" path="external/skia"
+           groups="pdk" remote="gh"
+           revision="0c334c1c2f0fdc89a5f90dddcbe195e160baf02d"
+           upstream="lineage-20.0" />
+
+  <!-- Pin anti-hanyut: packages/services/Mms @ 0cc94f1.
+
+       Ditemukan di Fase 8: Mms hulu yang hanyut (HEAD d2f1fe6, 2025-08-14)
+       mengimplementasikan API IMms 3-arg (addMultimediaMessageDraft dengan
+       callingUser, dari fbb2828 2024-07), sedangkan fork UL frameworks/base
+       (beku) memakai IMms 2-arg (tanpa callingUser — fork UL tidak pernah
+       memuat fbb2828). Gejalanya:
+
+         MmsService.java:211: error: <anonymous ...MmsService$1> is not
+         abstract and does not override abstract method
+         addMultimediaMessageDraft(String,Uri) in IMms
+
+       Commit 0cc94f1 (2024-12-02, era beku UL) = parent fbb2828,
+       mengimplementasikan API 2-arg yang cocok dengan IMms fork UL.
+       Diverifikasi: m MmsService exit 0. Pin sesuai kebijakan: yang
+       terbukti memutus build. -->
+  <remove-project name="LineageOS/android_packages_services_Mms" />
+  <project name="LineageOS/android_packages_services_Mms" path="packages/services/Mms"
+           groups="pdk" remote="gh"
+           revision="0cc94f1ad63e6a821888784dd1c5aa945f2c4202"
+           upstream="lineage-20.0" />
+
+  <!-- Pin anti-hanyut: packages/services/Telephony @ 288c28358 (merge r28).
+
+       Ditemukan di Fase 8: Telephony hulu yang hanyut (HEAD c1b442574,
+       2026-01-27) memakai TelephonyPermissions.isShell(int) yang TIDAK ada di
+       fork UL frameworks/opt/telephony (beku):
+
+         PhoneInterfaceManager.java:8267: error: cannot find symbol
+           TelephonyPermissions.isShell(Binder.getCallingUid())
+
+       288c28358 = merge tag android-security-13.0.0_r28 (2025-04-18) — sezaman
+       dengan pembekuan UL dan pin skia/dng_sdk (ketiganya r28). Commit setelahnya
+       (54600bbca s/d c1b442574) merujuk API yang tidak ada di tree beku UL.
+       Diverifikasi: m TeleService exit 0. Pin sesuai kebijakan: yang terbukti
+       memutus build. -->
+  <remove-project name="LineageOS/android_packages_services_Telephony" />
+  <project name="LineageOS/android_packages_services_Telephony" path="packages/services/Telephony"
+           groups="pdk" remote="gh"
+           revision="288c28358b9cd9c2be1dd13c729668b18eb37550"
+           upstream="lineage-20.0" />
+
+  <!-- Pin anti-hanyut: packages/apps/Trebuchet @ 1273734a5f (pra-hanyut).
+
+       Ditemukan di Fase 8: Trebuchet hulu yang hanyut (3560be863c, 2025-08-22
+       "Send KEYCODE_HOME for home button...") mengubah signature
+       SystemUiProxy.onBackEvent (menambah displayId) yang TIDAK ada di fork UL
+       frameworks/base (beku):
+
+         quickstep/src/com/android/quickstep/SystemUiProxy.java:151:
+           error: method does not override or implement a method from a supertype
+
+       1273734a5f (2024-12-02, era beku UL) = komit terakhir sebelum hanyut.
+       Diverifikasi: m Launcher3QuickStepLib exit 0. Pin sesuai kebijakan. -->
+  <remove-project name="LineageOS/android_packages_apps_Trebuchet" />
+  <project name="LineageOS/android_packages_apps_Trebuchet" path="packages/apps/Trebuchet"
+           groups="pdk" remote="gh"
+           revision="1273734a5f484a30dafa5aaecda49f0635b24672"
+           upstream="lineage-20.0" />
+
+  <!-- Pin anti-hanyut: packages/apps/Settings @ 823af438e1 (merge r26).
+
+       Ditemukan di Fase 8: Settings hulu (r28+, 2025-04-18) memakai
+       BiometricPrompt.Builder.setClassNameIfItIsConfirmDeviceCredentialActivity()
+       yang TIDAK PERNAH ada di fork UL frameworks/base (file BiometricPrompt.java
+       di fork UL terakhir berubah 2022-03):
+
+         BiometricFragment.java:143: error: cannot find symbol
+           symbol: method setClassNameIfItIsConfirmDeviceCredentialActivity()
+
+       823af438e1 = merge tag android-security-13.0.0_r26 (2025-02-07, sebelum
+       pembekuan UL) — tidak memakai method itu (diverifikasi via git show).
+       Diverifikasi: m Settings-core exit 0. Pin sesuai kebijakan. -->
+  <remove-project name="LineageOS/android_packages_apps_Settings" />
+  <project name="LineageOS/android_packages_apps_Settings" path="packages/apps/Settings"
+           groups="pdk" remote="gh"
+           revision="823af438e1ebca33ec8fd601a124f14831430e7d"
+           upstream="lineage-20.0" />
+
   <!-- CATATAN guard hardware/qcom-caf/msm8916/Android.mk.
 
        Resep retiredtab memasangnya sebagai <linkfile> di level manifest:
