@@ -54,6 +54,7 @@ setelah boot pertama. Rinciannya di `PLAN.md` §1.1 dan §1.4.
 | Berkas | Keterangan |
 |---|---|
 | **[`PLAN.md`](PLAN.md)** | Dokumen utama. 10 fase, setiap klaim teknis diikat ke sumber yang bisa diverifikasi |
+| **[`HANDOFF.md`](HANDOFF.md)** | **Konteks lengkap untuk melanjutkan tanpa riwayat percakapan** — status, keputusan yang sudah diambil, jebakan yang pernah menjebak |
 | [`A37-20.xml`](A37-20.xml) | Local manifest. Seluruh SHA diverifikasi 5 Agustus 2026 |
 | **[`ref/evidence/`](ref/evidence/)** | **Hasil bedah ROM LOS 20 msm8916 yang terbukti boot** — `build.prop`, VINTF, fstab, `init*.rc`, daftar sepolicy, header boot.img |
 | [`tools/repo-doctor.sh`](tools/repo-doctor.sh) | Perbaiki dua kegagalan `repo sync` yang benar-benar dialami saat menyiapkan tree ini |
