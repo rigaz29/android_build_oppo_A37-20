@@ -1029,31 +1029,53 @@ pada satu waktu. Fase tersendiri setelah stabil.
 
 ## Fase 6 — Vendor blobs
 
-- [ ] **6.1** Basis `rb-vendor_oppo_A37` @ `2e5c6f7` — 320 blob, 0 hilang di 19.1.
-- [ ] **6.2** Triase selisih terhadap daftar meghs: **457 entri** (meghs) vs **403** (kita),
-      **336 baris berbeda**. Untuk tiap selisih: apakah blob itu benar-benar dirujuk oleh
-      HAL yang kita bangun, atau warisan tree lain? Jangan adopsi borongan.
-- [ ] **6.3** Perhatian khusus: blob 64-bit di ROM 32-bit (bug 18.1 10.14 pernah terjadi),
-      dan `libprotobuf-cpp-lite-v29.so` dari `prebuilts/vndk/v29` (meghs) vs `v28` (a6010) —
-      pastikan versi VNDK yang dirujuk **ada** di tree LOS 20.
-- [ ] **6.4** `verify-rom.sh` diperluas untuk memeriksa blob hilang sebelum flash.
-- [ ] **6.5** **Teknik baru dari gt58wifi — `TARGET_PROCESS_SDK_VERSION_OVERRIDE`.**
-      Blob A37 berasal dari Android 5.1 (2016) dan berjalan di framework 2022+. retiredtab
-      memakai jalur resmi LineageOS untuk memberi tahu linker bahwa proses tertentu harus
-      diperlakukan sebagai SDK lama:
+Selesai 5 Agustus 2026. Set blob 19.1 (320 terpasang) **tidak diubah isinya** —
+hanya satu deklarasi VINTF yang dibuang (iop, 6.2). Semua pemeriksaan di bawah
+adalah pengukuran, bukan adopsi borongan.
 
-      ```make
-      TARGET_PROCESS_SDK_VERSION_OVERRIDE := \
-          /vendor/lib/hw/audio.primary.msm8916.so=25 \
-          /vendor/lib/hw/camera.vendor.msm8916.so=25 \
-          /vendor/lib/hw/sensors.vendor.msm8916.so=25
-      ```
+- [x] **6.1** Basis `rb-vendor_oppo_A37` @ `2e5c6f7` — 320 blob via
+      `A37-vendor.mk` PRODUCT_COPY_FILES, **nol hilang di disk**. 338 berkas di
+      disk; 18 sengaja tidak dipasang (widevine: `libwvhidl.so`,
+      `libwvdrmengine.so`, 2× service + rc; IMS: `imscmservice`,
+      `imsdatadaemon`, `imsqmidaemon`, `ims.apk`, `imssettings.apk`,
+      `imscmlibrary.jar`; sisanya `libTimeService.so`, `libloc_api_v02.so`,
+      `libloc_ds_api.so`, `libtime_genoff.so`, `qcrilmsgtunnel.apk`) — warisan
+      yang sudah diputuskan dibuang di 19.1 (widevine gagal link karena protobuf
+      lama, IMS tidak pernah dipakai).
+- [x] **6.2** Triase — bukan lewat diff daftar (format meghs beda: `|sha`,
+      banyak `lib64` untuk ROM 32-bit), tapi lewat **pemeriksaan dependensi**:
+      1992 `DT_NEEDED` dari 294 blob ELF terpasang diperiksa terhadap {set blob
+      kita + pustaka ROM gt58wifi (A13 yang sama)}. 11 tak terpenuhi, ditriase:
 
-      Dikonsumsi lewat `vendor/lineage/config/BoardConfigSoong.mk:125` →
-      `SOONG_CONFIG_lineageGlobalVars_target_process_sdk_version_override`.
-      **Simpan sebagai penawar, jangan dipasang preventif** — pakai hanya kalau HAL tertentu
-      gagal karena pembatasan API level/namespace linker. Nama pustaka A37 sama polanya
-      (`camera.vendor.msm8916.so` juga ada di tree kita).
+      | Dep yang gagal | Putusan | Alasan |
+      |---|---|---|
+      | `vendor.qti.hardware.iop*` (5 blob) → `android.hidl.base@1.0.so` | **deklarasi HAL dibuang** dari manifest | LOS 20 meletakkan hidl.base di `system_ext/lib` (`hardware/lineage/compat`), namespace linker vendor **tidak** menjangkau system_ext (`system/linkerconfig/contents/namespace/vendordefault.cc:38-45`) → impl passthrough iop mustahil dimuat. Tidak ada konsumen (nol blob lain mereferensikan iop; ROM gt58wifi tidak mengirimnya). Blob tetap terpasang — dorman, nol efek runtime |
+      | `libvpplibrary.so` → `libmmsw_{detail_enhancement,opencl,platform,math}.so` | **dibiarkan** | 19.1 mengirim blob yang sama tanpa 4 lib itu dan boot — VPP tidak terdaftar di `media_codecs.xml` → tidak pernah dimuat. Dorman |
+      | `lib-imsvt.so` → `libvcel.so` | **dibiarkan** | IMS tidak dipakai (tanpa aplikasi/servis IMS). 19.1 sama, boot. Dorman |
+      | `netmgrd` → `librmnetctl.so` | **false positive** | dibangun dari source: `vendor/qcom/opensource/dataservices/rmnetctl` (di SOONG namespaces; log 19.1: "Install", bukan copy blob) |
+- [x] **6.3** — **3 blob ELF 64-bit** (`imsqmidaemon`, `imsdatadaemon`,
+      `imscmservice`) — semuanya di daftar 18 yang **tidak dipasang** → set yang
+      dikirim 100% 32-bit (bug 18.1 10.14 tidak kena). **Protobuf**: hanya
+      `libwvhidl.so` + `libwvdrmengine.so` yang butuh `libprotobuf-cpp-lite.so` —
+      keduanya tidak dipasang. Tidak ada blob terpasang yang butuh protobuf →
+      isu v28/v29 (meghs vs a6010) tidak relevan; `prebuilts/vndk/{v28..v32}`
+      tetap tersedia di tree.
+- [x] **6.4** `verify-rom.sh` diperluas: cek **blob hilang** (setiap entri
+      `A37-vendor.mk` harus ada di image), cek **lokasi sepolicy** (`/sepolicy`
+      di root + `plat_sepolicy.cil` + `precompiled_sepolicy` — lihat Fase 5.3),
+      dan diadaptasi ke LOS 20 (sdk 33, zip `lineage-20.0-*`, OUT default
+      `/root/los20`).
+- [x] **6.5** `TARGET_PROCESS_SDK_VERSION_OVERRIDE` — **penawar, tidak dipasang
+      preventif**. Tree kita sudah menyetel `mediaserver=22` +
+      `mm-qcamera-daemon=22` (BoardConfig.mk:344-346) sejak 19.1; mekanismenya
+      tetap dikonsumsi (`vendor/lineage/config/BoardConfigSoong.mk:125`).
+      Baris milik retiredtab (audio/camera/sensors =25) ditimbang hanya bila
+      HAL tertentu gagal di perangkat.
+
+⚠️ **Yang TIDAK dikerjakan:** menambah blob dari daftar meghs (perfd,
+thermal-engine, msm_irqbalance, hci_qcomm_init, lib64 IMS, dll.) — tidak
+dirujuk HAL yang kita bangun; 19.1 boot tanpa semuanya. Ditinjau lagi bila
+gejala muncul di perangkat.
 
 ---
 

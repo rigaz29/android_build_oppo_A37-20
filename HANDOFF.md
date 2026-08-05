@@ -3,9 +3,10 @@
 Berkas ini ditulis supaya siapa pun (manusia atau LLM) bisa melanjutkan **tanpa** riwayat
 percakapan sebelumnya. Baca ini dulu, lalu `PLAN.md`.
 
-Terakhir diperbarui: 5 Agustus 2026 — Fase 3-5 selesai. Fase 5 (SEPolicy): `m selinux_policy`
-exit 0, layout identik ROM jangkar; tiga pemblokir dibereskan (freeze test fork UL,
-healthd.te, file_contexts sepolicy-legacy).
+Terakhir diperbarui: 5 Agustus 2026 — Fase 3-6 selesai. Fase 6 (Vendor blobs): set 19.1
+dipertahankan (320 terpasang, nol hilang); deklarasi HAL iop dibuang (hidl.base pindah ke
+system_ext yang tak terjangkau namespace vendor); 64-bit/protobuf aman; verify-rom.sh
+diperluas.
 
 ---
 
@@ -35,7 +36,8 @@ yang bisa diverifikasi ulang. Kalau ada konflik antara berkas ini dan `PLAN.md`,
 | **3 Device tree** | ✅ **selesai** — pemblokir kati beres, `m nothing` exit 0, @ `7938923` (detail §6) |
 | **4 VINTF** | ✅ **selesai** — nol perubahan source; sepolicy 33.0 ter-injeksi otomatis, manifest terakit identik ROM jangkar. Catatan `check_vintf_compatible` di PLAN §4.7 |
 | **5 SEPolicy** | ✅ **selesai** — `m selinux_policy` exit 0; layout identik ROM yang boot (detail PLAN §5.1b–5.1d). ⚠️ **Jalankan `tools/apply-legacy-patches.sh` ulang pasca `repo sync`** — langkah 3 (buang sysfs_disk_stat) baru |
-| 6–10 | belum |
+| **6 Vendor blobs** | ✅ **selesai** — set 320 blob 19.1 dipertahankan; deklarasi HAL iop dibuang (PLAN §6.2); 64-bit/protobuf aman; `verify-rom.sh` diperluas (blob hilang + lokasi sepolicy) |
+| 7–10 | belum |
 
 ### Repo kerja (semuanya milik akun GitHub `rigaz29`)
 

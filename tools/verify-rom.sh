@@ -1,14 +1,14 @@
 #!/bin/bash
-# Verifikasi ROM 19.1 A37 SEBELUM di-flash.
+# Verifikasi ROM LOS 20 A37 SEBELUM di-flash.
 #
 # Memeriksa hal-hal yang kalau salah baru ketahuan sebagai "stuck di logo OPPO" —
 # yaitu persis cara percobaan 19.1 lama gagal tanpa bisa didiagnosis.
 #
 # Pakai: ./tools/verify-rom.sh [OUT_DIR]
-#        default OUT_DIR = /root/los19/out/target/product/A37
+#        default OUT_DIR = /root/los20/out/target/product/A37
 
 set -o pipefail
-OUT="${1:-/root/los19/out/target/product/A37}"
+OUT="${1:-/root/los20/out/target/product/A37}"
 REF="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/ref"
 
 ok()  { printf '\033[1;32m ok\033[0m %s\n' "$*"; }
@@ -40,17 +40,53 @@ if [ -n "$BPS" ]; then
         if [ "$got" = "$want" ]; then ok "$key=$got"
         else bad "$key='$got', diharapkan '$want' — $why"; fi
     }
-    check_prop ro.build.version.sdk 32            "19.1 itu Android 12L, bukan 12.0"
+    check_prop ro.build.version.sdk 33            "LOS 20 itu Android 13, bukan 12L"
     check_prop ro.kernel.ebpf.supported false     "gerbang W1/W2; tanpa false, bpfloader menggagalkan boot"
     check_prop ro.config.low_ram true             "perangkat 2 GB, sama dengan ROM referensi"
     check_prop external_storage.casefold.enabled 0 "ext4 kernel 3.10 tidak punya casefold"
-    check_prop external_storage.sdcardfs.enabled 0 "A12 memakai FUSE"
+    check_prop external_storage.sdcardfs.enabled 0 "A13 memakai FUSE"
     check_prop ro.treble.enabled false            "perangkat non-treble"
     check_prop ro.zygote zygote32                 "userspace 32-bit murni"
-    check_prop ro.lmk.use_psi false               "kernel 3.10 tidak punya PSI"
+    check_prop ro.vndk.version current            "tanpa snapshot VNDK, sama dengan ROM gt58wifi"
 else
     bad "tidak ada build.prop sama sekali — build belum sampai tahap pengemasan?"
 fi
+
+# ------------------------------------------------------------------ blob ---
+# Semua blob yang didaftarkan A37-vendor.mk harus benar-benar ada di image.
+# Blob yang "hilang" biasanya tertelan aturan build (mis. kena filter image),
+# dan baru ketahuan saat HAL-nya gagal dlopen di perangkat.
+inf "blob vendor (A37-vendor.mk)"
+VMK="$(cd "$OUT" && pwd)/../../../../vendor/oppo/A37/A37-vendor.mk"
+# Fallback: tree yang umum dipakai
+[ -f "$VMK" ] || VMK=/root/los20/vendor/oppo/A37/A37-vendor.mk
+if [ -f "$VMK" ]; then
+    missing=0; total=0
+    while read -r src dst; do
+        [ -z "$src" ] && continue
+        total=$((total+1))
+        [ -f "$OUT/$dst" ] || { bad "blob hilang di image: $dst"; missing=$((missing+1)); }
+    done < <(grep -oE 'vendor/oppo/A37/proprietary/[^:]+:\$\(TARGET_COPY_OUT_[A-Z]+\)/[^ \\]+' "$VMK" \
+             | sed -E 's#vendor/oppo/A37/proprietary/([^:]+):\$\(TARGET_COPY_OUT_([A-Z]+)\)/(.*)#\1 \2/\3#')
+    [ "$missing" = 0 ] && ok "$total blob lengkap di image"
+else
+    bad "A37-vendor.mk tidak ditemukan ($VMK)"
+fi
+
+# ----------------------------------------------------------------- sepolicy ---
+# Lokasi sepolicy hasil build harus sama dengan ROM yang boot (PLAN §5.3):
+# /sepolicy monolitik di root + *.cil di system/etc/selinux + precompiled di
+# vendor/etc/selinux. Bootloop meghs berasal dari berkas sepolicy yang pindah
+# tempat antara A12 dan A13.
+inf "lokasi sepolicy"
+[ -f "$OUT/system/sepolicy" ] && ok "/sepolicy monolitik di root" \
+    || bad "/sepolicy tidak ada di root image"
+[ -f "$OUT/system/etc/selinux/plat_sepolicy.cil" ] && [ -f "$OUT/system/etc/selinux/plat_sepolicy_and_mapping.sha256" ] \
+    && ok "system/etc/selinux berisi plat_sepolicy.cil + mapping" \
+    || bad "system/etc/selinux tidak lengkap (lihat PLAN §5.3 / ref/evidence/selinux-list/)"
+[ -f "$OUT/system/vendor/etc/selinux/precompiled_sepolicy" ] \
+    && ok "vendor/etc/selinux/precompiled_sepolicy ada" \
+    || bad "vendor/etc/selinux/precompiled_sepolicy hilang"
 
 # ------------------------------------------------------------------- adbd ---
 # Tanpa Gerrit 326385, adbd A12 memakai deskriptor FunctionFS v2/v3 yang tidak
@@ -100,7 +136,7 @@ fi
 
 # --------------------------------------------------------------------- zip ---
 inf "paket"
-ZIP=$(ls -t "$OUT"/lineage-19.1-*.zip 2>/dev/null | head -1)
+ZIP=$(ls -t "$OUT"/lineage-20.0-*.zip 2>/dev/null | head -1)
 if [ -n "$ZIP" ]; then
     ok "$(basename "$ZIP") ($(du -h "$ZIP" | cut -f1))"
     case "$(basename "$ZIP")" in
