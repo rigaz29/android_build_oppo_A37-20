@@ -3,8 +3,8 @@
 Berkas ini ditulis supaya siapa pun (manusia atau LLM) bisa melanjutkan **tanpa** riwayat
 percakapan sebelumnya. Baca ini dulu, lalu `PLAN.md`.
 
-Terakhir diperbarui: 5 Agustus 2026 — Fase 3 selesai (device tree @ 7938923), semua
-pemblokir kati selesai, `m nothing` lolos.
+Terakhir diperbarui: 5 Agustus 2026 — Fase 3 (device tree) dan Fase 4 (VINTF) selesai.
+Fase 4: nol perubahan source; manifest terakit identik dengan ROM jangkar (sepolicy 33.0).
 
 ---
 
@@ -32,7 +32,7 @@ yang bisa diverifikasi ulang. Kalau ada konflik antara berkas ini dan `PLAN.md`,
 | 1.5b uji di perangkat | ⏳ **menunggu pemilik perangkat** — hanya bisa dilakukan manusia yang memegang A37 |
 | **2 Manifest & sync** | ✅ **selesai.** `lunch lineage_A37-userdebug` berhasil, `PLATFORM_VERSION=13` |
 | **3 Device tree** | ✅ **selesai** — pemblokir kati beres, `m nothing` exit 0, @ `7938923` (detail §6) |
-| **4 VINTF** | ⬅️ berikutnya |
+| **4 VINTF** | ✅ **selesai** — nol perubahan source; sepolicy 33.0 ter-injeksi otomatis, manifest terakit identik ROM jangkar. Catatan `check_vintf_compatible` di PLAN §4.7 |
 | 5–10 | belum |
 
 ### Repo kerja (semuanya milik akun GitHub `rigaz29`)

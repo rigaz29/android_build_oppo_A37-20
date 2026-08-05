@@ -4,14 +4,15 @@ Rencana dan build kit **LineageOS 20 (Android 13, SDK 33)** untuk
 **OPPO A37 / A37f / A37fw** — Qualcomm MSM8916 (Snapdragon 410), kernel 3.10.108,
 2 GB RAM, Adreno 306.
 
-> ## Status: **Fase 1–3 selesai** (5 Agustus 2026)
+> ## Status: **Fase 1–4 selesai** (5 Agustus 2026)
 >
 > | Fase | Status |
 > |---|---|
 > | **1 Kernel** | ✅ build — branch `lineage-20` @ `8cc1519`, zip AnyKernel3 siap. Uji di perangkat (1.5b) menunggu pemilik |
 > | **2 Manifest & sync** | ✅ **`lunch lineage_A37-userdebug` berhasil** — `PLATFORM_VERSION=13` |
 > | **3 Device tree** | ✅ **seluruh pemblokir kati beres, `m nothing` exit 0** — device tree @ `7938923` |
-> | 4 VINTF | berikutnya |
+> | **4 VINTF** | ✅ **nol perubahan source** — sepolicy 33.0 ter-injeksi `assemble_vintf`; manifest terakit identik ROM jangkar. Catatan `check_vintf_compatible` → PLAN §4.7 |
+> | 5 SEPolicy | berikutnya |
 >
 > ⚠️ **Baca lingkupnya dengan benar:** `m nothing` hanya **membaca makefile**, tidak
 > mengompilasi apa pun. Kegagalan kompilasi nyata belum tersentuh — validasi

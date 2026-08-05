@@ -900,34 +900,69 @@ androidboot.init_fatal_reboot_target=recovery + ramoops.* di cmdline
 
 ## Fase 4 — VINTF
 
-- [ ] **4.1** Naikkan `<sepolicy><version>` ke **33.0**, `target-level` tetap `legacy`.
-      **Dikonfirmasi ROM gt58wifi** (`ref/evidence/vendor-vintf-manifest.xml`), bukan dugaan.
-- [ ] **4.2** Audio: **tidak diubah, tetap `@6.0`** (§3.8). Yang diverifikasi bukan angkanya,
-      melainkan bahwa `manifest.xml` dan `device.mk` menyebut versi yang sama.
-- [ ] **4.3** **Aturan yang lahir dari 10.C, tulis ulang di sini karena inilah pelajaran
-      termahal proyek 19.1:**
+Diverifikasi 5 Agustus 2026. **Tidak ada perubahan source yang diperlukan** —
+semua butir terpenuhi oleh state tree + mekanisme build, dibuktikan dari
+manifest terakit (`out/target/product/A37/system/vendor/etc/vintf/manifest.xml`,
+dibangun dengan `m vendor_manifest.xml`).
 
-      > Deklarasikan sebuah interface HIDL **hanya kalau servisnya terbukti register di ROM
-      > ini** — bukan karena ia pernah jalan di versi Android sebelumnya.
+- [x] **4.1** `<sepolicy><version>` — **terpenuhi otomatis; koreksi terhadap asumsi
+      draf ini.** Asumsi "naikkan ke 33.0" keliru: manifest SOURCE tidak perlu
+      mendeklarasikan sepolicy sama sekali. `assemble_vintf`
+      (`build/make/target/board/Android.mk:54`) mengisinya dari
+      `BOARD_SEPOLICY_VERS := $(PLATFORM_SEPOLICY_VERSION)` (`config.mk:851`)
+      hanya bila source tidak mendeklarasikannya (`AssembleVintf.cpp:392`,
+      `getFlagIfUnset`). Hasil build: manifest terakit =
+      `<manifest version="5.0" type="device" target-level="legacy">` +
+      `<sepolicy><version>33.0</version></sepolicy>` — **identik dengan ROM
+      gt58wifi** (`ref/evidence/vendor-vintf-manifest.xml`).
+- [x] **4.2** Audio tetap `@6.0` (§3.8) — pasangan konsisten terverifikasi:
+      `manifest.xml` (source + terakit) menyebut audio@6.0 + effect@6.0;
+      `device.mk:159-161` membangun `@6.0-impl`, `@6.0-effect-impl`,
+      `audio.service`.
+- [x] **4.3** Aturan 10.C — sudah diterapkan sejak 19.1: livedisplay hanya
+      `IDisplayColorCalibration` (satu-satunya yang terbukti register);
+      `IPictureAdjustment` milik meghs **tidak diambil**; `cryptfshw` dicabut
+      (Fase 3).
+- [x] **4.4** Perbandingan empat daftar HAL (kita, ROM gt58wifi, meghs, a6010) —
+      selesai; tiap selisih dijawab dengan *"servisnya ada di tree/blob kita?"*:
 
-      Konsekuensinya konkret: `manifest.xml` common meghs **masih** mendeklarasikan
-      `vendor.lineage.livedisplay@2.0 IPictureAdjustment`. Itu persis yang membuat Watchdog
-      membunuh `system_server` tiap ~2 menit di 19.1 kita. **Jangan diambil.**
-- [ ] **4.4** Bandingkan tiga daftar HAL (kita 19.1, meghs 20, a6010 20) dan untuk setiap
-      selisih tanyakan: *servisnya ada di blob kita?* Bukan: *apakah tree lain punya?*
-- [x] **4.5** `cryptfshw` sudah dicabut di Fase 3 (§3.7) — manifest dan `device.mk`.
-- [ ] **4.6 PERIKSA DI FASE 8: fqname clearkey terdeklarasi DUA KALI.**
-      `manifest.xml` kita menyatakan `@1.4::ICryptoFactory/clearkey` dan
-      `@1.4::IDrmFactory/clearkey`, **dan** modul servisnya membawa VINTF fragment
-      sendiri dengan dua fqname yang sama persis
-      (`frameworks/av/drm/mediadrm/plugins/clearkey/hidl/manifest_android.hardware.drm@1.4-service.clearkey.xml`,
-      dirujuk `Android.bp:123`). `assemble_vintf` menggabungkan keduanya.
+      | | Kita (26 HAL) | ROM gt58wifi (17) | meghs (19) | a6010 (30) |
+      |---|---|---|---|---|
+      | yang kita punya, tak ada di ROM jangkar | radio@1.1+deprecated, keymaster@3.0, perf, iop, power, usb, vibrator, configstore, bluetooth.audio, cameraservice, mapper@2.1, sensors, audio@6.0 | semuanya HAL QCOM/telephony yang **terbukti register di ROM 19.1 kita** — ROM jangkar tablet Wi-Fi-only | — | — |
+      | yang tak kita ambil | — | wifi.offload (tidak ada servis di tree A37), cryptfshw (vestigial, Fase 3) | audio@5.0 (gagal, §3.8), camera 2.5 hwbinder, IPictureAdjustment (10.C) | jalur RIL QTI (qtiradio/qcrilhook/radio.am), dolby.dms, btconfigstore, touch, dpm.api, vendor gnss — tidak ada di blob A37 |
 
-      Pola yang sama ada di 19.1 dengan `@1.3` dan build-nya lolos, jadi kemungkinan
-      besar ditoleransi — **tapi belum dibuktikan untuk 20**, dan `m nothing` tidak
-      menyentuhnya. Kalau `mka` berhenti di `assemble_vintf` dengan keluhan duplikat,
-      **buang entri dari `manifest.xml` kita**, bukan dari fragment servisnya. — ✅ **sudah dikerjakan di Fase 3** (deklarasi
-      `manifest.xml` dibuang; tidak ada lagi entri di `device.mk`).
+      Hasil ekstraksi daftar HAL per tree (tersimpan sementara di `work/fase4-hals/`,
+      tidak ikut di-commit karena `work/` ter-ignore) bisa dibuat ulang dengan:
+      `python3 -c "import xml.etree.ElementTree as E,sys;r=E.parse(sys.argv[1]).getroot();[print(h.find('name').text+'@'+h.find('version').text if h.find('version') is not None else h.find('name').text) for h in r.findall('hal')]" <manifest.xml>` — bandingkan `manifest.xml` kita, `research/common-meghs-20/manifest.xml`, `research/dt-a6010-20/manifest.xml`, dan `ref/evidence/vendor-vintf-manifest.xml`.
+- [x] **4.5** `cryptfshw` dicabut — sudah dikerjakan di Fase 3 (deklarasi
+      `manifest.xml` + blok PRODUCT_PACKAGES dibuang).
+- [x] **4.6** fqname clearkey ganda — **terjawab, ditoleransi.** `assemble_vintf`
+      mendeduplikasi: manifest terakit memuat `@1.4::ICryptoFactory/clearkey`
+      dan `@1.4::IDrmFactory/clearkey` **tepat satu kali** (baris 94-95), tanpa
+      konflik — sama seperti 19.1 dengan @1.3.
+
+### 4.7 Temuan Fase 4 — `check_vintf_compatible` gagal untuk SEMUA device level legacy
+
+Pemeriksaan `checkDeprecation` (`system/libvintf/VintfObject.cpp:879-882`)
+gagal dengan `Cannot find framework matrix at FCM version legacy` karena
+framework LOS 20 hanya menyediakan matriks level 3–7 + `device` — **tidak ada
+matriks level "legacy"**. Ini **bukan** masalah khusus A37:
+
+- Berlaku identik untuk meghs, a6010, dan gt58wifi (manifest terakitnya juga
+  `target-level="legacy"`).
+- **Tidak dijalankan oleh `mka bacon`** (Fase 8.1). Diverifikasi lewat query
+  ninja: rantai OTA → target-files **tidak** memuat `check_vintf_*`; hanya
+  default goal `m`/`droid` yang menjalankannya (`Makefile:4912`
+  `droid_targets: $(check_vintf_all_deps)`).
+- Tiga pemeriksaan lain (`check_vintf_system`, `check_vintf_vendor`,
+  `vintffm`) **lolos** (diuji, exit 0).
+- Runtime: tidak relevan — hwservicemanager tidak menjalankan deprecation
+  check; itu urusan build/CTS.
+
+**Keputusan: biarkan, jangan lawan.** Satu-satunya "perbaikan" adalah menaikkan
+`target-level` ke 3–7 — mengubah semantik level device tanpa bukti perangkat
+dan bertentangan dengan ketiga tree referensi. Dicatat supaya tidak dicari
+ulang.
 
 ---
 
