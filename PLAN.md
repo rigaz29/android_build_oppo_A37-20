@@ -817,6 +817,13 @@ Semua butir di bawah selesai 5 Agustus 2026; `m nothing` exit 0 setelahnya.
       tidak ada di tree LOS 20 (lihat §3.7 "koreksi kedua"). `TARGET_HW_DISK_ENCRYPTION`
       dipertahankan (tidak dikonsumsi apa pun; retiredtab juga mempertahankan).
       fstab: `encryptable=footer` dibuang dari kedua baris `/data`.
+- [x] **Sisa enkripsi di entri SD card** (audit pasca-Fase 3, commit `7938923`):
+      `voldmanaged=sdcard1:auto,encryptable=userdata` → `voldmanaged=sdcard1:auto`.
+      Baris `/data` sudah dibersihkan lebih dulu, tapi entri ini terlewat. Ia menyuruh
+      vold memperlakukan SD sebagai volume terikat kunci userdata padahal FDE sudah
+      tidak ada. ROM jangkar gt58wifi memakai baris ini tanpa opsi tersebut
+      (`ref/evidence/ramdisk-fstab.qcom`). Bukan pemblokir boot — opsi yang sama ada di
+      19.1 yang boot — tapi tidak konsisten dengan keputusan Fase 3.
 - [x] `vendor.lineage.health-service.default` ditambahkan + tiga
       `TARGET_HEALTH_CHARGING_CONTROL_*` (baru di 20; meghs & a6010 sepakat).
       Path `/sys/class/power_supply/battery/charging_enabled` **diverifikasi di kernel
@@ -908,7 +915,18 @@ androidboot.init_fatal_reboot_target=recovery + ramoops.* di cmdline
       membunuh `system_server` tiap ~2 menit di 19.1 kita. **Jangan diambil.**
 - [ ] **4.4** Bandingkan tiga daftar HAL (kita 19.1, meghs 20, a6010 20) dan untuk setiap
       selisih tanyakan: *servisnya ada di blob kita?* Bukan: *apakah tree lain punya?*
-- [ ] **4.5** Cabut `cryptfshw` (§3.7). — ✅ **sudah dikerjakan di Fase 3** (deklarasi
+- [x] **4.5** `cryptfshw` sudah dicabut di Fase 3 (§3.7) — manifest dan `device.mk`.
+- [ ] **4.6 PERIKSA DI FASE 8: fqname clearkey terdeklarasi DUA KALI.**
+      `manifest.xml` kita menyatakan `@1.4::ICryptoFactory/clearkey` dan
+      `@1.4::IDrmFactory/clearkey`, **dan** modul servisnya membawa VINTF fragment
+      sendiri dengan dua fqname yang sama persis
+      (`frameworks/av/drm/mediadrm/plugins/clearkey/hidl/manifest_android.hardware.drm@1.4-service.clearkey.xml`,
+      dirujuk `Android.bp:123`). `assemble_vintf` menggabungkan keduanya.
+
+      Pola yang sama ada di 19.1 dengan `@1.3` dan build-nya lolos, jadi kemungkinan
+      besar ditoleransi — **tapi belum dibuktikan untuk 20**, dan `m nothing` tidak
+      menyentuhnya. Kalau `mka` berhenti di `assemble_vintf` dengan keluhan duplikat,
+      **buang entri dari `manifest.xml` kita**, bukan dari fragment servisnya. — ✅ **sudah dikerjakan di Fase 3** (deklarasi
       `manifest.xml` dibuang; tidak ada lagi entri di `device.mk`).
 
 ---

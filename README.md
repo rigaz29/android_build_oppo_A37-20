@@ -4,13 +4,19 @@ Rencana dan build kit **LineageOS 20 (Android 13, SDK 33)** untuk
 **OPPO A37 / A37f / A37fw** — Qualcomm MSM8916 (Snapdragon 410), kernel 3.10.108,
 2 GB RAM, Adreno 306.
 
-> ## Status: **Fase 1 & 2 selesai** (5 Agustus 2026)
+> ## Status: **Fase 1–3 selesai** (5 Agustus 2026)
 >
 > | Fase | Status |
 > |---|---|
 > | **1 Kernel** | ✅ build — branch `lineage-20` @ `8cc1519`, zip AnyKernel3 siap. Uji di perangkat (1.5b) menunggu pemilik |
 > | **2 Manifest & sync** | ✅ **`lunch lineage_A37-userdebug` berhasil** — `PLATFORM_VERSION=13` |
-> | 3 Device tree | berikutnya. Pemblokir pertama sudah diketahui pasti (§2.8) |
+> | **3 Device tree** | ✅ **seluruh pemblokir kati beres, `m nothing` exit 0** — device tree @ `7938923` |
+> | 4 VINTF | berikutnya |
+>
+> ⚠️ **Baca lingkupnya dengan benar:** `m nothing` hanya **membaca makefile**, tidak
+> mengompilasi apa pun. Kegagalan kompilasi nyata belum tersentuh — validasi
+> sesungguhnya `mka bacon` di Fase 8. "Fase 3 ✅" berarti *build system menerima
+> device tree*, bukan *ROM bisa dibangun*.
 >
 > Tree di `/root/los20`: 1213 project, 0 HEAD kosong, 131 GB.
 >

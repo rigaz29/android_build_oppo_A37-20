@@ -3,7 +3,7 @@
 Berkas ini ditulis supaya siapa pun (manusia atau LLM) bisa melanjutkan **tanpa** riwayat
 percakapan sebelumnya. Baca ini dulu, lalu `PLAN.md`.
 
-Terakhir diperbarui: 5 Agustus 2026 — Fase 3 (device tree) sedang dikerjakan, semua
+Terakhir diperbarui: 5 Agustus 2026 — Fase 3 selesai (device tree @ 7938923), semua
 pemblokir kati selesai, `m nothing` lolos.
 
 ---
@@ -31,15 +31,16 @@ yang bisa diverifikasi ulang. Kalau ada konflik antara berkas ini dan `PLAN.md`,
 | **1 Kernel** | ✅ **selesai di sisi build.** Branch `lineage-20` @ `8cc1519`. Zip AnyKernel3 sudah dibuat |
 | 1.5b uji di perangkat | ⏳ **menunggu pemilik perangkat** — hanya bisa dilakukan manusia yang memegang A37 |
 | **2 Manifest & sync** | ✅ **selesai.** `lunch lineage_A37-userdebug` berhasil, `PLATFORM_VERSION=13` |
-| **3 Device tree** | 🔧 **sedang dikerjakan** — semua pemblokir kati beres, `m nothing` exit 0 (detail §6) |
-| 4–10 | belum |
+| **3 Device tree** | ✅ **selesai** — pemblokir kati beres, `m nothing` exit 0, @ `7938923` (detail §6) |
+| **4 VINTF** | ⬅️ berikutnya |
+| 5–10 | belum |
 
 ### Repo kerja (semuanya milik akun GitHub `rigaz29`)
 
 | Repo | Branch | SHA | Isi |
 |---|---|---|---|
 | `rigaz29/android_build_oppo_A37-20` | `main` | — | rencana + tool (repo ini) |
-| `rigaz29/rb_device_oppo_A37` | `lineage-20` | `ce39cf5` | device tree, **belum disunting** untuk 20 |
+| `rigaz29/rb_device_oppo_A37` | `lineage-20` | `7938923` | device tree, **Fase 3 sudah masuk** (basis `ce39cf5`) |
 | `rigaz29/kernel_oppo_msm8939` | `lineage-20` | `8cc1519` | kernel, Fase 1 sudah masuk |
 | `rigaz29/rb-vendor_oppo_A37` | `lineage-18.1` | `2e5c6f7` | blob, dipakai apa adanya |
 
@@ -160,6 +161,28 @@ berikutnya **sudah diselesaikan**; `m nothing` kini exit 0, dan dua modul uji
 
 4. **Koreksi `cryptfshw`** — lihat tabel §3. Keputusan lama gugur oleh bukti:
    hulu mencabut source-nya di LOS 20; ROM jangkar tidak mengirim binernya.
+
+5. **Sisa enkripsi dibersihkan (audit pasca-Fase 3).** `encryptable=userdata` masih
+   tertinggal di entri `voldmanaged=sdcard1` `fstab.qcom` walau `/data` sudah bersih.
+   Dicabut di `7938923`. ROM jangkar gt58wifi memakai baris itu tanpa opsi tersebut
+   (`ref/evidence/ramdisk-fstab.qcom`).
+
+### Jejak bukti Fase 3 — perintah yang bisa diulang
+
+```bash
+cd /root/los20 && source /root/a37-20/tools/envsetup-a37.sh
+
+m nothing                       # -> work/fase3-kati3.log : build completed successfully (01:17)
+m libwcnss_qmi android.hardware.drm@1.4-service.clearkey
+                                # -> work/fase3-modul-uji.log : build completed successfully (01:12)
+
+# artefak yang dihasilkan
+find out -name "libwcnss_qmi*" -o -name "*1.4-service.clearkey*"
+```
+
+⚠️ **Lingkup `m nothing`: ia hanya MEMBACA makefile, tidak mengompilasi apa pun.**
+Lolosnya berarti build system menerima device tree — **bukan** bahwa ROM bisa dibangun.
+Kegagalan kompilasi nyata baru muncul di Fase 8 (`mka bacon`).
 
 Belum diuji di perangkat apa pun — semua kesimpulan di atas dari log build
 19.1, tree LOS 20, dan ROM gt58wifi.
