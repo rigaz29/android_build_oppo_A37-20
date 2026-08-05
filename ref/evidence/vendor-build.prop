@@ -1,0 +1,26 @@
+####################################
+# from generate-common-build-props
+# These properties identify this partition image.
+####################################
+ro.product.vendor.brand=samsung
+ro.product.vendor.device=gt58wifi
+ro.product.vendor.manufacturer=samsung
+ro.product.vendor.model=SM-T350
+ro.product.vendor.name=lineage_gt58wifi
+ro.vendor.product.cpu.abilist=armeabi-v7a,armeabi
+ro.vendor.product.cpu.abilist32=armeabi-v7a,armeabi
+ro.vendor.product.cpu.abilist64=
+ro.vendor.build.date=Tue Oct 10 18:20:09 MDT 2023
+ro.vendor.build.date.utc=1696983609
+ro.vendor.build.fingerprint=samsung/gt58wifixx/gt58wifi:7.1.1/NMF26X/T350XXU1CQJ5:user/release-keys
+ro.vendor.build.id=TQ3A.230901.001
+ro.vendor.build.tags=test-keys
+ro.vendor.build.type=userdebug
+ro.vendor.build.version.incremental=eng.l.20231010.182653
+ro.vendor.build.version.release=13
+ro.vendor.build.version.release_or_codename=13
+ro.vendor.build.version.sdk=33
+####################################
+# from out/target/product/gt58wifi/obj/ETC/android_info_prop_intermediates/android_info.prop
+####################################
+# end of file

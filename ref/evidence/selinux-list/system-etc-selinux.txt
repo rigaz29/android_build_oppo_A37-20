@@ -1,0 +1,12 @@
+bug_map
+mapping
+plat_file_contexts
+plat_hwservice_contexts
+plat_keystore2_key_contexts
+plat_mac_permissions.xml
+plat_property_contexts
+plat_seapp_contexts
+plat_sepolicy.cil
+plat_sepolicy_and_mapping.sha256
+plat_service_contexts
+-rw-r--r--. 1 root root 958950 Jan  1  2009 sysmnt/sepolicy

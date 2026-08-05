@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Local manifest — LineageOS 20 (Android 13, SDK 33) untuk OPPO A37 / A37f / A37fw.
+
+  BASIS MANIFEST BUKAN LineageOS/android, TAPI LineageOS-UL/android:
+
+      repo init -u https://github.com/LineageOS-UL/android.git -b lineage-20.0 --git-lfs
+
+  LineageOS-UL ("Ultra Legacy") sudah memasang 37 fork legacy lewat
+  .repo/manifests/snippets/losul.xml. Yang di 19.1 harus kita repopick manual
+  sekarang datang sendiri. Diverifikasi 5 Agustus 2026 di tree /root/los20:
+
+      packages/modules/adb   -> transport_legacy.cpp ADA   (= Gerrit 326385, W-adb)
+      frameworks/av          -> CameraProviderManager.cpp:1667
+                                `case 1: initializeDeviceInfo<DeviceInfo1>` (Camera HAL1 utuh)
+      system/bpf             -> gerbang eBPF kernel < 4.9   (= Gerrit 320591, W1)
+      system/netd            -> idem                        (= Gerrit 320592, W2)
+      art, external/perfetto -> gerbang memfd_create        (= Gerrit 318097, 287706)
+      device/qcom/sepolicy-legacy (revision lineage-20.0-legacy)
+      system/core, system/sepolicy, frameworks/base, frameworks/native, bionic,
+      hardware/interfaces, hardware/ril, packages/modules/{Bluetooth,Wifi,Connectivity}, ...
+
+  JANGAN mendeklarasikan ulang project-project di atas di berkas ini.
+  Sudah ADA di tree hasil `repo init` UL, terverifikasi:
+      device/qcom/sepolicy-legacy, external/connectivity,
+      hardware/sony/timekeep, packages/apps/Aperture,
+      prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9
+
+  Seluruh SHA di bawah diverifikasi 5 Agustus 2026.
+-->
+<manifest>
+
+  <remote name="gh" fetch="https://github.com/" />
+
+  <!-- ================================================================
+       Repo milik proyek
+       ================================================================ -->
+
+  <!-- Device tree. Basis: lineage-19.1-rb @ ce39cf5 — tree yang BOOT SAMPAI
+       HOMESCREEN di perangkat nyata, dengan kamera dan Bluetooth berfungsi,
+       memuat keenam perbaikan 10.A-10.F proyek 19.1.
+
+       Tree ini MANDIRI: msm8916-common sudah diratakan ke dalamnya sejak 18.1
+       (lihat komentar "Sumber: msm8916-common lineage-18.1" di BoardConfig.mk).
+       Karena itu TIDAK ADA device/cyanogen/msm8916-common di manifest ini —
+       satu pohon dependensi yang tidak perlu dirawat. Bandingkan dengan tree
+       meghs-playground yang masih menggantung pada common tree. -->
+  <project name="rigaz29/rb_device_oppo_A37" path="device/oppo/A37"
+           remote="gh" revision="refs/heads/lineage-20"
+           upstream="lineage-20" />
+
+  <!-- Kernel 3.10.108 ARM64. Basis: lineage-19.1 @ bf222bf — binder modern +
+       binder_alloc + READ_ONCE/WRITE_ONCE + CONFIG_RT_GROUP_SCHED dimatikan.
+       Kernel ini sudah terbukti di perangkat lewat zip AnyKernel3.
+
+       Delta ke LOS 20 KECIL — diukur, bukan diperkirakan: binder.c kita hanya
+       berbeda 233 baris dari kernel LOS 20 retiredtab (yang delta 19.1->20.0
+       miliknya sendiri 1363 baris). Lihat PLAN.md Fase 1. -->
+  <project name="rigaz29/kernel_oppo_msm8939" path="kernel/oppo/msm8939"
+           remote="gh" revision="refs/heads/lineage-20"
+           upstream="lineage-20" />
+
+  <!-- Vendor blobs. Di 19.1 dipakai apa adanya dari 18.1 (320 blob, 0 hilang).
+       Untuk 20 tetap basis yang sama; selisih terhadap daftar meghs (457 entri
+       vs 403 milik kita, 336 baris berbeda) ditriase di Fase 6, BUKAN diadopsi
+       borongan. -->
+  <project name="rigaz29/rb-vendor_oppo_A37" path="vendor/oppo"
+           remote="gh" revision="2e5c6f7ffcccbbf1430f8fa13fc530e1cae5feab"
+           upstream="lineage-18.1" />
+
+  <!-- ================================================================
+       hardware/qcom-caf untuk msm8916 — WAJIB
+       ================================================================
+       LineageOS 20 menyediakan qcom-caf untuk msm8953, msm8974, msm8996,
+       msm8998, sdm660, sdm845, sm8150, sm8250, sm8350, sm8450, sm8550 —
+       tapi TIDAK msm8916. Diverifikasi langsung di /root/los20/hardware/qcom-caf/.
+       Branch lineage-20.0-caf-msm8916 juga TIDAK ADA di hulu (git ls-remote kosong);
+       yang tersedia hanya lineage-19.0-caf-msm8916.
+
+       BoardConfig menyetel TARGET_BOARD_PLATFORM := msm8916, jadi tanpa tiga
+       baris ini build mencari direktori yang tidak ada.
+
+       Dua sumber independen sepakat memakai revisi 19.0-caf-msm8916 di LOS 20:
+       manifest retiredtab (20/msm8916/msm8916-20.xml, komentar "revert lineage:
+       RIP legacy qcom") dan acroreiser yang justru MERGE ketiga repo ini ke
+       dalam device tree a6010 sebagai subdirektori. Kita ambil jalur retiredtab
+       (pin di manifest) karena lebih mudah dilacak saat hulu berubah.
+
+       SHA identik dengan yang dipakai proyek 19.1 — branch tidak bergerak. -->
+  <project name="LineageOS/android_hardware_qcom_audio" path="hardware/qcom-caf/msm8916/audio"
+           remote="gh" revision="e0e79d6281d55c4f0c93ec7d471d4554281a796b"
+           upstream="lineage-19.0-caf-msm8916" />
+  <project name="LineageOS/android_hardware_qcom_display" path="hardware/qcom-caf/msm8916/display"
+           remote="gh" revision="984ff8f2142912cd682de872db3643843e3cb075"
+           upstream="lineage-19.0-caf-msm8916" />
+  <project name="LineageOS/android_hardware_qcom_media" path="hardware/qcom-caf/msm8916/media"
+           remote="gh" revision="bf62f596b10d39caf9c4208ce767a7deed662a1c"
+           upstream="lineage-19.0-caf-msm8916" />
+
+  <!-- CATATAN guard hardware/qcom-caf/msm8916/Android.mk.
+
+       Resep retiredtab memasangnya sebagai <linkfile> di level manifest:
+           <linkfile src="os_pickup.mk" dest="hardware/qcom-caf/msm8916/Android.mk" />
+       Itu TIDAK VALID di format manifest repo — <linkfile> hanya dikenali
+       sebagai anak dari <project>, dan `src` relatif terhadap direktori project
+       pemiliknya (hardware/qcom-caf/common).
+
+       Temuan 19.1 yang tetap berlaku: gerbang di dalam os_pickup.mk menguji
+       PRODUCT_SOONG_NAMESPACES, dan vendor/lineage/config/BoardConfigQcom.mk
+       menambahkan hardware/qcom-caf/msm8916 ke sana secara otomatis. Jadi guard
+       ini harmless dan BUKAN penentu. Dipasang oleh tools/apply-legacy-patches.sh
+       demi paritas dengan hulu, bukan lewat manifest — mengubahnya di manifest
+       menuntut <remove-project> lalu deklarasi ulang qcom-caf/common berikut
+       SELURUH linkfile lainnya. Rapuh, tidak sepadan. -->
+
+</manifest>

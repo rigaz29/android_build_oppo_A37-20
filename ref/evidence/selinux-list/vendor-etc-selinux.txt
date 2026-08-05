@@ -1,0 +1,14 @@
+plat_pub_versioned.cil
+plat_sepolicy_vers.txt
+precompiled_sepolicy
+precompiled_sepolicy.plat_sepolicy_and_mapping.sha256
+precompiled_sepolicy.system_ext_sepolicy_and_mapping.sha256
+selinux_denial_metadata
+vendor_file_contexts
+vendor_hwservice_contexts
+vendor_mac_permissions.xml
+vendor_property_contexts
+vendor_seapp_contexts
+vendor_sepolicy.cil
+vendor_service_contexts
+vndservice_contexts

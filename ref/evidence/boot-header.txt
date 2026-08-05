@@ -1,0 +1,14 @@
+page_size      : 2048
+kernel_size    : 6542336
+kernel_addr    : 0x80008000
+ramdisk_size   : 1122968
+ramdisk_addr   : 0x81000000
+second_size    : 0
+tags_addr      : 0x80000100
+dt_size        : 356352
+os_version raw : 0x1a0001a5
+board name     : ''
+cmdline        : console=null androidboot.hardware=qcom user_debug=23 msm_rtb.filter=0x3F ehci-hcd.park=3 androidboot.bootdevice=7824900.sdhci buildvariant=userdebug
+base (derived) : 0x80000000
+kernel_offset  : 0x00008000
+ramdisk_offset : 0x01000000

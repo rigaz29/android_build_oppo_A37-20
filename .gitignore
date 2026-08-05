@@ -1,0 +1,37 @@
+# ---------------------------------------------------------------------------
+# Artefak besar yang TIDAK di-commit. Semuanya bisa dibuat ulang —
+# lihat PLAN.md Lampiran B untuk perintahnya.
+# ---------------------------------------------------------------------------
+
+# ROM jangkar bukti + hasil bedah mentahnya (± 606 MB).
+# Unduh ulang dari:
+#   https://sourceforge.net/projects/retiredtab/files/SM-T350/20/lineage-20.0-20260505-UNOFFICIAL-gt58wifi.zip
+# lalu jalankan tools/qbootimg.py + tools/sdat2img.py (PLAN.md Lampiran B).
+# Yang penting sudah diekstrak ke ref/evidence/ dan ITU di-commit.
+ref/*.zip
+ref/*.img
+ref/*.dat
+ref/*.dat.br
+ref/*.decomp
+ref/boot_out/
+ref/rd/
+ref/sysmnt/
+ref/META-INF/
+ref/system.transfer.list
+
+# Clone repo pihak ketiga untuk analisis (± 3,8 GB, punya .git sendiri).
+# Daftar repo + branch-nya ada di PLAN.md §2.2.
+research/
+
+# Log sync dan area kerja
+work/*.log
+work/
+
+# Umum
+*.pyc
+__pycache__/
+*.log
+
+# State lokal harness, bukan isi proyek
+.claude/
+.aider*
