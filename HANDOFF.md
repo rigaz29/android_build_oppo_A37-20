@@ -25,6 +25,11 @@ perbaikannya jadi modal proyek ini**, bukan diulang dari nol.
 yang bisa diverifikasi ulang. Kalau ada konflik antara berkas ini dan `PLAN.md`,
 `PLAN.md` yang menang.
 
+> **6 Agustus 2026:** ada rencana baru — **migrasi basis ke LineageOS official** —
+> di [`PLAN-OFFICIAL.md`](PLAN-OFFICIAL.md) (delta UL↔official terukur, seri patch
+> legacy, fase M0–M5). **Belum dieksekusi**; seluruh status di dokumen ini (basis UL)
+> tetap berlaku sampai migrasi itu disetujui dan dijalankan.
+
 ---
 
 ## 2. Status per 5 Agustus 2026

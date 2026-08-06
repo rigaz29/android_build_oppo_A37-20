@@ -66,6 +66,7 @@ setelah boot pertama. Rinciannya di `PLAN.md` §1.1 dan §1.4.
 | Berkas | Keterangan |
 |---|---|
 | **[`PLAN.md`](PLAN.md)** | Dokumen utama. 10 fase, setiap klaim teknis diikat ke sumber yang bisa diverifikasi |
+| **[`PLAN-OFFICIAL.md`](PLAN-OFFICIAL.md)** | **Rencana baru (6 Agu 2026): migrasi basis ke LineageOS official** — delta UL↔official terukur per commit, seri patch legacy, fase M0–M5. Belum dieksekusi |
 | **[`HANDOFF.md`](HANDOFF.md)** | **Konteks lengkap untuk melanjutkan tanpa riwayat percakapan** — status, keputusan yang sudah diambil, jebakan yang pernah menjebak |
 | [`A37-20.xml`](A37-20.xml) | Local manifest. Seluruh SHA diverifikasi 5 Agustus 2026 |
 | **[`ref/evidence/`](ref/evidence/)** | **Hasil bedah ROM LOS 20 msm8916 yang terbukti boot** — `build.prop`, VINTF, fstab, `init*.rc`, daftar sepolicy, header boot.img |
