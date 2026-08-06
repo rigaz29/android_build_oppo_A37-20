@@ -3,9 +3,10 @@
 Berkas ini ditulis supaya siapa pun (manusia atau LLM) bisa melanjutkan **tanpa** riwayat
 percakapan sebelumnya. Baca ini dulu, lalu `PLAN.md`.
 
-Terakhir diperbarui: 6 Agustus 2026 — **Fase 1-9 selesai: ROM boot sampai homescreen di
-perangkat nyata** (build `20260806_001127`). Satu pemblokir boot ditemukan dan dibereskan
-(charging control / Watchdog, PLAN §9.6). adb diagnostik AKTIF — matikan sebelum rilis.
+Terakhir diperbarui: 6 Agustus 2026 — **Fase 1-9 selesai, Fase 10 berjalan**. ROM boot
+sampai homescreen; Wi-Fi diperbaiki (duplikat service wpa_supplicant HIDL warisan 19.1
+menolak definisi AIDL — PLAN §10.1), build `20260806_005310` menunggu uji. RIL tetap
+risiko terbuka. adb diagnostik AKTIF — matikan sebelum rilis.
 
 ---
 
@@ -39,7 +40,7 @@ yang bisa diverifikasi ulang. Kalau ada konflik antara berkas ini dan `PLAN.md`,
 | **7 Init & rootdir** | ✅ **selesai** — nol perubahan source; rc file lolos verifier init A13; ueventd gate API 21 terbuka (PLAN §7) |
 | **8 Build** | ✅ **selesai** — `m -j6 bacon` rc=0, zip 588 MB, verify-rom.sh LOLOS. 7 pemblokir dibereskan (PLAN §8.1a-d) — termasuk **5 pin anti-hanyut baru di A37-20.xml** |
 | **9 Boot pertama** | ✅ **HOMESCREEN TERCAPAI 6 Agu 2026** — satu pemblokir boot dibereskan (charging control/Watchdog, PLAN §9.6). ⚠️ adb diagnostik AKTIF (`WITH_ADB_INSECURE`) — matikan sebelum rilis |
-| 10 Debug device | ⬅️ berikutnya — kamera, RIL, Wi-Fi, sensor, audio, BT belum diverifikasi |
+| **10 Debug device** | 🔧 **berjalan** — Wi-Fi diperbaiki (duplikat wpa_supplicant, PLAN §10.1); RIL risiko terbuka; kamera/sensor/audio/BT belum diuji |
 
 ### Repo kerja (semuanya milik akun GitHub `rigaz29`)
 

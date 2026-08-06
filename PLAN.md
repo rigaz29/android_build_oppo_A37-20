@@ -1256,9 +1256,50 @@ Kamera (HAL1), RIL (risiko terbuka terbesar — belum pernah jalan di 19.1),
 Wi-Fi, sensor, audio, Bluetooth, charging control (harusnya jalan — verifikasi
 via Settings), dan uji stabilitas (boot hangat, sleep/wake).
 
+## Fase 10 — Debug di device: prediksi berbasis bukti
+
+### 10.1 Selesai 6 Agustus 2026 — Wi-Fi diperbaiki
+
+Log perangkat kedua (`report/logcat1.txt`, build `20260806_001127`): boot sehat
+(`sys.boot_completed=1` di 68,7s, Launcher tampil, nol Watchdog, nol FATAL),
+tapi Wi-Fi mati. Bukti:
+
+```
+init: Control message: Could not find 'aidl/android.hardware.wifi.supplicant.
+ISupplicant/default' for ctl.interface_start  (898×, error 0x20)
+WifiNative.startAndWaitForSupplicantConnection gagal
+```
+
+Akar: definisi `service wpa_supplicant` HIDL warisan 19.1 di
+`init.qcom.rc:189` membuat definisi AIDL dari
+`android.hardware.wifi.supplicant-service.rc` **ditolak** — nama service
+duplikat → `service_parser.cpp:690-694` *"ignored duplicate definition of
+service 'wpa_supplicant'"* → interface `aidl/...ISupplicant/default` tak
+pernah terdaftar di init → lazy start gagal → supplicant tak pernah jalan.
+
+Perbaikan (commit device tree): blok `wpa_supplicant` HIDL dibuang dari
+`init.qcom.rc` + baris `restart cameraserver` dibuang (gagal "service not
+found" — dengan `TARGET_HAS_LEGACY_CAMERA_HAL1=true`, LOS 20 meng-compile
+`-DNO_CAMERA_SERVER` lewat modul soong `no_cameraserver`
+(`vendor/lineage/build/soong/Android.bp:306-331`), jadi service `cameraserver`
+memang tidak ada — CameraService berjalan di jalur mediaserver/legacy).
+
+Catatan: `cameraserver` tidak ada di image BUKAN bug — by design untuk
+konfigurasi HAL1 legacy.
+
+### 10.2 Status per komponen (6 Agustus 2026, belum final)
+
+| Komponen | Status | Bukti |
+|---|---|---|
+| Boot / homescreen | ✅ | sys.boot_completed=1, Launcher tampil |
+| Wi-Fi | 🔧 diperbaiki, **belum diuji** di build `20260806_005310` | §10.1 |
+| Kamera | ❓ belum diuji di LOS 20 (jalur mediaserver/legacy; 19.1 terbukti jalan) | — |
+| RIL | ❌ rusak (risiko terbuka, sama seperti 19.1) | lazy start IRadio gagal |
+| Sensor, audio, BT, charging control | ❓ belum diuji | — |
+
 ---
 
-## Fase 10 — Debug di device: prediksi berbasis bukti
+### 10.3 Prediksi awal (diturunkan dari dok 19.1)
 
 Enam bug 19.1 sudah diperbaiki di tree basis dan **tidak diharapkan muncul lagi**. Yang
 realistis diantisipasi untuk 20, dengan sumbernya:
