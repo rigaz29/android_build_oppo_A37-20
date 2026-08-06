@@ -271,6 +271,53 @@ PY
 fi
 
 # ---------------------------------------------------------------------------
+# 6b. packages/modules/Bluetooth: inquiry scan STANDARD alih-alih INTERLACED
+#     (uji keterlihatan BT — PLAN 20 §10.6, build 20260806_165815)
+# ---------------------------------------------------------------------------
+# A37 tak terlihat saat di-scan HP lain, walau WRITE_SCAN_ENABLE(INQUIRY+PAGE)
+# dan WRITE_CURRENT_IAC_LAP terkirim dan di-ACK controller. Hipotesis: WCNSS
+# tidak menjalankan inquiry scan dengan scan type INTERLACED yang dipasang
+# btm_devctl.cc:309 -> shim BTM_EnableInterlacedInquiryScan -> SetInterlacedScan.
+# Uji: pakai STANDARD. Kembalikan ke SetInterlacedInquiryScan bila terbukti
+# bukan penyebab.
+BT_SCAN=packages/modules/Bluetooth/system/main/shim/btm_api.cc
+BT_SCAN_PAT='SetStandardInquiryScan();'
+
+if [ ! -f "$BT_SCAN" ]; then
+    c_no "$BT_SCAN tidak ada -- periksa manifest"; rc=1
+elif grep -q "$BT_SCAN_PAT" "$BT_SCAN"; then
+    c_ok "bluetooth shim: inquiry scan STANDARD sudah terpasang (uji §10.6)"
+elif [ "$CHECK" = 1 ]; then
+    c_do "bluetooth shim: PERLU ganti interlaced -> standard inquiry scan (uji §10.6)"
+else
+    c_do "bluetooth shim: ganti interlaced -> standard inquiry scan"
+    if python3 - "$BT_SCAN" <<'PY'
+import sys
+p = sys.argv[1]
+src = open(p).read()
+old = '''void bluetooth::shim::BTM_EnableInterlacedInquiryScan() {
+  Stack::GetInstance()->GetBtm()->SetInterlacedInquiryScan();
+}'''
+new = '''void bluetooth::shim::BTM_EnableInterlacedInquiryScan() {
+  // Uji A37: WCNSS tidak merespons inquiry HP lain dengan interlaced scan.
+  // Pakai STANDARD (lihat PLAN 20 §10.6). Kembalikan ke SetInterlacedInquiryScan
+  // bila terbukti bukan penyebab.
+  Stack::GetInstance()->GetBtm()->SetStandardInquiryScan();
+}'''
+if old not in src:
+    print("PEMBUKA TIDAK DITEMUKAN — patch manual diperlukan", file=sys.stderr)
+    sys.exit(1)
+open(p, 'w').write(src.replace(old, new, 1))
+PY
+    then
+        grep -q "$BT_SCAN_PAT" "$BT_SCAN" && c_ok "bluetooth shim: STANDARD scan terpasang" \
+            || { c_no "bluetooth shim: patch GAGAL -- periksa manual"; rc=1; }
+    else
+        c_no "bluetooth shim: python GAGAL -- periksa manual"; rc=1
+    fi
+fi
+
+# ---------------------------------------------------------------------------
 # 7. Penjaga regresi -- bukan patch, tapi memeriksa asumsi yang bisa berubah
 #    diam-diam kalau LineageOS-UL suatu saat cair lagi (fork dipin ke BRANCH,
 #    bukan SHA, di snippets/losul.xml).
