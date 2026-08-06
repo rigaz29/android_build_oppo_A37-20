@@ -64,22 +64,25 @@ foreach ($s in $svcs) {
 }
 
 # ------------------------------------------------------- registrasi HAL ---
-Write-Inf "registrasi HAL di servicemanager"
-$svclist = Invoke-Device "service list"
+Write-Inf "registrasi HAL (lshal — hwbinder servicemanager)"
+# CATATAN: `service list` hanya menampilkan binder servicemanager (framework).
+# HAL HIDL terdaftar di hwbinder servicemanager — harus dicek dengan `lshal`.
+$lshal = Invoke-Device "lshal --neat"
 $hals = @(
     "android.hardware.audio", "android.hardware.bluetooth", "android.hardware.gnss",
     "android.hardware.graphics.composer", "android.hardware.light",
     "android.hardware.media.omx", "android.hardware.memtrack",
     "android.hardware.power", "android.hardware.wifi",
-    "vendor.qti.hardware.perf", "vendor.lineage.livedisplay"
+    "vendor.qti.hardware.perf", "vendor.lineage.livedisplay",
+    "android.hardware.camera.provider"
 )
 foreach ($h in $hals) {
-    if ($svclist -match [regex]::Escape($h)) { Write-Ok $h } else { Write-Bad "$h TIDAK terdaftar" }
+    if ($lshal -match [regex]::Escape($h)) { Write-Ok $h } else { Write-Bad "$h TIDAK terdaftar di lshal" }
 }
 
 # ---------------------------------------------------------------- RIL ----
 Write-Inf "RIL"
-if ($svclist -match "android\.hardware\.radio") { Write-Ok "IRadio terdaftar" }
+if ($lshal -match "android\\.hardware\\.radio") { Write-Ok "IRadio terdaftar" }
 else { Write-Bad "IRadio TIDAK terdaftar (risiko terbuka yang diketahui)" }
 $sim = Invoke-Device "getprop gsm.sim.state"
 $net = Invoke-Device "getprop gsm.network.type"
@@ -89,23 +92,25 @@ Write-Host "     gsm.sim.state='$sim' gsm.network.type='$net'"
 Write-Inf "Wi-Fi"
 $wifist = Invoke-Device "cmd wifi status"
 if ($wifist -match "enabled") { Write-Ok "wifi enabled" } else { Write-Bad "wifi: $wifist" }
+# supplicant adalah servis AIDL — terdaftar di BINDER servicemanager, dicek
+# dengan `service list`, bukan lshal.
+$svclist = Invoke-Device "service list"
 if ($svclist -match "wifi\.supplicant") { Write-Ok "supplicant terdaftar" } else { Write-Bad "supplicant TIDAK terdaftar" }
 
 # ------------------------------------------------------------ bluetooth --
 Write-Inf "Bluetooth"
-if ($svclist -match "android\.hardware\.bluetooth") { Write-Ok "HAL BT terdaftar" } else { Write-Bad "HAL BT TIDAK terdaftar" }
+if ($lshal -match "android\\.hardware\\.bluetooth") { Write-Ok "HAL BT terdaftar" } else { Write-Bad "HAL BT TIDAK terdaftar" }
 $btpid = Invoke-Device "pidof com.android.bluetooth"
 if ($btpid -ne "") { Write-Ok "aplikasi BT hidup" } else { Write-Bad "aplikasi BT mati" }
 
 # ------------------------------------------------------------- kamera ----
-Write-Inf "Kamera (dumpsys)"
+Write-Inf "Kamera (dumpsys media.camera)"
 $cam = Invoke-Device "dumpsys media.camera"
-if ($cam -match "Camera HAL module") { Write-Ok "CameraService terhubung ke HAL" }
-else {
-    $camErr = ([regex]::Matches($cam, "(?i)error|fail")).Count
-    Write-Bad "CameraService/HAL belum siap ($camErr baris error)"
-}
-if ($svclist -match "camera\.provider") { Write-Ok "camera.provider terdaftar" } else { Write-Bad "camera.provider TIDAK" }
+$camErr = ([regex]::Matches($cam, "(?i)error|fail|fatal")).Count
+if ($cam -match "(?i)Camera HAL module|CameraService") { Write-Ok "CameraService hidup ($camErr baris error)" }
+else { Write-Bad "CameraService: $(($cam -split "`n")[0..2] -join ' ')" }
+if ($lshal -match "camera\.provider") { Write-Ok "camera.provider terdaftar di lshal" }
+else { Write-Host "     catatan: camera.provider passthrough hanya muncul di lshal setelah dimuat (uji M1/M2 kamera)" -ForegroundColor Yellow }
 
 # ------------------------------------------------------------ sensors ----
 Write-Inf "Sensor"
