@@ -501,45 +501,17 @@ MB=$(git merge-base HEAD $(git rev-parse FETCH_HEAD))    # FETCH_HEAD = official
 git format-patch --no-merges $MB..HEAD -o /root/a37-20/patches/official/frameworks_av/
 ```
 
-## Lampiran B — Draf `A37-20-official.xml`
+## Lampiran B — `A37-20-official.xml`
 
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!--
-  Local manifest — LineageOS 20 untuk OPPO A37, BASIS OFFICIAL:
-      repo init -u https://github.com/LineageOS/android.git -b lineage-20.0
-  Fungsi legacy UL diterapkan tools/apply-official-patches.sh dari patches/official/,
-  BUKAN lewat pin fork. Enam pin anti-hanyut versi lama DIHAPUS (akar masalahnya,
-  campuran UL-beku x official-bergerak, tidak ada lagi).
-  Validasi dulu: python3 -c "import xml.etree.ElementTree as E;E.parse('A37-20-official.xml')"
--->
-<manifest>
-  <remote name="gh" fetch="https://github.com/" />
-  <remote name="losul" fetch="https://github.com/LineageOS-UL/" />
+Berkas jadi: **[`A37-20-official.xml`](A37-20-official.xml)** di root repo
+(dipakai sejak M2, 6 Agustus 2026). Isi sesuai §0.2#4-5, dengan dua koreksi
+yang ditemukan saat M2:
 
-  <!-- Repo proyek (tidak berubah dari A37-20.xml lama) -->
-  <project name="rigaz29/rb_device_oppo_A37" path="device/oppo/A37"
-           remote="gh" revision="refs/heads/lineage-20" upstream="lineage-20" />
-  <project name="rigaz29/kernel_oppo_msm8939" path="kernel/oppo/msm8939"
-           remote="gh" revision="refs/heads/lineage-20" upstream="lineage-20" />
-  <project name="rigaz29/rb-vendor_oppo_A37" path="vendor/oppo"
-           remote="gh" revision="2e5c6f7ffcccbbf1430f8fa13fc530e1cae5feab"
-           upstream="lineage-18.1" />
-
-  <!-- qcom-caf msm8916: tetap branch 19.0-caf, SHA tidak berubah -->
-  <project name="LineageOS/android_hardware_qcom_audio" path="hardware/qcom-caf/msm8916/audio"
-           remote="gh" revision="e0e79d6281d55c4f0c93ec7d471d4554281a796b"
-           upstream="lineage-19.0-caf-msm8916" />
-  <project name="LineageOS/android_hardware_qcom_display" path="hardware/qcom-caf/msm8916/display"
-           remote="gh" revision="984ff8f2142912cd682de872db3643843e3cb075"
-           upstream="lineage-19.0-caf-msm8916" />
-  <project name="LineageOS/android_hardware_qcom_media" path="hardware/qcom-caf/msm8916/media"
-           remote="gh" revision="bf62f596b10d39caf9c4208ce767a7deed662a1c"
-           upstream="lineage-19.0-caf-msm8916" />
-
-  <!-- SATU-SATUNYA pin UL: sepolicy-legacy tidak ada di manifest official -->
-  <project name="LineageOS-UL/android_device_qcom_sepolicy" path="device/qcom/sepolicy-legacy"
-           remote="losul" revision="470e8d88f1490b24bfe76aa17bd2ea57bcaa4c27"
-           upstream="lineage-20.0-legacy" />
-</manifest>
-```
+1. **Bug draf:** remote `losul` harus ber-`fetch="https://github.com/"` dengan
+   nama project `LineageOS-UL/android_device_qcom_sepolicy` — `fetch` yang
+   menyertakan org (`…/LineageOS-UL/`) menggandakan org di URL dan memutus sync.
+2. **Tambahan `hardware/sony/timekeep`** (pin SHA `11c1535c`, branch `lineage-20`):
+   dipakai `device.mk:855` tapi **tidak didaftarkan** manifest official
+   lineage-20.0 (diverifikasi via grep `default.xml` + snippet).
+   `external/sony/boringssl-compat` diperiksa dan **tidak dirujuk** device tree
+   → tidak perlu.

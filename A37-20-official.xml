@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Local manifest — LineageOS 20 (Android 13, SDK 33) untuk OPPO A37 / A37f / A37fw.
+
+  BASIS MANIFEST: LineageOS OFFICIAL
+
+      repo init -u https://github.com/LineageOS/android.git -b lineage-20.0
+      (sertakan flag git-lfs)
+
+  Fungsi legacy yang dulu disediakan 37 fork LineageOS-UL TIDAK lagi datang dari
+  manifest — mereka diterapkan sebagai seri patch di patches/official/ lewat
+  tools/apply-official-patches.sh (fase M3; peta tier di patches/official/MANIFEST.md).
+  Versi basis UL diarsip di A37-20-ul.xml.
+
+  PERBEDAAN dengan versi UL:
+    - ENAM pin anti-hanyut DIHAPUS (dng_sdk, skia, Mms, Telephony, Trebuchet,
+      Settings). Akar masalahnya — campuran UL-beku x official-bergerak — tidak
+      ada lagi; tree official konsisten sebagai satu set.
+    - SATU pin baru: device/qcom/sepolicy-legacy (tidak ada di manifest official;
+      branch lineage-20.0-legacy hanya ada di fork UL — diverifikasi 6 Agu 2026,
+      precedent resep retiredtab 19.1).
+    - SATU tambahan baru: hardware/sony/timekeep (dipakai device.mk:855; TIDAK ADA
+      di manifest official lineage-20.0 walau ada di org LineageOS branch
+      lineage-20 — diverifikasi 6 Agu 2026). boringssl-compat diverifikasi TIDAK
+      dirujuk device tree, jadi tidak perlu.
+
+  Validasi sebelum dipakai:
+      python3 -c "import xml.etree.ElementTree as E;E.parse('A37-20-official.xml')"
+-->
+<manifest>
+
+  <remote name="gh" fetch="https://github.com/" />
+
+  <!-- ================================================================
+       Repo milik proyek (tidak berubah dari versi UL)
+       ================================================================ -->
+
+  <!-- Device tree. HEAD 7902422 = state ter-push; memuat seluruh perbaikan
+       Fase 3-10 (boot, charging control, usb, wpa_supplicant duplikat, volume).
+       Tree MANDIRI (tanpa msm8916-common). -->
+  <project name="rigaz29/rb_device_oppo_A37" path="device/oppo/A37"
+           remote="gh" revision="refs/heads/lineage-20"
+           upstream="lineage-20" />
+
+  <!-- Kernel 3.10.108 ARM64 — tidak terpengaruh ganti basis userspace. -->
+  <project name="rigaz29/kernel_oppo_msm8939" path="kernel/oppo/msm8939"
+           remote="gh" revision="refs/heads/lineage-20"
+           upstream="lineage-20" />
+
+  <!-- Vendor blobs 19.1 (320 blob). -->
+  <project name="rigaz29/rb-vendor_oppo_A37" path="vendor/oppo"
+           remote="gh" revision="2e5c6f7ffcccbbf1430f8fa13fc530e1cae5feab"
+           upstream="lineage-18.1" />
+
+  <!-- ================================================================
+       hardware/qcom-caf untuk msm8916 — WAJIB (tidak berubah dari versi UL)
+       ================================================================
+       LineageOS 20 tidak menyediakan qcom-caf/msm8916; branch 19.0-caf-msm8916
+       adalah sumber terakhir (dua sumber independen sepakat: retiredtab dan
+       acroreiser). SHA tidak berubah. -->
+  <project name="LineageOS/android_hardware_qcom_audio" path="hardware/qcom-caf/msm8916/audio"
+           remote="gh" revision="e0e79d6281d55c4f0c93ec7d471d4554281a796b"
+           upstream="lineage-19.0-caf-msm8916" />
+  <project name="LineageOS/android_hardware_qcom_display" path="hardware/qcom-caf/msm8916/display"
+           remote="gh" revision="984ff8f2142912cd682de872db3643843e3cb075"
+           upstream="lineage-19.0-caf-msm8916" />
+  <project name="LineageOS/android_hardware_qcom_media" path="hardware/qcom-caf/msm8916/media"
+           remote="gh" revision="bf62f596b10d39caf9c4208ce767a7deed662a1c"
+           upstream="lineage-19.0-caf-msm8916" />
+
+  <!-- ================================================================
+       Tambahan yang TIDAK ADA di manifest official lineage-20.0
+       ================================================================ -->
+
+  <!-- sepolicy qcom legacy: manifest official tidak punya path ini; repo
+       official (LineageOS/android_device_qcom_sepolicy) hanya menyediakan
+       branch lineage-20.0 dan lineage-20.0-legacy-um — BUKAN yang kita pakai.
+       Fork UL branch lineage-20.0-legacy adalah sumbernya (dipakai device tree
+       via include device/qcom/sepolicy-legacy/sepolicy.mk). Branch beku sejak
+       2021-12-11 — pin SHA aman. Precedent: resep retiredtab 19.1 juga
+       mengambil repo ini dari UL. -->
+  <project name="LineageOS-UL/android_device_qcom_sepolicy" path="device/qcom/sepolicy-legacy"
+           remote="gh" revision="470e8d88f1490b24bfe76aa17bd2ea57bcaa4c27"
+           upstream="lineage-20.0-legacy" />
+
+  <!-- timekeep: dipakai device.mk:855 (PRODUCT_PACKAGES: timekeep) dan
+       sepolicy/timekeep_app.te. Ada di org LineageOS branch lineage-20 tapi
+       TIDAK didaftarkan manifest official lineage-20.0 (diverifikasi 6 Agu 2026
+       lewat grep default.xml + snippets). SHA 11c1535c = HEAD lineage-20 yang
+       juga HEAD lineage-21/22.0/22.1 (stabil). -->
+  <project name="LineageOS/android_hardware_sony_timekeep" path="hardware/sony/timekeep"
+           remote="gh" revision="11c1535c71b97f0ab833e215a8121ed107235010"
+           upstream="lineage-20" />
+
+</manifest>
