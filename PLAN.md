@@ -1200,18 +1200,61 @@ Langkah berikutnya: protokol Fase 9 (kernel AnyKernel3 dulu).
 
 ## Fase 9 — Boot pertama & protokol diagnosis
 
-Protokol 19.1 dipertahankan utuh — ia bekerja.
+✅ **HOMESCREEN TERCAPAI 6 Agustus 2026** — ROM `lineage-20.0-20260806_001127`
+boot sampai homescreen di perangkat nyata. Dua pemblokir boot ditemukan dan
+dibereskan (9.6). Log perangkat: `report/` (dmesg, getprop, logcat).
 
-- [ ] **9.1 Kernel dulu lewat AnyKernel3** (Fase 1.5), baru ROM penuh. Memisahkan variabel.
-- [ ] **9.2** ramoops sudah di cmdline; `androidboot.init_fatal_reboot_target=recovery`
-      membuat init yang mati jatuh ke recovery, bukan menggantung di logo.
-- [ ] **9.3** **`adb` diharapkan hidup lebih awal** — fork UL sudah membawa
-      `transport_legacy.cpp`. Ini berbeda dari 19.1 awal: `adb devices` kosong sekarang
-      **memang** sinyal bahwa init mati lebih awal, karena penyebab lamanya sudah hilang.
-- [ ] **9.4** Splash bertahan karena `TARGET_CONTINUOUS_SPLASH_ENABLED` —
-      **layar tidak berubah meski boot sudah jauh.** Jangan pakai layar sebagai sinyal.
-- [ ] **9.5** Penanda keberhasilan yang menentukan (dari 19.1): `sys.boot_completed=1`,
-      `logcat -b crash` nol baris, dan **`/data/anr/` kosong**.
+- [x] **9.1** Uji kernel (Fase 1.5b) dan ROM penuh berjalan; variabel dipisahkan.
+- [x] **9.2** `androidboot.init_fatal_reboot_target=recovery` bekerja sebagaimana
+      dirancang — gejala bootloop yang diamati BUKAN init fatal (tidak jatuh ke
+      recovery), sehingga tersangka bergeser ke system_server. Benar: Watchdog.
+- [x] **9.3** adb — **prediksi §9.3 terbukti keliru arahnya**: `adb devices` kosong
+      di build rilis bukan karena init mati, tapi karena `ro.adb.secure=1`
+      (post_process_props.py:33 tidak menambah adb ke persist.sys.usb.config).
+      Untuk diagnosis: `WITH_ADB_INSECURE := true` + `sys.usb.config=mtp,adb` dari
+      init (commit `0345221`). **Harus dimatikan sebelum rilis.**
+- [x] **9.4** Splash/animasi bukan sinyal — benar: animasi jalan penuh selama
+      system_server macet.
+- [x] **9.5** Penanda keberhasilan: homescreen tercapai. Yang BELUM terverifikasi di
+      perangkat: kamera, RIL (risiko terbuka), Wi-Fi, sensor, audio, Bluetooth.
+
+### 9.6 Pemblokir boot yang ditemukan di perangkat
+
+**Bootloop 1 — fitur Lineage Health charging control (Watchdog):**
+
+Gejala: boot animation 2+ menit, reboot berulang, tidak pernah ke recovery.
+Logcat (`report/logcat.txt`):
+
+```
+WATCHDOG KILLING SYSTEM PROCESS: Blocked in handler on main thread
+  at ServiceManager.waitForDeclaredService(...)
+  at ChargingControlController.<init>(ChargingControlController.java:145)
+  at HealthInterfaceService.onStart(...)
+```
+
+Rantai akar:
+1. `ChargingControl()` (`hardware/lineage/interfaces/health/aidl/default/
+   ChargingControl.cpp:40-52`) ber-loop menunggu node yang writable
+   `R_OK|W_OK`.
+2. Node sysfs power_supply dibuat 0644 root:root (`power_supply_sysfs.c:257,267`)
+   — health-service (user system) tak pernah bisa menulis → loop selamanya.
+3. `IChargingControl/default` tak pernah register.
+4. `waitForDeclaredService` di main thread system_server menggantung →
+   Watchdog membunuh system_server tiap ~2 menit → bootloop.
+
+Perbaikan (commit `e92c32a`): `chmod 0666
+/sys/class/power_supply/battery/charging_enabled` di `on fs`
+(init.qcom.rc) — loop constructor adalah mekanisme retry 100ms, jadi begitu
+chmod masuk, servis register normal dan fitur charging control justru
+berfungsi. `SUPPORTS_BYPASS := false` (tidak ada jalur bypass). Catatan:
+`SUPPORTS_TOGGLE` TIDAK boleh dimatikan — constructor hanya didefinisikan
+di bawah `#ifdef TOGGLE`/`#ifdef DEADLINE`, mematikan keduanya = link error.
+
+### 9.7 Yang belum diuji di perangkat (Fase 10)
+
+Kamera (HAL1), RIL (risiko terbuka terbesar — belum pernah jalan di 19.1),
+Wi-Fi, sensor, audio, Bluetooth, charging control (harusnya jalan — verifikasi
+via Settings), dan uji stabilitas (boot hangat, sleep/wake).
 
 ---
 
