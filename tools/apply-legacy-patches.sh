@@ -212,7 +212,66 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 6. Penjaga regresi -- bukan patch, tapi memeriksa asumsi yang bisa berubah
+# 6. packages/modules/Bluetooth: toleransi opcode vendor tanpa OGF
+#    (perbaikan crash BT — Fase 10)
+# ---------------------------------------------------------------------------
+# Controller BT WCNSS A37 mengembalikan respons perintah HCI vendor dengan
+# opcode yang hanya memuat OCF (OGF vendor 0xFC00 hilang): menunggu 0xFD57
+# (HCI_BLE_ADV_FILTER), respons datang dengan 0x157. Assertion gd
+# (hci_layer.cc:183) lalu mematikan proses com.android.bluetooth (SIGABRT):
+#
+#   Abort message: 'assertion 'waiting_command_ == op_code' failed -
+#   Waiting for 0xfd57 (LE_ADV_FILTER), got 0x157 (Unknown OpCode: 343)'
+#
+# Akibat: BT selalu kembali OFF (DeadObjectException), baik saat boot
+# maupun toggle manual. Dispatch respons gd memakai front antrian (bukan
+# lookup per-opcode), jadi membandingkan OCF saja sudah cukup.
+BT_HCI=packages/modules/Bluetooth/system/gd/hci/hci_layer.cc
+BT_PAT='waiting_is_vendor'
+
+if [ ! -f "$BT_HCI" ]; then
+    c_no "$BT_HCI tidak ada -- periksa manifest"; rc=1
+elif grep -q "$BT_PAT" "$BT_HCI"; then
+    c_ok "bluetooth hci_layer: toleransi opcode vendor sudah terpasang"
+elif [ "$CHECK" = 1 ]; then
+    c_do "bluetooth hci_layer: PERLU tambah toleransi opcode vendor (crash BT)"
+else
+    c_do "bluetooth hci_layer: tambah toleransi opcode vendor"
+    if python3 - "$BT_HCI" <<'PY'
+import sys
+p = sys.argv[1]
+src = open(p).read()
+old = '''    ASSERT_LOG(waiting_command_ == op_code, "Waiting for 0x%02hx (%s), got 0x%02hx (%s)", waiting_command_,
+               OpCodeText(waiting_command_).c_str(), op_code, OpCodeText(op_code).c_str());'''
+new = '''    bool waiting_is_vendor = static_cast<int>(waiting_command_) & (0x3f << 10);
+    if (waiting_is_vendor) {
+      // Some legacy controllers (e.g. Qualcomm WCNSS on msm8916) echo vendor
+      // command responses with only the OCF field, dropping the vendor OGF.
+      // Compare only the OCF so the response is accepted and dispatched to
+      // the waiting command callback (dispatch is by queue front, not by
+      // opcode, so the rest of the pipeline works unchanged).
+      ASSERT_LOG((static_cast<int>(waiting_command_) & 0x03ff) == (static_cast<int>(op_code) & 0x03ff),
+                 "Waiting for 0x%02hx (%s), got 0x%02hx (%s)", waiting_command_,
+                 OpCodeText(waiting_command_).c_str(), op_code, OpCodeText(op_code).c_str());
+    } else {
+      ASSERT_LOG(waiting_command_ == op_code, "Waiting for 0x%02hx (%s), got 0x%02hx (%s)", waiting_command_,
+                 OpCodeText(waiting_command_).c_str(), op_code, OpCodeText(op_code).c_str());
+    }'''
+if old not in src:
+    print("PEMBUKA TIDAK DITEMUKAN — patch manual diperlukan", file=sys.stderr)
+    sys.exit(1)
+open(p, 'w').write(src.replace(old, new, 1))
+PY
+    then
+        grep -q "$BT_PAT" "$BT_HCI" && c_ok "bluetooth hci_layer: toleransi opcode vendor terpasang" \
+            || { c_no "bluetooth hci_layer: patch GAGAL -- periksa manual"; rc=1; }
+    else
+        c_no "bluetooth hci_layer: python GAGAL -- periksa manual"; rc=1
+    fi
+fi
+
+# ---------------------------------------------------------------------------
+# 7. Penjaga regresi -- bukan patch, tapi memeriksa asumsi yang bisa berubah
 #    diam-diam kalau LineageOS-UL suatu saat cair lagi (fork dipin ke BRANCH,
 #    bukan SHA, di snippets/losul.xml).
 # ---------------------------------------------------------------------------

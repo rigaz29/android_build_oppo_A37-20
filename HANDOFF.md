@@ -4,9 +4,10 @@ Berkas ini ditulis supaya siapa pun (manusia atau LLM) bisa melanjutkan **tanpa*
 percakapan sebelumnya. Baca ini dulu, lalu `PLAN.md`.
 
 Terakhir diperbarui: 6 Agustus 2026 — **Fase 1-9 selesai, Fase 10 berjalan**. ROM boot
-sampai homescreen; Wi-Fi diperbaiki (duplikat service wpa_supplicant HIDL warisan 19.1
-menolak definisi AIDL — PLAN §10.1), build `20260806_005310` menunggu uji. RIL tetap
-risiko terbuka. adb diagnostik AKTIF — matikan sebelum rilis.
+sampai homescreen; Wi-Fi dan kamera terverifikasi normal; crash Bluetooth ditemukan
+(controller WCNSS mengembalikan opcode vendor tanpa OGF — PLAN §10.4) dan diperbaiki di
+build `20260806_133829` (menunggu flash). RIL tetap risiko terbuka (ANR com.android.phone
+adalah efek sampingnya, bukan bug baru). adb diagnostik AKTIF — matikan sebelum rilis.
 
 ---
 

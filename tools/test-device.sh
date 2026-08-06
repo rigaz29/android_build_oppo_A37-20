@@ -42,51 +42,55 @@ for s in vendor.audio-hal vendor.bluetooth-1-0-qti vendor.gnss_service \
 done
 
 # ------------------------------------------------------- registrasi HAL ---
-inf "registrasi HAL di servicemanager"
-adb shell "service list 2>/dev/null" > /tmp/opencode/td-svc.txt
+inf "registrasi HAL (lshal — hwbinder servicemanager)"
+# CATATAN: `service list` hanya menampilkan binder servicemanager (framework).
+# HAL HIDL terdaftar di hwbinder servicemanager — dicek dengan `lshal`.
+LSHAL=$(adb shell lshal --neat 2>/dev/null)
 for h in android.hardware.audio android.hardware.bluetooth android.hardware.gnss \
          android.hardware.graphics.composer android.hardware.light \
          android.hardware.media.omx android.hardware.memtrack \
          android.hardware.power android.hardware.wifi \
-         vendor.qti.hardware.perf vendor.lineage.livedisplay; do
-    grep -q "$h" /tmp/opencode/td-svc.txt && ok "$h" || bad "$h TIDAK terdaftar"
+         vendor.qti.hardware.perf vendor.lineage.livedisplay \
+         android.hardware.camera.provider; do
+    echo "$LSHAL" | grep -q "$h" && ok "$h" || bad "$h TIDAK terdaftar di lshal"
 done
 
 # ---------------------------------------------------------------- RIL ----
 inf "RIL"
-SIM=$(adb shell getprop gsm.sim.state 2>/dev/null | tr -d '\r')
-NET=$(adb shell getprop gsm.network.type 2>/dev/null | tr -d '\r')
-grep -q "android.hardware.radio" /tmp/opencode/td-svc.txt && ok "IRadio terdaftar" || bad "IRadio TIDAK terdaftar (risiko terbuka yang diketahui)"
-inf "  gsm.sim.state='$SIM' gsm.network.type='$NET'"
+echo "$LSHAL" | grep -q "android.hardware.radio" && ok "IRadio terdaftar" || bad "IRadio TIDAK terdaftar (risiko terbuka yang diketahui)"
 
 # -------------------------------------------------------------- wifi -----
 inf "Wi-Fi"
 WIFIST=$(adb shell "cmd wifi status 2>/dev/null | head -3" 2>/dev/null | tr -d '\r' | tr '\n' ' ')
 echo "$WIFIST" | grep -qi "enabled" && ok "wifi enabled: $WIFIST" || bad "wifi: $WIFIST"
-grep -q "android.hardware.wifi.supplicant" /tmp/opencode/td-svc.txt && ok "supplicant terdaftar" || bad "supplicant TIDAK terdaftar"
+echo "$LSHAL" | grep -q "android.hardware.wifi.supplicant" 2>/dev/null && ok "supplicant di lshal" || {
+    # supplicant adalah servis AIDL — terdaftar di BINDER servicemanager
+    adb shell "service list 2>/dev/null" | grep -q "wifi.supplicant" && ok "supplicant terdaftar (binder)" \
+        || bad "supplicant TIDAK terdaftar"
+}
 
 # ------------------------------------------------------------ bluetooth --
 inf "Bluetooth"
 BTST=$(adb shell "cmd bluetooth_manager status 2>/dev/null" 2>/dev/null | tr -d '\r' | head -1)
-grep -q "android.hardware.bluetooth" /tmp/opencode/td-svc.txt && ok "HAL BT terdaftar" || bad "HAL BT TIDAK terdaftar"
+echo "$LSHAL" | grep -q "android.hardware.bluetooth" && ok "HAL BT terdaftar" || bad "HAL BT TIDAK terdaftar"
 [ "$(adb shell pidof com.android.bluetooth | tr -d '\r')" != "" ] && ok "aplikasi BT hidup" || bad "aplikasi BT mati"
 
 # ------------------------------------------------------------- kamera ----
 inf "Kamera (dumpsys)"
 adb shell "dumpsys media.camera 2>/dev/null" > /tmp/opencode/td-cam.txt 2>&1
-grep -qi "Camera HAL module" /tmp/opencode/td-cam.txt && ok "CameraService terhubung ke HAL" || bad "CameraService/HAL: $(grep -icE 'error|fail' /tmp/opencode/td-cam.txt) error"
-grep -q "android.hardware.camera" /tmp/opencode/td-svc.txt && ok "camera.provider terdaftar" || bad "camera.provider TIDAK"
+grep -qiE "Camera HAL module|Number of camera devices" /tmp/opencode/td-cam.txt && ok "CameraService hidup (device: $(grep -oE 'Number of camera devices: [0-9]+' /tmp/opencode/td-cam.txt | head -1 | grep -oE '[0-9]+'))" || bad "CameraService: $(head -3 /tmp/opencode/td-cam.txt | tr -d '\r')"
+echo "$LSHAL" | grep -q "android.hardware.camera" && ok "camera.provider terdaftar" || bad "camera.provider TIDAK"
 
 # ------------------------------------------------------------ sensors ----
 inf "Sensor"
 adb shell "dumpsys sensorservice 2>/dev/null | head -30" > /tmp/opencode/td-sens.txt 2>&1
-N=$(grep -cE "^\s+[0-9]+\|" /tmp/opencode/td-sens.txt)
-[ "$N" -gt 0 ] 2>/dev/null && ok "$N sensor terdaftar" || bad "sensorservice: $(head -3 /tmp/opencode/td-sens.txt | tr -d '\r' | tr '\n' ' ')"
+N=$(grep -oE "Total [0-9]+ h/w sensors" /tmp/opencode/td-sens.txt | head -1 | grep -oE "[0-9]+")
+[ -n "$N" ] && ok "$N sensor terdaftar" || bad "sensorservice: $(head -3 /tmp/opencode/td-sens.txt | tr -d '\r' | tr '\n' ' ')"
 
 # -------------------------------------------------------------- audio ----
 inf "Audio"
-adb shell "dumpsys media.audio_flinger 2>/dev/null | head -5" > /tmp/opencode/td-audio.txt 2>&1
-grep -qi "AudioFlinger" /tmp/opencode/td-audio.txt && ok "AudioFlinger hidup" || bad "AudioFlinger: $(head -2 /tmp/opencode/td-audio.txt | tr -d '\r')"
+adb shell "dumpsys media.audio_flinger 2>/dev/null" > /tmp/opencode/td-audio.txt 2>&1
+grep -qiE "AudioFlinger|Output threads|audio_hw_modules" /tmp/opencode/td-audio.txt && ok "AudioFlinger hidup" || bad "AudioFlinger: $(head -2 /tmp/opencode/td-audio.txt | tr -d '\r')"
 
 # ---------------------------------------------------------------- GPS ----
 inf "GPS"

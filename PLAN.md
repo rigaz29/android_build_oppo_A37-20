@@ -1293,9 +1293,39 @@ konfigurasi HAL1 legacy.
 |---|---|---|
 | Boot / homescreen | ✅ | sys.boot_completed=1, Launcher tampil |
 | Wi-Fi | ✅ **terverifikasi normal di perangkat** (6 Agu) | §10.1 |
-| Kamera | ❓ belum diuji di LOS 20 (jalur mediaserver/legacy; 19.1 terbukti jalan) | — |
-| RIL | ❌ rusak (risiko terbuka, sama seperti 19.1) | lazy start IRadio gagal |
-| Sensor, audio, BT, charging control | ❓ belum diuji | — |
+| Kamera | ✅ **berfungsi** (2 device, preview CAPTURING, Aperture dipakai) | dumpsys media.camera + logcat 6 Agu |
+| BT | 🔧 **crash ditemukan & diperbaiki** (build `20260806_133829` menunggu flash) — §10.4 | tombstone_08: assertion LE_ADV_FILTER |
+| RIL | ❌ rusak (risiko terbuka, sama seperti 19.1) | lazy start IRadio gagal; ANR com.android.phone pada broadcast boot = efek samping RIL (bukan bug baru) |
+| Sensor, audio, charging control | ✅ **berfungsi** (4 sensor, audio HAL, charging_enabled=1) | lshal + dumpsys 6 Agu |
+| ANR | 3× com.android.phone (boot broadcast) — **efek samping RIL**, bukan bug baru | /data/anr/ 6 Agu |
+
+### 10.4 Crash Bluetooth — akar & perbaikan (6 Agustus 2026)
+
+Gejala: proses `com.android.bluetooth` mati (SIGABRT, exit 10) setiap kali BT
+dinyalakan — saat boot maupun toggle manual; BT selalu kembali OFF
+(`DeadObjectException`). Tombstone:
+
+```
+Abort message: 'assertion 'waiting_command_ == op_code' failed -
+Waiting for 0xfd57 (LE_ADV_FILTER), got 0x157 (Unknown OpCode: 343)'
+backtrace: HciLayer::impl::handle_command_response -> on_command_complete
+```
+
+Akar: controller BT WCNSS A37 mengembalikan respons perintah HCI **vendor**
+dengan opcode yang hanya memuat OCF — OGF vendor (0xFC00) hilang
+(0xFD57 → 0x157). Assertion gd (`packages/modules/Bluetooth/system/gd/hci/
+hci_layer.cc:183`) menuntut opcode respons == opcode kirim → SIGABRT.
+Perintahnya dikirim oleh `btm_ble_adv_filter` (filter scan BLE) saat stack
+mulai — `is_filtering_supported()` mengaku didukung karena VSC controller
+melaporkan filter_support != 0.
+
+Perbaikan (langkah 6 `apply-legacy-patches.sh`): untuk perintah vendor,
+bandingkan **OCF saja** — dispatch respons gd memakai front antrian (bukan
+lookup per-opcode), jadi sisanya bekerja tanpa perubahan. Build
+`20260806_133829`. **Belum diuji di perangkat.**
+
+Catatan uji: hasil `test-device.sh` di build lama menunjukkan "aplikasi BT
+mati" — wajar, fix-nya belum ter-flash.
 
 ### 10b Uji komprehensif — skrip otomatis + daftar manual
 
