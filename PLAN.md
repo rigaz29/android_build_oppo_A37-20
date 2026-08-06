@@ -1292,10 +1292,48 @@ konfigurasi HAL1 legacy.
 | Komponen | Status | Bukti |
 |---|---|---|
 | Boot / homescreen | ✅ | sys.boot_completed=1, Launcher tampil |
-| Wi-Fi | 🔧 diperbaiki, **belum diuji** di build `20260806_005310` | §10.1 |
+| Wi-Fi | ✅ **terverifikasi normal di perangkat** (6 Agu) | §10.1 |
 | Kamera | ❓ belum diuji di LOS 20 (jalur mediaserver/legacy; 19.1 terbukti jalan) | — |
 | RIL | ❌ rusak (risiko terbuka, sama seperti 19.1) | lazy start IRadio gagal |
 | Sensor, audio, BT, charging control | ❓ belum diuji | — |
+
+### 10b Uji komprehensif — skrip otomatis + daftar manual
+
+Tujuan: memverifikasi tiap komponen secara sistematis dan cepat, dengan bukti
+yang bisa diulang. Dua lapis:
+
+1. **`tools/test-device.sh`** — uji otomatis via adb (kesehatan boot, Watchdog/
+   FATAL/ANR, state 27 servis HAL, registrasi HAL di servicemanager, RIL,
+   Wi-Fi, BT, kamera, sensor, audio, GPS, storage, charging control, suspend).
+   Cetak PASS/FAIL per butir.
+2. **Daftar uji manual di bawah** — yang butuh interaksi manusia.
+
+| # | Komponen | Tindakan di perangkat | Kriteria lolos | Kalau gagal |
+|---|---|---|---|---|
+| M1 | Kamera belakang | Buka Aperture → foto | Foto tersimpan, preview normal | logcat: camera.provider, mm-qcamera-daemon |
+| M2 | Kamera depan | Ganti kamera → foto | Foto tersimpan | idem |
+| M3 | Video | Rekam 10 dtk | File video putar | logcat: media.omx, libOmxVenc |
+| M4 | Audio speaker | Putar musik (Eleven) | Suara keluar | logcat: audio.primary.msm8916, audio@6.0 |
+| M5 | Audio earpiece | Panggilan uji (butuh RIL) | Suara di earpiece | tergantung RIL |
+| M6 | Mikrofon | Rekam suara (Recorder) | Terdengar | logcat audio |
+| M7 | Bluetooth ON/OFF | Setelan → Bluetooth → nyalakan | Tidak crash, bisa scan | logcat: bluetooth@1.0-service-qti; proses com.android.bluetooth sempat mati (exit 10) di log 6 Agu — verifikasi tidak berulang |
+| M8 | Bluetooth pairing | Pair dengan perangkat lain | Terhubung | idem |
+| M9 | Sensor rotasi | Putar perangkat | Layar berotasi | dumpsys sensorservice |
+| M10 | Proximity | Telponi/lihat logcat | Sensor menyala saat dekat | idem |
+| M11 | GPS | Setelan lokasi ON → Maps/GPS test | Fix dalam beberapa menit | dumpsys location; logcat gnss@1.0-service |
+| M12 | SD card | Pasang kartu → setelan storage | Terdeteksi, file terbaca | vold; fstab sdcard1 |
+| M13 | Hotspot | Setelan → hotspot ON | Perangkat lain terhubung | logcat: hostapd |
+| M14 | Charging control | Setelan → Baterai → charging control | Opsi muncul, toggle bekerja | logcat: vendor.lineage.health-service.default; node charging_enabled |
+| M15 | Sleep/wake | Tombol power, biarkan 5 menit | Bangun normal, tanpa reboot | dmesg; dumpsys power |
+| M16 | Stabilitas | 24 jam uptime + boot hangat | Tidak ada Watchdog/ANR | test-device.sh |
+| M17 | RIL (target, bukan kriteria) | Pasang SIM → status sinyal | IRadio register (diketahui rusak) | §10.3-D: dua penyebab beruntun 18.1 10.6/10.7 terdokumentasi |
+
+Alur yang disarankan: jalankan `tools/test-device.sh` dulu (cepat, semua yang
+terukur), lalu M1-M16 sesuai prioritas (kamera dulu — satu-satunya fitur inti
+yang belum terverifikasi; RIL terakhir — risiko terbuka yang sudah diakui).
+
+Setiap temuan gagal: kumpulkan `adb logcat -b all` + `adb shell dmesg` ke
+`report/`, dan ikuti rantai §10.3 bila cocok.
 
 ---
 
