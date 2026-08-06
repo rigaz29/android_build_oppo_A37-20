@@ -1,0 +1,259 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Local manifest — LineageOS 20 (Android 13, SDK 33) untuk OPPO A37 / A37f / A37fw.
+
+  BASIS MANIFEST BUKAN LineageOS/android, TAPI LineageOS-UL/android:
+
+      repo init -u https://github.com/LineageOS-UL/android.git -b lineage-20.0
+      (sertakan flag git-lfs; ditulis tanpa tanda hubung ganda karena XML
+       melarang '-' berturut di dalam komentar)
+
+  LineageOS-UL ("Ultra Legacy") sudah memasang 37 fork legacy lewat
+  .repo/manifests/snippets/losul.xml. Yang di 19.1 harus kita repopick manual
+  sekarang datang sendiri. Diverifikasi 5 Agustus 2026 di tree /root/los20:
+
+      packages/modules/adb   -> transport_legacy.cpp ADA   (= Gerrit 326385, W-adb)
+      frameworks/av          -> CameraProviderManager.cpp:1667
+                                `case 1: initializeDeviceInfo<DeviceInfo1>` (Camera HAL1 utuh)
+      system/bpf             -> gerbang eBPF kernel < 4.9   (= Gerrit 320591, W1)
+      system/netd            -> idem                        (= Gerrit 320592, W2)
+      art, external/perfetto -> gerbang memfd_create        (= Gerrit 318097, 287706)
+      device/qcom/sepolicy-legacy (revision lineage-20.0-legacy)
+      system/core, system/sepolicy, frameworks/base, frameworks/native, bionic,
+      hardware/interfaces, hardware/ril, packages/modules/{Bluetooth,Wifi,Connectivity}, ...
+
+  JANGAN mendeklarasikan ulang project-project di atas di berkas ini.
+  Sudah ADA di tree hasil `repo init` UL, terverifikasi:
+      device/qcom/sepolicy-legacy, external/connectivity,
+      hardware/sony/timekeep, packages/apps/Aperture,
+      prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9
+
+  Seluruh SHA di bawah diverifikasi 5 Agustus 2026.
+-->
+<manifest>
+
+  <remote name="gh" fetch="https://github.com/" />
+
+  <!-- ================================================================
+       Repo milik proyek
+       ================================================================ -->
+
+  <!-- Device tree. Basis: lineage-19.1-rb @ ce39cf5 — tree yang BOOT SAMPAI
+       HOMESCREEN di perangkat nyata, dengan kamera dan Bluetooth berfungsi,
+       memuat keenam perbaikan 10.A-10.F proyek 19.1.
+
+       Tree ini MANDIRI: msm8916-common sudah diratakan ke dalamnya sejak 18.1
+       (lihat komentar "Sumber: msm8916-common lineage-18.1" di BoardConfig.mk).
+       Karena itu TIDAK ADA device/cyanogen/msm8916-common di manifest ini —
+       satu pohon dependensi yang tidak perlu dirawat. Bandingkan dengan tree
+       meghs-playground yang masih menggantung pada common tree. -->
+  <project name="rigaz29/rb_device_oppo_A37" path="device/oppo/A37"
+           remote="gh" revision="refs/heads/lineage-20"
+           upstream="lineage-20" />
+
+  <!-- Kernel 3.10.108 ARM64. Basis: lineage-19.1 @ bf222bf — binder modern +
+       binder_alloc + READ_ONCE/WRITE_ONCE + CONFIG_RT_GROUP_SCHED dimatikan.
+       Kernel ini sudah terbukti di perangkat lewat zip AnyKernel3.
+
+       Delta ke LOS 20 KECIL — diukur, bukan diperkirakan: binder.c kita hanya
+       berbeda 233 baris dari kernel LOS 20 retiredtab (yang delta 19.1->20.0
+       miliknya sendiri 1363 baris). Lihat PLAN.md Fase 1. -->
+  <project name="rigaz29/kernel_oppo_msm8939" path="kernel/oppo/msm8939"
+           remote="gh" revision="refs/heads/lineage-20"
+           upstream="lineage-20" />
+
+  <!-- Vendor blobs. Di 19.1 dipakai apa adanya dari 18.1 (320 blob, 0 hilang).
+       Untuk 20 tetap basis yang sama; selisih terhadap daftar meghs (457 entri
+       vs 403 milik kita, 336 baris berbeda) ditriase di Fase 6, BUKAN diadopsi
+       borongan. -->
+  <project name="rigaz29/rb-vendor_oppo_A37" path="vendor/oppo"
+           remote="gh" revision="2e5c6f7ffcccbbf1430f8fa13fc530e1cae5feab"
+           upstream="lineage-18.1" />
+
+  <!-- ================================================================
+       hardware/qcom-caf untuk msm8916 — WAJIB
+       ================================================================
+       LineageOS 20 menyediakan qcom-caf untuk msm8953, msm8974, msm8996,
+       msm8998, sdm660, sdm845, sm8150, sm8250, sm8350, sm8450, sm8550 —
+       tapi TIDAK msm8916. Diverifikasi langsung di /root/los20/hardware/qcom-caf/.
+       Branch lineage-20.0-caf-msm8916 juga TIDAK ADA di hulu (git ls-remote kosong);
+       yang tersedia hanya lineage-19.0-caf-msm8916.
+
+       BoardConfig menyetel TARGET_BOARD_PLATFORM := msm8916, jadi tanpa tiga
+       baris ini build mencari direktori yang tidak ada.
+
+       Dua sumber independen sepakat memakai revisi 19.0-caf-msm8916 di LOS 20:
+       manifest retiredtab (20/msm8916/msm8916-20.xml, komentar "revert lineage:
+       RIP legacy qcom") dan acroreiser yang justru MERGE ketiga repo ini ke
+       dalam device tree a6010 sebagai subdirektori. Kita ambil jalur retiredtab
+       (pin di manifest) karena lebih mudah dilacak saat hulu berubah.
+
+       SHA identik dengan yang dipakai proyek 19.1 — branch tidak bergerak. -->
+  <project name="LineageOS/android_hardware_qcom_audio" path="hardware/qcom-caf/msm8916/audio"
+           remote="gh" revision="e0e79d6281d55c4f0c93ec7d471d4554281a796b"
+           upstream="lineage-19.0-caf-msm8916" />
+  <project name="LineageOS/android_hardware_qcom_display" path="hardware/qcom-caf/msm8916/display"
+           remote="gh" revision="984ff8f2142912cd682de872db3643843e3cb075"
+           upstream="lineage-19.0-caf-msm8916" />
+  <project name="LineageOS/android_hardware_qcom_media" path="hardware/qcom-caf/msm8916/media"
+           remote="gh" revision="bf62f596b10d39caf9c4208ce767a7deed662a1c"
+           upstream="lineage-19.0-caf-msm8916" />
+
+  <!-- ================================================================
+       Pin anti-hanyut (upstream drift)
+       ================================================================
+       MASALAHNYA, ditemukan saat Fase 2 (5 Agustus 2026):
+
+       Manifest LineageOS-UL menyematkan project ke BRANCH, bukan SHA
+       (default revision="refs/heads/lineage-20.0"). Lini UL sendiri BEKU sejak
+       2025-04-04, tapi repo LineageOS hulu TERUS BERGERAK di branch yang sama.
+       Akibatnya `repo sync` menarik kode yang jauh lebih baru daripada fork UL
+       yang mengelilinginya, tanpa peringatan apa pun.
+
+       Terukur: 34 project yang dipin ke branch sudah bergerak melewati
+       2025-05-01. Sebagian besar tidak ikut dibangun (wiki, website, scripts,
+       crowdin, charter, hudson, mirror), tapi sisanya kode sungguhan.
+
+       Yang SUDAH terbukti memutus build:
+
+         external/dng_sdk
+           Commit 624d019 "Crude DNG SDK 1.7.1 upgrade" (2025-12-12 — delapan
+           bulan SETELAH UL beku) menambahkan sdk_version: "current" pada
+           libdng_sdk berikut dependensi ke libjpeg. external/libjpeg-turbo
+           (AOSP, dipin ke tag android-13.0.0_r75) tidak menyediakan varian
+           sdk:sdk, jadi soong berhenti dengan:
+               error: external/dng_sdk/Android.bp:165:1: dependency "libjpeg"
+               of "libdng_sdk" missing variant:
+                 os:android,image:,arch:arm_armv8-a_cortex-a53,sdk:sdk,link:shared
+           Dipin ke 880b683 — commit tepat sebelum upgrade itu, bertanggal
+           2025-04-17, sezaman dengan pembekuan UL.
+
+       Deteksi ulang kapan saja: tools/check-drift.sh
+       Tambahkan pin baru di sini HANYA kalau sebuah project terbukti memutus
+       build — jangan memin 34-34-nya secara preventif, karena itu membekukan
+       perbaikan keamanan aplikasi yang masih sah. -->
+  <remove-project name="LineageOS/android_external_dng_sdk" />
+  <project name="LineageOS/android_external_dng_sdk" path="external/dng_sdk"
+           groups="pdk" remote="gh"
+           revision="880b6833f9d5e131a8d9f92d6d0a836514fc711e"
+           upstream="lineage-20.0" />
+
+  <!-- Pin anti-hanyut: external/skia @ 0c334c1c2f (merge security r28).
+
+       Ditemukan di Fase 8: skia yang hanyut (HEAD 926265bb27 "Backport DNG
+       SDK 1.7.1 support in SkRawCodec", 2025-08-07 — SETELAH pembekuan UL)
+       menuntut API dng_sdk 1.7.1, padahal dng_sdk dipin ke 880b683
+       (pra-1.7.1, lihat pin di atas). Gejalanya:
+
+         external/skia/src/codec/SkRawCodec.cpp:99:69:
+           error: unknown type name 'dng_area_task_progress'
+
+       Memperbarui dng_sdk ke 34e0a65 (versi 1.7.1 terbaru) TIDAK bisa:
+       Android.bp-nya memakai sdk_version:"current" + dep libjpeg yang
+       memutus soong (error varian sdk:sdk — alasan pin dng_sdk ada).
+
+       Commit 0c334c1c2f = merge tag android-security-13.0.0_r28 — pasangan
+       sezaman dng_sdk 880b683 (r28 juga). Diverifikasi: m libskia exit 0
+       dengan pasangan ini. Pin sesuai kebijakan: yang terbukti memutus build. -->
+  <remove-project name="LineageOS/android_external_skia" />
+  <project name="LineageOS/android_external_skia" path="external/skia"
+           groups="pdk" remote="gh"
+           revision="0c334c1c2f0fdc89a5f90dddcbe195e160baf02d"
+           upstream="lineage-20.0" />
+
+  <!-- Pin anti-hanyut: packages/services/Mms @ 0cc94f1.
+
+       Ditemukan di Fase 8: Mms hulu yang hanyut (HEAD d2f1fe6, 2025-08-14)
+       mengimplementasikan API IMms 3-arg (addMultimediaMessageDraft dengan
+       callingUser, dari fbb2828 2024-07), sedangkan fork UL frameworks/base
+       (beku) memakai IMms 2-arg (tanpa callingUser — fork UL tidak pernah
+       memuat fbb2828). Gejalanya:
+
+         MmsService.java:211: error: <anonymous ...MmsService$1> is not
+         abstract and does not override abstract method
+         addMultimediaMessageDraft(String,Uri) in IMms
+
+       Commit 0cc94f1 (2024-12-02, era beku UL) = parent fbb2828,
+       mengimplementasikan API 2-arg yang cocok dengan IMms fork UL.
+       Diverifikasi: m MmsService exit 0. Pin sesuai kebijakan: yang
+       terbukti memutus build. -->
+  <remove-project name="LineageOS/android_packages_services_Mms" />
+  <project name="LineageOS/android_packages_services_Mms" path="packages/services/Mms"
+           groups="pdk" remote="gh"
+           revision="0cc94f1ad63e6a821888784dd1c5aa945f2c4202"
+           upstream="lineage-20.0" />
+
+  <!-- Pin anti-hanyut: packages/services/Telephony @ 288c28358 (merge r28).
+
+       Ditemukan di Fase 8: Telephony hulu yang hanyut (HEAD c1b442574,
+       2026-01-27) memakai TelephonyPermissions.isShell(int) yang TIDAK ada di
+       fork UL frameworks/opt/telephony (beku):
+
+         PhoneInterfaceManager.java:8267: error: cannot find symbol
+           TelephonyPermissions.isShell(Binder.getCallingUid())
+
+       288c28358 = merge tag android-security-13.0.0_r28 (2025-04-18) — sezaman
+       dengan pembekuan UL dan pin skia/dng_sdk (ketiganya r28). Commit setelahnya
+       (54600bbca s/d c1b442574) merujuk API yang tidak ada di tree beku UL.
+       Diverifikasi: m TeleService exit 0. Pin sesuai kebijakan: yang terbukti
+       memutus build. -->
+  <remove-project name="LineageOS/android_packages_services_Telephony" />
+  <project name="LineageOS/android_packages_services_Telephony" path="packages/services/Telephony"
+           groups="pdk" remote="gh"
+           revision="288c28358b9cd9c2be1dd13c729668b18eb37550"
+           upstream="lineage-20.0" />
+
+  <!-- Pin anti-hanyut: packages/apps/Trebuchet @ 1273734a5f (pra-hanyut).
+
+       Ditemukan di Fase 8: Trebuchet hulu yang hanyut (3560be863c, 2025-08-22
+       "Send KEYCODE_HOME for home button...") mengubah signature
+       SystemUiProxy.onBackEvent (menambah displayId) yang TIDAK ada di fork UL
+       frameworks/base (beku):
+
+         quickstep/src/com/android/quickstep/SystemUiProxy.java:151:
+           error: method does not override or implement a method from a supertype
+
+       1273734a5f (2024-12-02, era beku UL) = komit terakhir sebelum hanyut.
+       Diverifikasi: m Launcher3QuickStepLib exit 0. Pin sesuai kebijakan. -->
+  <remove-project name="LineageOS/android_packages_apps_Trebuchet" />
+  <project name="LineageOS/android_packages_apps_Trebuchet" path="packages/apps/Trebuchet"
+           groups="pdk" remote="gh"
+           revision="1273734a5f484a30dafa5aaecda49f0635b24672"
+           upstream="lineage-20.0" />
+
+  <!-- Pin anti-hanyut: packages/apps/Settings @ 823af438e1 (merge r26).
+
+       Ditemukan di Fase 8: Settings hulu (r28+, 2025-04-18) memakai
+       BiometricPrompt.Builder.setClassNameIfItIsConfirmDeviceCredentialActivity()
+       yang TIDAK PERNAH ada di fork UL frameworks/base (file BiometricPrompt.java
+       di fork UL terakhir berubah 2022-03):
+
+         BiometricFragment.java:143: error: cannot find symbol
+           symbol: method setClassNameIfItIsConfirmDeviceCredentialActivity()
+
+       823af438e1 = merge tag android-security-13.0.0_r26 (2025-02-07, sebelum
+       pembekuan UL) — tidak memakai method itu (diverifikasi via git show).
+       Diverifikasi: m Settings-core exit 0. Pin sesuai kebijakan. -->
+  <remove-project name="LineageOS/android_packages_apps_Settings" />
+  <project name="LineageOS/android_packages_apps_Settings" path="packages/apps/Settings"
+           groups="pdk" remote="gh"
+           revision="823af438e1ebca33ec8fd601a124f14831430e7d"
+           upstream="lineage-20.0" />
+
+  <!-- CATATAN guard hardware/qcom-caf/msm8916/Android.mk.
+
+       Resep retiredtab memasangnya sebagai <linkfile> di level manifest:
+           <linkfile src="os_pickup.mk" dest="hardware/qcom-caf/msm8916/Android.mk" />
+       Itu TIDAK VALID di format manifest repo — <linkfile> hanya dikenali
+       sebagai anak dari <project>, dan `src` relatif terhadap direktori project
+       pemiliknya (hardware/qcom-caf/common).
+
+       Temuan 19.1 yang tetap berlaku: gerbang di dalam os_pickup.mk menguji
+       PRODUCT_SOONG_NAMESPACES, dan vendor/lineage/config/BoardConfigQcom.mk
+       menambahkan hardware/qcom-caf/msm8916 ke sana secara otomatis. Jadi guard
+       ini harmless dan BUKAN penentu. Dipasang oleh tools/apply-legacy-patches.sh
+       demi paritas dengan hulu, bukan lewat manifest — mengubahnya di manifest
+       menuntut <remove-project> lalu deklarasi ulang qcom-caf/common berikut
+       SELURUH linkfile lainnya. Rapuh, tidak sepadan. -->
+
+</manifest>

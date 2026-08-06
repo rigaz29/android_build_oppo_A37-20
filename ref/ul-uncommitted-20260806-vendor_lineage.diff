@@ -1,0 +1,17 @@
+diff --git a/build/soong/Android.bp b/build/soong/Android.bp
+index 3436eeca..154c0e8c 100644
+--- a/build/soong/Android.bp
++++ b/build/soong/Android.bp
+@@ -21,7 +21,11 @@ lineage_generator {
+     name: "generated_kernel_includes",
+ 
+     // The headers make command
+-    cmd: "$(PATH_OVERRIDE_SOONG) $(KERNEL_MAKE_CMD) $(KERNEL_MAKE_FLAGS) -C $(TARGET_KERNEL_SOURCE) O=$(KERNEL_BUILD_OUT_PREFIX)$(genDir) ARCH=$(KERNEL_ARCH) $(KERNEL_CROSS_COMPILE) headers_install",
++    // HOSTCFLAGS ditambahkan oleh apply-legacy-patches.sh (Fase 8): LOS 20
++    // menaruh -fuse-ld=lld hanya di HOSTLDFLAGS, yang TIDAK dipakai rule
++    // host-csingle kernel 3.10 (scripts/Makefile.host:117) untuk fixdep —
++    // clang lalu mencari `ld` polos yang tidak ada di PATH sandbox.
++    cmd: "$(PATH_OVERRIDE_SOONG) $(KERNEL_MAKE_CMD) $(KERNEL_MAKE_FLAGS) HOSTCFLAGS=\"-fuse-ld=lld -Wno-unused-command-line-argument\" -C $(TARGET_KERNEL_SOURCE) O=$(KERNEL_BUILD_OUT_PREFIX)$(genDir) ARCH=$(KERNEL_ARCH) $(KERNEL_CROSS_COMPILE) headers_install",
+ 
+     // Directories that can be imported by a cc_* module generated_headers property
+     export_include_dirs: [

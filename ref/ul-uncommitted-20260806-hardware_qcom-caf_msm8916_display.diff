@@ -1,0 +1,17 @@
+diff --git a/common.mk b/common.mk
+index 54295f169..4d44d2119 100644
+--- a/common.mk
++++ b/common.mk
+@@ -6,7 +6,11 @@ common_libs := liblog libutils libcutils libhardware
+ 
+ #Common C flags
+ common_flags := -DDEBUG_CALC_FPS -Wno-missing-field-initializers
+-common_flags += -Wconversion -Wall -Werror -Wno-sign-conversion
++# -Wno-error=enum-enum-conversion ditambahkan oleh apply-legacy-patches.sh
++# (Fase 8): clang 14 (clang-r450784d) menaruh -Wenum-enum-conversion di -Wall,
++# dan kode CAF 2015 (mis. copybit_c2d.cpp) mencampur enum C2D_RGB_FORMAT dengan
++# C2D_FORMAT_MODE — di 19.1 (clang 12, clang-r416183b1) warning ini belum ada.
++common_flags += -Wconversion -Wall -Werror -Wno-sign-conversion -Wno-error=enum-enum-conversion -Wno-error=enum-enum-conversion
+ 
+ ifeq ($(ARCH_ARM_HAVE_NEON),true)
+     common_flags += -D__ARM_HAVE_NEON

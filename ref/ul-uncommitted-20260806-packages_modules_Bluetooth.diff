@@ -1,0 +1,43 @@
+diff --git a/system/gd/hci/hci_layer.cc b/system/gd/hci/hci_layer.cc
+index 9c235294bb..8bc8fc343e 100644
+--- a/system/gd/hci/hci_layer.cc
++++ b/system/gd/hci/hci_layer.cc
+@@ -180,8 +180,20 @@ struct HciLayer::impl {
+       LOG_ERROR("Discarding event that came after timeout 0x%02hx (%s)", op_code, OpCodeText(op_code).c_str());
+       return;
+     }
+-    ASSERT_LOG(waiting_command_ == op_code, "Waiting for 0x%02hx (%s), got 0x%02hx (%s)", waiting_command_,
+-               OpCodeText(waiting_command_).c_str(), op_code, OpCodeText(op_code).c_str());
++    bool waiting_is_vendor = static_cast<int>(waiting_command_) & (0x3f << 10);
++    if (waiting_is_vendor) {
++      // Some legacy controllers (e.g. Qualcomm WCNSS on msm8916) echo vendor
++      // command responses with only the OCF field, dropping the vendor OGF.
++      // Compare only the OCF so the response is accepted and dispatched to
++      // the waiting command callback (dispatch is by queue front, not by
++      // opcode, so the rest of the pipeline works unchanged).
++      ASSERT_LOG((static_cast<int>(waiting_command_) & 0x03ff) == (static_cast<int>(op_code) & 0x03ff),
++                 "Waiting for 0x%02hx (%s), got 0x%02hx (%s)", waiting_command_,
++                 OpCodeText(waiting_command_).c_str(), op_code, OpCodeText(op_code).c_str());
++    } else {
++      ASSERT_LOG(waiting_command_ == op_code, "Waiting for 0x%02hx (%s), got 0x%02hx (%s)", waiting_command_,
++                 OpCodeText(waiting_command_).c_str(), op_code, OpCodeText(op_code).c_str());
++    }
+ 
+     bool is_vendor_specific = static_cast<int>(op_code) & (0x3f << 10);
+     CommandStatusView status_view = CommandStatusView::Create(event);
+diff --git a/system/main/shim/btm_api.cc b/system/main/shim/btm_api.cc
+index 14a97fd363..99713804df 100644
+--- a/system/main/shim/btm_api.cc
++++ b/system/main/shim/btm_api.cc
+@@ -632,7 +632,10 @@ tBTM_STATUS bluetooth::shim::BTM_SetDiscoverability(uint16_t discoverable_mode,
+ }
+ 
+ void bluetooth::shim::BTM_EnableInterlacedInquiryScan() {
+-  Stack::GetInstance()->GetBtm()->SetInterlacedInquiryScan();
++  // Uji A37: WCNSS tidak merespons inquiry HP lain dengan interlaced scan.
++  // Pakai STANDARD (lihat PLAN 20 §10.6). Kembalikan ke SetInterlacedInquiryScan
++  // bila terbukti bukan penyebab.
++  Stack::GetInstance()->GetBtm()->SetStandardInquiryScan();
+ }
+ 
+ tBTM_STATUS bluetooth::shim::BTM_BleObserve(bool start, uint8_t duration_sec,
