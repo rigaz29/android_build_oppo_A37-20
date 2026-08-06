@@ -1302,9 +1302,10 @@ konfigurasi HAL1 legacy.
 Tujuan: memverifikasi tiap komponen secara sistematis dan cepat, dengan bukti
 yang bisa diulang. Dua lapis:
 
-1. **`tools/test-device.sh`** — uji otomatis via adb (kesehatan boot, Watchdog/
-   FATAL/ANR, state 27 servis HAL, registrasi HAL di servicemanager, RIL,
-   Wi-Fi, BT, kamera, sensor, audio, GPS, storage, charging control, suspend).
+1. **`tools/test-device.sh`** (Linux) / **`tools/test-device.ps1`** (Windows
+   PowerShell) — uji otomatis via adb (kesehatan boot, Watchdog/FATAL/ANR,
+   state 27 servis HAL, registrasi HAL di servicemanager, RIL, Wi-Fi, BT,
+   kamera, sensor, audio, GPS, storage, charging control, suspend).
    Cetak PASS/FAIL per butir.
 2. **Daftar uji manual di bawah** — yang butuh interaksi manusia.
 
