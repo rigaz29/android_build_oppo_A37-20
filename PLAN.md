@@ -1294,7 +1294,8 @@ konfigurasi HAL1 legacy.
 | Boot / homescreen | ✅ | sys.boot_completed=1, Launcher tampil |
 | Wi-Fi | ✅ **terverifikasi normal di perangkat** (6 Agu) | §10.1 |
 | Kamera | ✅ **berfungsi** (2 device, preview CAPTURING, Aperture dipakai) | dumpsys media.camera + logcat 6 Agu |
-| BT | 🔧 **crash ditemukan & diperbaiki** (build `20260806_133829` menunggu flash) — §10.4 | tombstone_08: assertion LE_ADV_FILTER |
+| BT | ✅ **terverifikasi di perangkat** (build `20260806_133829`): `svc bluetooth enable` → `enabled: true, state: ON`, proses hidup | §10.4 |
+| Volume | ✅ **diperbaiki** — akar: `a2dp_audio_policy_configuration.xml` tidak pernah di-copy → XInclude gagal → seluruh config audio (termasuk kurva volume) ditolak → volume selalu full — §10.5 | terukur: RING=7 → -12 dBFS vs RING=1 → -38 dBFS |
 | RIL | ❌ rusak (risiko terbuka, sama seperti 19.1) | lazy start IRadio gagal; ANR com.android.phone pada broadcast boot = efek samping RIL (bukan bug baru) |
 | Sensor, audio, charging control | ✅ **berfungsi** (4 sensor, audio HAL, charging_enabled=1) | lshal + dumpsys 6 Agu |
 | ANR | 3× com.android.phone (boot broadcast) — **efek samping RIL**, bukan bug baru | /data/anr/ 6 Agu |
@@ -1322,10 +1323,51 @@ melaporkan filter_support != 0.
 Perbaikan (langkah 6 `apply-legacy-patches.sh`): untuk perintah vendor,
 bandingkan **OCF saja** — dispatch respons gd memakai front antrian (bukan
 lookup per-opcode), jadi sisanya bekerja tanpa perubahan. Build
-`20260806_133829`. **Belum diuji di perangkat.**
+`20260806_133829`. **Terverifikasi di perangkat** (6 Agu): `svc bluetooth
+enable` → `enabled: true, state: ON`, `pidof com.android.bluetooth` hidup.
 
-Catatan uji: hasil `test-device.sh` di build lama menunjukkan "aplikasi BT
-mati" — wajar, fix-nya belum ter-flash.
+### 10.5 Volume tidak bisa diatur — akar & perbaikan (6 Agustus 2026)
+
+Gejala (laporan user): suara ada, tapi volume tidak bisa dinaik-turunkan.
+
+Pengukuran adb:
+- Index framework berubah (keys): `streamVolume: 10 → 24`, policy per-device
+  benar (`0002(speaker): 24`), tapi **mixer selalu 0 dB** dan kontrol
+  hardware `RX1 Digital Volume` tetap 86 → volume TIDAK diterapkan di mana
+  pun. Level output identik di index berapa pun (ringtone -12 dBFS di RING=7
+  DAN RING=1).
+- `logcat` penuh `APM::VolumeCurve: Invalid device category 1 for Volume
+  Curve` — kategori 1 = `DEVICE_CATEGORY_SPEAKER`; `volIndexToDb()` di
+  `VolumeCurve.h:167` mengembalikan **0.0f (full volume)** bila grup tidak
+  punya kurva untuk kategori itu.
+
+Akar (log restart audioserver):
+```
+E APM::Serializer: deserialize: libxml failed to resolve XIncludes on
+  /vendor/etc/audio_policy_configuration.xml document.
+E libxml2 : failed to load external entity "/vendor/etc/a2dp_audio_policy_configuration.xml"
+W APM::AudioPolicyEngine/Base: No configuration of AUDIO_STREAM_VOICE_CALL
+  found, using default volume configuration
+```
+`device.mk` menyalin `bluetooth_audio_policy_configuration.xml` dan
+`a2dp_in_...` tapi **tidak** `a2dp_audio_policy_configuration.xml` — padahal
+`audio_policy_configuration.xml` (5.1, dari `audio/` device tree)
+meng-include file itu via XInclude. Satu file hilang → `xmlXIncludeProcess`
+gagal → **seluruh config audio (modul + volume) ditolak** → APM
+`setDefault()`; parse legacy volume juga gagal (XInclude yang sama) → semua
+volume group tanpa kurva → gain selalu 1.0.
+
+Perbaikan (device tree `7902422`): tambah
+`frameworks/av/services/audiopolicy/config/a2dp_audio_policy_configuration.xml`
+ke `PRODUCT_COPY_FILES`. Keuntungan tambahan: modul `a2dp` kini terdefinisi →
+jalur suara BT A2DP tersedia.
+
+Terverifikasi di perangkat (file di-push ke /vendor lalu restart audioserver):
+- Error XInclude hilang; `Config source: /vendor/etc/audio_policy_configuration.xml`
+  (config penuh termuat, bukan default).
+- Volume group dapat kurva (MUSIC max 25, RING max 7).
+- Terukur: RING=7 → output **-12 dBFS**; RING=1 → **-38 dBFS** (atenuasi
+  -26 dB sesuai kurva speaker RING 1/7). Gain mixer & track = -26 dB.
 
 ### 10b Uji komprehensif — skrip otomatis + daftar manual
 
