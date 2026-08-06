@@ -357,18 +357,22 @@ keputusan triase per commit (port/buang), dan catatan resolusi konflik bila ada.
 > Urutan linear; tiap fase punya kriteria keluar dan rollback. **Tidak ada rebuild
 > otomatis — tiap fase build menunggu persetujuan.**
 
-### M0 — Jaring pengaman & disk (prasyarat)
-- [ ] Snapshot keadaan UL yang **terbukti jalan**: `repo manifest -r >
-      ref/ul-tree-snapshot-20260806.xml`; SHA 37 fork UL via `repo forall -c
-      'echo $REPO_PATH $(git rev-parse HEAD)'`; simpan di `ref/`.
-- [ ] Pastikan state repo A37 ter-push (device `7938923`, kernel `8cc1519`, vendor
-      `2e5c6f7` — sudah di GitHub; verifikasi `git status` bersih).
-- [ ] Arsip `A37-20.xml` → `A37-20-ul.xml`.
-- [ ] **Disk: sisa 40 GB tidak cukup.** Target ≥ 60 GB sebelum sync+build: kandidat
-      pembersihan `~/.ccache`, `/root/a37-dl` (artefak lama), `ref/lineage-20.0-*-gt58wifi.zip`
-      (616 MB; cara unduh ulang di PLAN Lampiran B), dan bila terpaksa `out/` (76 GB —
-      berarti rebuild penuh). Keputusan pembersihan dilakukan bersama user.
-- [ ] Simpan zip ROM UL terakhir yang jalan untuk uji banding/rollback flash.
+### M0 — Jaring pengaman & disk (prasyarat) ✅ **SELESAI 6 Agustus 2026** (commit `2956554`)
+- [x] Snapshot keadaan UL yang **terbukti jalan**: `repo manifest -r` →
+      `ref/ul-tree-snapshot-20260806.xml` + SHA 1213 project di
+      `ref/ul-tree-shas-20260806.txt` + diff 5 project kotor di `ref/ul-uncommitted-*`
+      (semua = hasil apply-legacy-patches.sh, tanpa perubahan liar). Rincian:
+      `ref/ul-known-good-baseline.md`.
+- [x] Repo A37 ter-push terverifikasi — **device ternyata `7902422`** (lebih baru dari
+      `7938923` dokumen lama; sudah memuat perbaikan Fase 9/10), kernel `8cc1519`,
+      vendor `2e5c6f7`; ketiganya == GitHub.
+- [x] Arsip `A37-20.xml` → `A37-20-ul.xml`.
+- [x] **Disk: out/ 76 GB dihapus (persetujuan user), ccache 18 GB dipertahankan** —
+      sisa **114 GB** (target ≥60 terlampaui).
+- [x] Zip baseline diamankan: `/root/a37-dl/lineage-20.0-UL-baseline-20260806_165815.zip`
+      (hardlink inode yang sama dengan out/ — tetap hidup setelah out/ dihapus;
+      sha256 `519dcfd6…`). ⚠️ Seluruh 9 zip di out/ dulu berbagi satu inode: hanya isi
+      build terakhir yang pernah ada.
 
 **Rollback:** tidak ada perubahan tree di fase ini.
 
