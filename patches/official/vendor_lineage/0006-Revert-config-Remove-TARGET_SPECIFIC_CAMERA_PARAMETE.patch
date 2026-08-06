@@ -1,0 +1,71 @@
+From 0b45b0addf3c441c237eb17c54ccaea8fc5f3753 Mon Sep 17 00:00:00 2001
+From: Khalvat-M <mmba313@gmail.com>
+Date: Tue, 25 Oct 2022 07:11:07 +0330
+Subject: [PATCH 06/13] Revert "config: Remove
+ TARGET_SPECIFIC_CAMERA_PARAMETER_LIBRARY"
+
+This reverts commit 1cfc6cbf4b259a6357cf2c2d897430266c13b748.
+---
+ build/soong/Android.bp     | 17 +++++++++++++++++
+ config/BoardConfigSoong.mk |  3 +++
+ 2 files changed, 20 insertions(+)
+
+diff --git a/build/soong/Android.bp b/build/soong/Android.bp
+index c75ecba6..031aee75 100644
+--- a/build/soong/Android.bp
++++ b/build/soong/Android.bp
+@@ -256,6 +256,23 @@ bootloader_message_offset {
+     },
+ }
+ 
++soong_config_module_type {
++    name: "camera_parameter_library",
++    module_type: "cc_defaults",
++    config_namespace: "lineageGlobalVars",
++    value_variables: ["uses_camera_parameter_lib"],
++    properties: ["whole_static_libs"],
++}
++
++camera_parameter_library {
++    name: "camera_parameter_library_defaults",
++    soong_config_variables: {
++        uses_camera_parameter_lib: {
++            whole_static_libs: ["%s"],
++        },
++    },
++}
++
+ soong_config_module_type {
+     name: "egl_display_array",
+     module_type: "cc_defaults",
+diff --git a/config/BoardConfigSoong.mk b/config/BoardConfigSoong.mk
+index 277d99fa..2944c580 100644
+--- a/config/BoardConfigSoong.mk
++++ b/config/BoardConfigSoong.mk
+@@ -41,6 +41,7 @@ SOONG_CONFIG_lineageGlobalVars += \
+     target_trust_usb_control_path \
+     target_trust_usb_control_enable \
+     target_trust_usb_control_disable \
++    uses_camera_parameter_lib \
+     uses_egl_display_array
+ 
+ SOONG_CONFIG_NAMESPACES += lineageNvidiaVars
+@@ -73,6 +74,7 @@ BOOTLOADER_MESSAGE_OFFSET ?= 0
+ TARGET_ADDITIONAL_GRALLOC_10_USAGE_BITS ?= 0
+ TARGET_GRALLOC_HANDLE_HAS_RESERVED_SIZE ?= false
+ TARGET_INIT_VENDOR_LIB ?= vendor_init
++TARGET_SPECIFIC_CAMERA_PARAMETER_LIBRARY ?= libcamera_parameters
+ TARGET_SURFACEFLINGER_UDFPS_LIB ?= surfaceflinger_udfps_lib
+ TARGET_TRUST_USB_CONTROL_PATH ?= /proc/sys/kernel/deny_new_usb
+ TARGET_TRUST_USB_CONTROL_ENABLE ?= 1
+@@ -88,6 +90,7 @@ SOONG_CONFIG_lineageGlobalVars_target_surfaceflinger_udfps_lib := $(TARGET_SURFA
+ SOONG_CONFIG_lineageGlobalVars_target_trust_usb_control_path := $(TARGET_TRUST_USB_CONTROL_PATH)
+ SOONG_CONFIG_lineageGlobalVars_target_trust_usb_control_enable := $(TARGET_TRUST_USB_CONTROL_ENABLE)
+ SOONG_CONFIG_lineageGlobalVars_target_trust_usb_control_disable := $(TARGET_TRUST_USB_CONTROL_DISABLE)
++SOONG_CONFIG_lineageGlobalVars_uses_camera_parameter_lib := $(TARGET_SPECIFIC_CAMERA_PARAMETER_LIBRARY)
+ ifneq ($(filter $(QSSI_SUPPORTED_PLATFORMS),$(TARGET_BOARD_PLATFORM)),)
+ SOONG_CONFIG_lineageQcomVars_qcom_display_headers_namespace := vendor/qcom/opensource/commonsys-intf/display
+ else
+-- 
+2.43.0
+

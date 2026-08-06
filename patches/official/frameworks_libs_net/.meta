@@ -1,0 +1,10 @@
+repo: frameworks/libs/net
+ul-head: 4181eef30d2ea3cdc7393aff303ee56e7d7dfa16
+ul-head-tanggal: 2022-10-26
+official-url: https://android.googlesource.com/platform/frameworks/libs/net
+official-ref: refs/tags/android-13.0.0_r75
+official-head: 2ed7478319754e3dce4a9307d414ea293b350714
+merge-base: b9ae1484e264c030549107704f61a8059e49bf14
+merge-base-tanggal: 2023-01-17
+jumlah-patch: 1
+tanggal-ekstraksi: 2026-08-06T23:44:30Z

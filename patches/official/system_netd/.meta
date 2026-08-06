@@ -1,0 +1,10 @@
+repo: system/netd
+ul-head: 6897cdc7b57af5fd05875c58f7fec2f169768dd3
+ul-head-tanggal: 2023-12-11
+official-url: https://github.com/LineageOS/android_system_netd.git
+official-ref: lineage-20.0
+official-head: 43d137e94717639b96f5020607920f734433be92
+merge-base: 43d137e94717639b96f5020607920f734433be92
+merge-base-tanggal: 2023-12-05
+jumlah-patch: 3
+tanggal-ekstraksi: 2026-08-06T23:44:31Z

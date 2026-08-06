@@ -376,13 +376,18 @@ keputusan triase per commit (port/buang), dan catatan resolusi konflik bila ada.
 
 **Rollback:** tidak ada perubahan tree di fase ini.
 
-### M1 — Ekstraksi patch (masih di tree UL)
-- [ ] Jalankan `git format-patch --no-merges <merge-base>..HEAD` per repo T0–T2 (+T3
-      bila diputuskan ikut) → `patches/official/<repo>/`.
-- [ ] Triage per commit sesuai §3 (buang: `a6cfe58e0` sysfs_disk_stat; opsional
-      ditandai), tulis `patches/official/MANIFEST.md`.
-- [ ] Hitung ulang jumlah patch = kolom "fungsional" tabel §1.3 (cek konsistensi).
-- [ ] Bandingkan isi dengan `research/retiredtab/20/UL-patches-2024/` (checklist, §2.3).
+### M1 — Ekstraksi patch (masih di tree UL) ✅ **SELESAI 6 Agustus 2026**
+- [x] `git format-patch --no-merges <merge-base>..HEAD` per repo T0–T2 **+ T3** via
+      `tools/extract-official-patches.sh` → `patches/official/<repo>/` (21 repo,
+      metadata per repo di `.meta`). RIL tidak ikut (fase M6).
+- [x] Triage per commit (PLAN §3): 155 diekstrak, **2 dibuang**
+      (`a6cfe58e0` sysfs_disk_stat, `e456007ebf` QCOM_BSP_LEGACY), 5 kosmetik
+      `frameworks/base` ditandai → **153 patch siap aplikasi**. Rincian:
+      `patches/official/MANIFEST.md`.
+- [x] Jumlah patch per repo = kolom "fungsional" tabel §1.3 (cek konsistensi lolos).
+- [x] Cross-check retiredtab: jumlah subjek `frameworks/av` (45) dan
+      `frameworks/base` (29) **identik** dengan `20/UL-patches-2024`; subjek kunci
+      di nomor yang sama.
 
 **Kriteria keluar:** jumlah patch cocok tabel; MANIFEST.md lengkap. **Rollback:** hapus `patches/official/`.
 

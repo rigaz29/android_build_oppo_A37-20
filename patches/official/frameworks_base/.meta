@@ -1,0 +1,10 @@
+repo: frameworks/base
+ul-head: 12d345c7cdfdbf5ae90cec90c40664fea24f90fb
+ul-head-tanggal: 2025-04-04
+official-url: https://github.com/LineageOS/android_frameworks_base.git
+official-ref: lineage-20.0
+official-head: 45a6bfd66cd878aad7988e9506c12035f8eee127
+merge-base: 6960224ae76bbd28301bc29a2f6538c58aff3f49
+merge-base-tanggal: 2025-03-06
+jumlah-patch: 29
+tanggal-ekstraksi: 2026-08-06T23:44:38Z

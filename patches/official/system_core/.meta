@@ -1,0 +1,10 @@
+repo: system/core
+ul-head: 11b29a60fb56e5781882adebfe9f3a795fecc18d
+ul-head-tanggal: 2025-04-04
+official-url: https://github.com/LineageOS/android_system_core.git
+official-ref: lineage-20.0
+official-head: c0500ffe2cc283d61f1e3db1b2c979bfbd9beb8c
+merge-base: c0500ffe2cc283d61f1e3db1b2c979bfbd9beb8c
+merge-base-tanggal: 2025-02-07
+jumlah-patch: 4
+tanggal-ekstraksi: 2026-08-06T23:44:31Z

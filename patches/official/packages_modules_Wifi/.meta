@@ -1,0 +1,10 @@
+repo: packages/modules/Wifi
+ul-head: 1e44d6fbe82073854350971f52c48369051f8898
+ul-head-tanggal: 2024-11-20
+official-url: https://github.com/LineageOS/android_packages_modules_Wifi.git
+official-ref: lineage-20.0
+official-head: 4b25fba7916185d55c4031e5019e020b8fdb8649
+merge-base: 18d7b9c76b7d7859f27f790493aa22da885dc07a
+merge-base-tanggal: 2024-11-08
+jumlah-patch: 1
+tanggal-ekstraksi: 2026-08-06T23:44:33Z

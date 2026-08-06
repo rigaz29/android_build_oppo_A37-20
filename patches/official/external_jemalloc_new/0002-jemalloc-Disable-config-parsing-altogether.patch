@@ -1,0 +1,46 @@
+From 67f4dbf7e42ed236f1e6e5d9bbd09f4be8d9a0e7 Mon Sep 17 00:00:00 2001
+From: Park Ju Hyung <qkrwngud825@gmail.com>
+Date: Mon, 14 Oct 2019 05:54:33 +0900
+Subject: [PATCH 2/3] jemalloc: Disable config parsing altogether
+
+This is never used on Android.
+Remove it for faster initialization and lighter libc.so.
+
+z3DD3r: Adopted for jemalloc 5.1.0
+Signed-off-by: Park Ju Hyung <qkrwngud825@gmail.com>
+---
+ src/jemalloc.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/src/jemalloc.c b/src/jemalloc.c
+index bf5976b3..376da7b2 100644
+--- a/src/jemalloc.c
++++ b/src/jemalloc.c
+@@ -868,6 +868,7 @@ malloc_slow_flag_init(void) {
+ 	malloc_slow = (malloc_slow_flags != 0);
+ }
+ 
++#if 0
+ static void
+ malloc_conf_init(void) {
+ 	unsigned i;
+@@ -1251,6 +1252,7 @@ malloc_conf_init(void) {
+ 	}
+ 	atomic_store_b(&log_init_done, true, ATOMIC_RELEASE);
+ }
++#endif
+ 
+ static bool
+ malloc_init_hard_needed(void) {
+@@ -1285,7 +1287,7 @@ malloc_init_hard_a0_locked() {
+ 	if (config_prof) {
+ 		prof_boot0();
+ 	}
+-	malloc_conf_init();
++	// malloc_conf_init();
+ 	if (opt_stats_print) {
+ 		/* Print statistics at exit. */
+ 		if (atexit(stats_print_atexit) != 0) {
+-- 
+2.43.0
+

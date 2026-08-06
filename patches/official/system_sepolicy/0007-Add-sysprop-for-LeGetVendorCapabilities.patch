@@ -1,0 +1,43 @@
+From 85a0067c5c562f05ce520d45aee05e08f2d540a4 Mon Sep 17 00:00:00 2001
+From: Abhishek Pandit-Subedi <abhishekpandit@google.com>
+Date: Thu, 26 Jan 2023 16:10:07 -0800
+Subject: [PATCH 7/7] Add sysprop for LeGetVendorCapabilities
+
+Added new sysprop to configure getting vendor capabilities.
+
+Bug: 257423916
+Tag: #floss
+Test: Manual
+Change-Id: I35ba5883505bdd671276dd0863b129ab531890f3
+---
+ prebuilts/api/33.0/private/property_contexts | 1 +
+ private/property_contexts                    | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/prebuilts/api/33.0/private/property_contexts b/prebuilts/api/33.0/private/property_contexts
+index b3bb03901..3ce06b68b 100644
+--- a/prebuilts/api/33.0/private/property_contexts
++++ b/prebuilts/api/33.0/private/property_contexts
+@@ -544,6 +544,7 @@ bluetooth.profile.pbap.server.enabled                u:object_r:bluetooth_config
+ bluetooth.profile.sap.server.enabled                 u:object_r:bluetooth_config_prop:s0 exact bool
+ bluetooth.profile.vcp.controller.enabled             u:object_r:bluetooth_config_prop:s0 exact bool
+ 
++bluetooth.core.le.vendor_capabilities.enabled        u:object_r:bluetooth_config_prop:s0 exact bool
+ bluetooth.sco.disable_enhanced_connection            u:object_r:bluetooth_config_prop:s0 exact bool
+ 
+ persist.nfc.debug_enabled                      u:object_r:nfc_prop:s0 exact bool
+diff --git a/private/property_contexts b/private/property_contexts
+index b3bb03901..3ce06b68b 100644
+--- a/private/property_contexts
++++ b/private/property_contexts
+@@ -544,6 +544,7 @@ bluetooth.profile.pbap.server.enabled                u:object_r:bluetooth_config
+ bluetooth.profile.sap.server.enabled                 u:object_r:bluetooth_config_prop:s0 exact bool
+ bluetooth.profile.vcp.controller.enabled             u:object_r:bluetooth_config_prop:s0 exact bool
+ 
++bluetooth.core.le.vendor_capabilities.enabled        u:object_r:bluetooth_config_prop:s0 exact bool
+ bluetooth.sco.disable_enhanced_connection            u:object_r:bluetooth_config_prop:s0 exact bool
+ 
+ persist.nfc.debug_enabled                      u:object_r:nfc_prop:s0 exact bool
+-- 
+2.43.0
+

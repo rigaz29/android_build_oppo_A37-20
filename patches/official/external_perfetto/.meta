@@ -1,0 +1,10 @@
+repo: external/perfetto
+ul-head: 33a23d1a437ad27937e8903caf1776ddd32f4862
+ul-head-tanggal: 2020-09-26
+official-url: https://android.googlesource.com/platform/external/perfetto
+official-ref: refs/tags/android-13.0.0_r75
+official-head: 8e2bd3722b171d96268fe28dcc8631f1ff0ec629
+merge-base: 8429589fdece4ca8cb202af41040e9e5d0c62c95
+merge-base-tanggal: 2023-03-27
+jumlah-patch: 1
+tanggal-ekstraksi: 2026-08-06T23:44:29Z

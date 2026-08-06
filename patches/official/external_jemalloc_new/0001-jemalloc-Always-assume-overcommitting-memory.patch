@@ -1,0 +1,56 @@
+From 6f116931621a860b47d0eb66397456f8ab3e8b7f Mon Sep 17 00:00:00 2001
+From: Park Ju Hyung <qkrwngud825@gmail.com>
+Date: Sat, 28 Dec 2019 22:22:58 +0900
+Subject: [PATCH 1/3] jemalloc: Always assume overcommitting memory
+
+Minor optimization
+
+z3DD3r: Adopted for jemalloc 5.1.0
+Signed-off-by: Park Ju Hyung <qkrwngud825@gmail.com>
+---
+ src/pages.c | 22 +---------------------
+ 1 file changed, 1 insertion(+), 21 deletions(-)
+
+diff --git a/src/pages.c b/src/pages.c
+index 132aeeb7..cbeaadfc 100644
+--- a/src/pages.c
++++ b/src/pages.c
+@@ -33,7 +33,7 @@ static size_t	os_page;
+ #  define PAGES_PROT_DECOMMIT (PROT_NONE)
+ static int	mmap_flags;
+ #endif
+-static bool	os_overcommits;
++#define os_overcommits true
+ 
+ const char *thp_mode_names[] = {
+ 	"default",
+@@ -587,26 +587,6 @@ pages_boot(void) {
+ 	mmap_flags = MAP_PRIVATE | MAP_ANON;
+ #endif
+ 
+-#if defined(__ANDROID__)
+-  /* Android always supports overcommits. */
+-  os_overcommits = true;
+-#else  /* __ANDROID__ */
+-
+-#ifdef JEMALLOC_SYSCTL_VM_OVERCOMMIT
+-	os_overcommits = os_overcommits_sysctl();
+-#elif defined(JEMALLOC_PROC_SYS_VM_OVERCOMMIT_MEMORY)
+-	os_overcommits = os_overcommits_proc();
+-#  ifdef MAP_NORESERVE
+-	if (os_overcommits) {
+-		mmap_flags |= MAP_NORESERVE;
+-	}
+-#  endif
+-#else
+-	os_overcommits = false;
+-#endif
+-
+-#endif  /* __ANDROID__ */
+-
+ 	init_thp_state();
+ 
+ 	/* Detect lazy purge runtime support. */
+-- 
+2.43.0
+

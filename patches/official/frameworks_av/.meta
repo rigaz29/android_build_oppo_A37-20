@@ -1,0 +1,10 @@
+repo: frameworks/av
+ul-head: 48752303ffe2b705aaa7260e82f99dc0619cbc18
+ul-head-tanggal: 2024-09-21
+official-url: https://github.com/LineageOS/android_frameworks_av.git
+official-ref: lineage-20.0
+official-head: 9309f12a7c62e505cf74435f8235684a0e0db4db
+merge-base: 17fdb80d01ef17849c4d4e1100d05d29977117b2
+merge-base-tanggal: 2024-09-06
+jumlah-patch: 45
+tanggal-ekstraksi: 2026-08-06T23:44:34Z

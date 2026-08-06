@@ -1,0 +1,10 @@
+repo: bionic
+ul-head: eec758d4b8de65678c87fb6bd6042f4c4f97f7a9
+ul-head-tanggal: 2023-07-20
+official-url: https://github.com/LineageOS/android_bionic.git
+official-ref: lineage-20.0
+official-head: e0aac7df6f58138dae903b5d456c947a3f8092ea
+merge-base: e0aac7df6f58138dae903b5d456c947a3f8092ea
+merge-base-tanggal: 2023-04-18
+jumlah-patch: 7
+tanggal-ekstraksi: 2026-08-06T23:44:38Z

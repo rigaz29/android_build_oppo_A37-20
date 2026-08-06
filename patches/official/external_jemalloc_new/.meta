@@ -1,0 +1,10 @@
+repo: external/jemalloc_new
+ul-head: 4dedf55f865dc84165c6a26fc47339ed1485d470
+ul-head-tanggal: 2019-10-14
+official-url: https://android.googlesource.com/platform/external/jemalloc_new
+official-ref: refs/tags/android-13.0.0_r75
+official-head: f12284f3a5137282bd119ff7f050169e5d29fc2c
+merge-base: b0dbd53706069619146ce04c7fc34ab08936334d
+merge-base-tanggal: 2022-03-14
+jumlah-patch: 3
+tanggal-ekstraksi: 2026-08-06T23:44:38Z

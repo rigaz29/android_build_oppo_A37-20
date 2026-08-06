@@ -1,0 +1,10 @@
+repo: hardware/qcom-caf/wlan
+ul-head: 389e1b494f8a0bded3271e4dbcd71958f314a524
+ul-head-tanggal: 2024-09-21
+official-url: https://github.com/LineageOS/android_hardware_qcom_wlan.git
+official-ref: lineage-20.0-caf
+official-head: b93dc5e7fcfeb2e89f593025d39386e77d5272bc
+merge-base: b93dc5e7fcfeb2e89f593025d39386e77d5272bc
+merge-base-tanggal: 2014-04-13
+jumlah-patch: 2
+tanggal-ekstraksi: 2026-08-06T23:44:39Z

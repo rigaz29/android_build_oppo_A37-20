@@ -1,0 +1,10 @@
+repo: system/bpf
+ul-head: a25dc5d7c5886683a497d13504e8496f9895fd6f
+ul-head-tanggal: 2022-10-19
+official-url: https://android.googlesource.com/platform/system/bpf
+official-ref: refs/tags/android-13.0.0_r75
+official-head: 674313baa088a92528119dc94edbd552f09d5c66
+merge-base: 52121cd0ee9eb6a5624665d3cf8922f7244ef1cd
+merge-base-tanggal: 2022-08-02
+jumlah-patch: 2
+tanggal-ekstraksi: 2026-08-06T23:44:29Z

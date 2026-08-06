@@ -1,0 +1,25 @@
+From c146910ca5e4ed386e94961211b43839cdb19d93 Mon Sep 17 00:00:00 2001
+From: khalvat-M <mmba313@gmail.com>
+Date: Thu, 13 Jul 2023 22:56:01 +0330
+Subject: [PATCH 24/29] fixup! am: allow to tune killing cached processes
+ until/post boot completed
+
+---
+ .../java/com/android/server/am/ActivityManagerConstants.java     | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/services/core/java/com/android/server/am/ActivityManagerConstants.java b/services/core/java/com/android/server/am/ActivityManagerConstants.java
+index 452897563034..7099ad428275 100644
+--- a/services/core/java/com/android/server/am/ActivityManagerConstants.java
++++ b/services/core/java/com/android/server/am/ActivityManagerConstants.java
+@@ -35,6 +35,7 @@ import android.os.Handler;
+ import android.os.Message;
+ import android.os.PowerExemptionManager;
+ import android.os.SystemClock;
++import android.os.SystemProperties;
+ import android.provider.DeviceConfig;
+ import android.provider.DeviceConfig.OnPropertiesChangedListener;
+ import android.provider.DeviceConfig.Properties;
+-- 
+2.43.0
+

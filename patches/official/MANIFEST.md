@@ -1,0 +1,64 @@
+# MANIFEST — patches/official (Fase M1, 6 Agustus 2026)
+
+Seri patch legacy hasil ekstraksi delta **LineageOS-UL ↔ official lineage-20.0**,
+diambil langsung dari fork UL yang checkout-nya terbukti menjalankan ROM A37
+(boot + kamera + BT + Wi-Fi + volume). Ini adalah bahan baku
+`tools/apply-official-patches.sh` (fase M3).
+
+- Ekstraksi: `tools/extract-official-patches.sh` (idempoten; hasil ulang identik
+  selama tree UL tidak berubah). Metadata per repo di `<repo>/.meta`
+  (UL HEAD, official HEAD, merge-base, tanggal).
+- Urutan aplikasi: **urutan nomor berkas** (0001 → NNNN) = urutan kronologis commit.
+  Disarankan `git am`; fallback `git am -3` (SOP konflik: PLAN-OFFICIAL §4.2).
+- Cross-check independen: set patch retiredtab `20/UL-patches-2024` punya jumlah
+  subjek **identik** untuk `frameworks/av` (45) dan `frameworks/base` (29), dan
+  subjek-subjek kuncinya (audio 2.0 HAL, HALv1 [1/2], mediaserver, SCO, in-call)
+  berada di nomor yang sama — isi ekstraksi kita terverifikasi setara.
+
+## Ringkasan per tier
+
+| Tier | Repo | Patch | Catatan |
+|---|---|--:|---|
+| T0 | `packages_modules_adb` | 1 | FunctionFS legacy (Gerrit 326385) |
+| T0 | `art` | 1 | gerbang memfd_create |
+| T0 | `system_bpf` | 2 | gerbang eBPF kernel < 4.9 |
+| T0 | `external_perfetto` | 1 | gerbang memfd_create |
+| T0 | `frameworks_libs_net` | 1 | BpfMap isValid non-fatal |
+| T0 | `packages_modules_NetworkStack` | 2 | TCP info opt-out + revert netlink-T |
+| T1 | `vendor_lineage` | 13 | revert flag legacy (HAL1, MEMFD_BACKPORT, dll.) + camera_in_mediaserver_defaults + **0013 = revert libbfqio kita (`d4a23dfd`) — sudah termasuk; skrip apply TIDAK boleh revert ulang** |
+| T1 | `system_core` | 4 | cgroupv2 gate, camera extensions, healthd, freezer v1 |
+| T1 | `system_netd` | 3 | no-bpf + direct-connect routes |
+| T1 | `packages_modules_Connectivity` | 4 | BPF-less ×3 + traffic indicators |
+| T1 | `system_sepolicy` | **6** | 7 diekstrak, **1 dibuang** (lihat di bawah) |
+| T1 | `device_lineage_sepolicy` | 2 | HAL1 sepolicy + qcom ultra legacy |
+| T1 | `hardware_interfaces` | 5 | audio 2.0, revert BT-AIDL/binder-threadpool, keymaster FBE, vendor800 hwc |
+| T1 | `frameworks_native` | 21 | tweak SF/binder UL — port utuh |
+| T1 | `packages_modules_Wifi` | 1 | mWifiLinkLayerStatsSupported |
+| T1 | `packages_modules_Bluetooth` | 1 | toleransi le_set_event_mask. ⚠️ Dua patch device kita (opcode vendor OCF-only + standard inquiry scan) **tidak termasuk di sini** — dipasang terpisah oleh skrip apply |
+| T2 | `frameworks_av` | **44** | 45 diekstrak, **1 dibuang** (lihat di bawah) |
+| T2 | `frameworks_base` | 29 | termasuk 5 patch kosmetik (lihat di bawah) |
+| T3 | `bionic` | 7 | kondisional — ⚠️ `0002`/`d51393f91` (per-process target SDK override) diverifikasi dulu terhadap `TARGET_PROCESS_SDK_VERSION_OVERRIDE` kita |
+| T3 | `external_jemalloc_new` | 3 | hanya bila bionic switch jemalloc diambil |
+| T3 | `hardware_qcom-caf_wlan` | 2 | hanya bila build wcnss/wpa gagal |
+
+**Total: 153 patch siap aplikasi** (155 diekstrak − 2 dibuang triase).
+
+## Yang dibuang saat triase (jangan dikembalikan tanpa alasan baru)
+
+| Berkas | Commit | Alasan |
+|---|---|---|
+| ~~`system_sepolicy/0006-Fix-storaged-access-…`~~ | `a6cfe58e0` | Menambah tipe `sysfs_disk_stat` — di official tipe ini tak pernah ada; menghidupkannya mengulangi pemblokir 5.1b/5.1d PLAN lama. Sisi `sepolicy-legacy` ditangani langkah K skrip apply |
+| ~~`frameworks_av/0045-Enable-legacy-adaptive-playback-…`~~ | `e456007ebf` | Ber-gerbang `TARGET_USES_QCOM_BSP_LEGACY` yang **tidak kita setel** — kode mati, hanya menambah permukaan konflik |
+
+## Ditandai kosmetik — ikut dipasang demi paritas 1:1, BOLEH DIBUANG bila konflik
+
+`frameworks_base/`: `0016` hapus dialog target SDK · `0017` kurva brightness slider ·
+`0022` stretch effect · `0023` ripple PATTERNED · `0029` batterysaver night mode.
+
+## Yang sengaja tidak diekstrak
+
+- **RIL** (`frameworks/opt/telephony` 8 + `hardware/ril` 8) — fase M6, hanya setelah
+  paritas M5 tercapai.
+- 9 fork yang diverifikasi tidak dikonsumsi build A37 (PLAN-OFFICIAL §1.5): NFC ×2,
+  LatinIME, jemalloc (kecuali T3), qcom non-CAF, msm8974 ×3, qcom power,
+  external/connectivity, dtbtool.

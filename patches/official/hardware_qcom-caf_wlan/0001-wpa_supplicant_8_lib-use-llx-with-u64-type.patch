@@ -1,0 +1,25 @@
+From 607daca8d2b462368a0c71918e30561907786c13 Mon Sep 17 00:00:00 2001
+From: phoval <89515930+phoval@users.noreply.github.com>
+Date: Tue, 6 Dec 2022 20:40:54 +0100
+Subject: [PATCH 1/2] wpa_supplicant_8_lib: use '%llx' with 'u64' type
+
+---
+ qcwcn/wpa_supplicant_8_lib/driver_cmd_nl80211.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/qcwcn/wpa_supplicant_8_lib/driver_cmd_nl80211.c b/qcwcn/wpa_supplicant_8_lib/driver_cmd_nl80211.c
+index 777b2fc..490b4c0 100644
+--- a/qcwcn/wpa_supplicant_8_lib/driver_cmd_nl80211.c
++++ b/qcwcn/wpa_supplicant_8_lib/driver_cmd_nl80211.c
+@@ -2804,7 +2804,7 @@ void print_setup_cmd_values(struct twt_setup_parameters *twt_setup_params)
+ 		   twt_setup_params->min_wake_duration);
+ 	wpa_printf(MSG_DEBUG, "TWT: max wake duration: %d ",
+ 		   twt_setup_params->max_wake_duration);
+-	wpa_printf(MSG_DEBUG, "TWT: wake tsf: 0x%lx ",
++	wpa_printf(MSG_DEBUG, "TWT: wake tsf: 0x%llx ",
+ 		   twt_setup_params->wake_tsf);
+ 	wpa_printf(MSG_DEBUG, "TWT: announce timeout(in us): %u",
+ 		   twt_setup_params->announce_timeout_us);
+-- 
+2.43.0
+

@@ -1,0 +1,27 @@
+From fc391a46c4ba67886d1b9586edc42f9af7b2113d Mon Sep 17 00:00:00 2001
+From: nyyu <mail@nyyu.dev>
+Date: Fri, 19 May 2023 13:48:24 +0200
+Subject: [PATCH 2/2] Revert "fixup! wpa_supplicant_8_lib: Add support for TSF
+ command and attributes."
+
+This reverts commit 7923640021d1887bc480789947732804e8c6eb19.
+---
+ qcwcn/wpa_supplicant_8_lib/driver_cmd_nl80211.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/qcwcn/wpa_supplicant_8_lib/driver_cmd_nl80211.c b/qcwcn/wpa_supplicant_8_lib/driver_cmd_nl80211.c
+index cc149fc..d9cde72 100644
+--- a/qcwcn/wpa_supplicant_8_lib/driver_cmd_nl80211.c
++++ b/qcwcn/wpa_supplicant_8_lib/driver_cmd_nl80211.c
+@@ -5676,7 +5676,7 @@ static int wpa_driver_tsf_cmd_resp_handler(struct resp_info *info,
+ 		return NL_SKIP;
+ 	}
+ 	ret = os_snprintf(info->reply_buf, info->reply_buf_len,
+-			  "tsf_value:%lul host_time:%lul", tsf_value, host_time);
++			  "tsf_value:%llu host_time:%llu", tsf_value, host_time);
+ 	if (os_snprintf_error(info->reply_buf_len, ret)) {
+ 		wpa_printf(MSG_ERROR, "%s:Fail to print buffer", __func__);
+ 		return -ENOMEM;
+-- 
+2.43.0
+

@@ -1,0 +1,10 @@
+repo: frameworks/native
+ul-head: 27e46aec7012069fc45e24e4f0830c58d2159061
+ul-head-tanggal: 2025-04-04
+official-url: https://github.com/LineageOS/android_frameworks_native.git
+official-ref: lineage-20.0
+official-head: 915ad642e331e0f8ea107b5f5519f2c6f1e7e01c
+merge-base: ae25b83dbade58fe493c25b1ac81aee95f1257b0
+merge-base-tanggal: 2025-03-06
+jumlah-patch: 21
+tanggal-ekstraksi: 2026-08-06T23:44:33Z

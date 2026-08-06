@@ -1,0 +1,62 @@
+From c36deab64b4941323efd551573ca7797a82fa3ed Mon Sep 17 00:00:00 2001
+From: Khalvat-M <mmba313@gmail.com>
+Date: Tue, 25 Oct 2022 06:45:07 +0330
+Subject: [PATCH 05/13] Revert "config: Remove TARGET_HAS_MEMFD_BACKPORT"
+
+This reverts commit e020bffce2a1f5a0ba074cede2ce072221a5a6eb.
+---
+ build/soong/Android.bp     | 17 +++++++++++++++++
+ config/BoardConfigSoong.mk |  2 ++
+ 2 files changed, 19 insertions(+)
+
+diff --git a/build/soong/Android.bp b/build/soong/Android.bp
+index 95870a17..c75ecba6 100644
+--- a/build/soong/Android.bp
++++ b/build/soong/Android.bp
+@@ -218,6 +218,23 @@ needs_netd_direct_connect_rule {
+     },
+ }
+ 
++soong_config_module_type {
++    name: "has_memfd_backport",
++    module_type: "cc_defaults",
++    config_namespace: "lineageGlobalVars",
++    bool_variables: ["has_memfd_backport"],
++    properties: ["cppflags"],
++}
++
++has_memfd_backport {
++    name: "has_memfd_backport_defaults",
++    soong_config_variables: {
++        has_memfd_backport: {
++            cppflags: ["-DHAS_MEMFD_BACKPORT"],
++        },
++    },
++}
++
+ soong_config_module_type {
+     name: "bootloader_message_offset",
+     module_type: "cc_defaults",
+diff --git a/config/BoardConfigSoong.mk b/config/BoardConfigSoong.mk
+index f3879a64..277d99fa 100644
+--- a/config/BoardConfigSoong.mk
++++ b/config/BoardConfigSoong.mk
+@@ -32,6 +32,7 @@ SOONG_CONFIG_lineageGlobalVars += \
+     bootloader_message_offset \
+     disable_postrender_cleanup \
+     gralloc_handle_has_reserved_size \
++    has_memfd_backport \
+     needs_netd_direct_connect_rule \
+     target_init_vendor_lib \
+     target_ld_shim_libs \
+@@ -60,6 +61,7 @@ endif
+ # Soong bool variables
+ SOONG_CONFIG_lineageGlobalVars_disable_postrender_cleanup := $(TARGET_DISABLE_POSTRENDER_CLEANUP)
+ SOONG_CONFIG_lineageGlobalVars_gralloc_handle_has_reserved_size := $(TARGET_GRALLOC_HANDLE_HAS_RESERVED_SIZE)
++SOONG_CONFIG_lineageGlobalVars_has_memfd_backport := $(TARGET_HAS_MEMFD_BACKPORT)
+ SOONG_CONFIG_lineageGlobalVars_needs_netd_direct_connect_rule := $(TARGET_NEEDS_NETD_DIRECT_CONNECT_RULE)
+ SOONG_CONFIG_lineageGlobalVars_uses_egl_display_array := $(TARGET_USES_EGL_DISPLAY_ARRAY)
+ SOONG_CONFIG_lineageNvidiaVars_uses_nvidia_enhancements := $(NV_ANDROID_FRAMEWORK_ENHANCEMENTS)
+-- 
+2.43.0
+

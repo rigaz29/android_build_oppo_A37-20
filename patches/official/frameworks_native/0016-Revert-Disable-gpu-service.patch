@@ -1,0 +1,22 @@
+From fe3acfdd42a31032209fe497587db0a9f40ef632 Mon Sep 17 00:00:00 2001
+From: Khalvat-M <mmba313@gmail.com>
+Date: Sun, 12 Mar 2023 08:13:25 +0330
+Subject: [PATCH 16/21] Revert "Disable gpu service"
+
+This reverts commit adb324b12db05e5c03e587195f40384556847d83.
+---
+ services/gpuservice/gpuservice.rc | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/services/gpuservice/gpuservice.rc b/services/gpuservice/gpuservice.rc
+index b5b271402d..0da8bd3812 100644
+--- a/services/gpuservice/gpuservice.rc
++++ b/services/gpuservice/gpuservice.rc
+@@ -2,4 +2,3 @@ service gpu /system/bin/gpuservice
+     class core
+     user gpu_service
+     group graphics readtracefs
+-    disabled
+-- 
+2.43.0
+

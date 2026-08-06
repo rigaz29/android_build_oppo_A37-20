@@ -1,0 +1,10 @@
+repo: packages/modules/adb
+ul-head: 721b24b2dfbc53b801bc91d6a6124e3ba9e17c8f
+ul-head-tanggal: 2023-06-21
+official-url: https://github.com/LineageOS/android_packages_modules_adb.git
+official-ref: lineage-20.0
+official-head: 18b2072d15d553df1c407103cc15a942b42e77fc
+merge-base: d1e9657fcc4c95d2d97dd5c7ee20c95b223601dd
+merge-base-tanggal: 2023-04-30
+jumlah-patch: 1
+tanggal-ekstraksi: 2026-08-06T23:44:28Z

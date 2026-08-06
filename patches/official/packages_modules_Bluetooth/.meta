@@ -1,0 +1,10 @@
+repo: packages/modules/Bluetooth
+ul-head: 5789e75e966251f24b8ff79bd38df7da1497df27
+ul-head-tanggal: 2025-04-04
+official-url: https://github.com/LineageOS/android_packages_modules_Bluetooth.git
+official-ref: lineage-20.0
+official-head: cc99f0fd214b40ec4798fb95db3559b674be9f90
+merge-base: 77356149d4b36154ae5551cd768591a261d30dfe
+merge-base-tanggal: 2025-03-06
+jumlah-patch: 1
+tanggal-ekstraksi: 2026-08-06T23:44:34Z

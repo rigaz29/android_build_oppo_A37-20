@@ -1,0 +1,10 @@
+repo: system/sepolicy
+ul-head: 9c00531423b7fc5e331604f695cb8c6ee4464d05
+ul-head-tanggal: 2024-09-21
+official-url: https://github.com/LineageOS/android_system_sepolicy.git
+official-ref: lineage-20.0
+official-head: 60f5720f939213f8e20ec4eaab49d5348576c70d
+merge-base: 60f5720f939213f8e20ec4eaab49d5348576c70d
+merge-base-tanggal: 2024-09-06
+jumlah-patch: 7
+tanggal-ekstraksi: 2026-08-06T23:44:32Z

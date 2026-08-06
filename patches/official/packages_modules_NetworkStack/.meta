@@ -1,0 +1,10 @@
+repo: packages/modules/NetworkStack
+ul-head: 099ed891d656310056405e8d2e866a1bef16e220
+ul-head-tanggal: 2020-10-14
+official-url: https://android.googlesource.com/platform/packages/modules/NetworkStack
+official-ref: refs/tags/android-13.0.0_r75
+official-head: bcb71d313294397b359bab2de9050115ecfaaa29
+merge-base: f6272676a666dd6277b171105f10bd62f9ec9da7
+merge-base-tanggal: 2023-01-10
+jumlah-patch: 2
+tanggal-ekstraksi: 2026-08-06T23:44:30Z

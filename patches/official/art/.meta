@@ -1,0 +1,10 @@
+repo: art
+ul-head: 291054d3028bbc30814567c2cf61fcc03c6d114d
+ul-head-tanggal: 2019-09-24
+official-url: https://android.googlesource.com/platform/art
+official-ref: refs/tags/android-13.0.0_r75
+official-head: fab9816357b7449b611fff6bd1436ada5e32c1bf
+merge-base: aeeafbd459298788c7760f35d04e7c0568d192b5
+merge-base-tanggal: 2023-04-04
+jumlah-patch: 1
+tanggal-ekstraksi: 2026-08-06T23:44:28Z
