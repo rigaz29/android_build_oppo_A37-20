@@ -1369,6 +1369,46 @@ Terverifikasi di perangkat (file di-push ke /vendor lalu restart audioserver):
 - Terukur: RING=7 → output **-12 dBFS**; RING=1 → **-38 dBFS** (atenuasi
   -26 dB sesuai kurva speaker RING 1/7). Gain mixer & track = -26 dB.
 
+### 10.6 Bluetooth: connect gagal + tak terlihat HP lain (6 Agustus 2026)
+
+Gejala (laporan user, build `20260806_151237`): BT nyala, scan menemukan
+device lain (HUAWEI Band dll.), TWS SOUNDPEATS ter-bond tapi tidak konek;
+A37 **tidak terlihat** saat di-scan HP lain; A37 juga tidak bisa konek ke
+device lain. TWS normal di HP lain.
+
+Pengukuran adb:
+- **Connect gagal di lapisan framework**: `CachedBluetoothDevice: No profiles.
+  Maybe we will connect later` — UUID device `null` → connect dihentikan
+  Settings sebelum memanggil stack (btsnooz saat percobaan ulang: **nol
+  frame HCI** — stack tidak pernah dipanggil).
+- UUID null karena fetch SDP pertama gagal. Trace HCI (btsnooz, 2 percobaan):
+  - Earbud SOUNDPEATS **menginisiasi koneksi SDP-nya sendiri** (CONN_REQ psm
+    0x0001) — phone jadi SDP **server**, menjawab query earbud dengan benar
+    (2× SEARCH_ATTR_REQ → RSP).
+  - **Client SDP phone tidak pernah selesai**: koneksinya pending (TWS tidak
+    membalas CONN_RESP-nya), lalu query client terkirim lewat channel koneksi
+    inbound TWS (cid 0x4000 = koneksi kedua TWS, CCB index 0 yang baru bebas)
+    → respons TWS jatuh ke sisi server → client tak pernah dapat UUID.
+  - CID L2CAP dijamin unik (l2c_utils.cc:1396 = base + index CCB) — reuse
+    0x0040 sah (CCB sudah bebas) — bukan tabrakan CID.
+- **Tak terlihat HP lain**: ScanMode `SCAN_MODE_CONNECTABLE_DISCOVERABLE`
+  benar; HCI `WRITE_SCAN_ENABLE(INQUIRY+PAGE)` + `WRITE_CURRENT_IAC_LAP`
+  terkirim dan di-ACK controller (log 23:52:00) — **stack benar, WCNSS tidak
+  menjalankan inquiry scan**. Tapi saat HP lain pakai alur "tambah perangkat",
+  A37 terlihat (page scan/LE jalan) → BR/EDR klasik WCNSS yang bermasalah.
+- Debug log stack diaktifkan via `device_config put bluetooth
+  INIT_logging_debug_enabled_for_all true` (flags BT dimuat dari DeviceConfig,
+  AdapterService.getInitFlags) — trace semua layer jadi verbose di logcat.
+
+Hipotesis utama keterlihatan: **interlaced inquiry scan** (WCNSS di-set
+`WriteInquiryScanType(INTERLACED)` saat start, btm_devctl.cc:309 → shim
+btm_api.cc:634 → GD SetInterlacedScan). Patch uji: shim memakai
+`SetStandardInquiryScan()` — build `20260806_16xx` menunggu flash & tes
+(HP lain scan). Bila bukan penyebab, kembalikan.
+
+Catatan: crash kernel `WifiHandlerThread` tiap ~50s (BUG di driver wlan) —
+terpisah, dicatat untuk ditangani belakangan.
+
 ### 10b Uji komprehensif — skrip otomatis + daftar manual
 
 Tujuan: memverifikasi tiap komponen secara sistematis dan cepat, dengan bukti
