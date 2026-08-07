@@ -550,6 +550,12 @@ ACTION_SEND image/jpeg kini meresolvasi activity-nya). Fix permanen sudah
 tercakup prop OPP di `ddf0253` — setelah rebuild, evaluasi boot melihat
 prop=true dan meng-enable sendiri; tanpa perubahan kode tambahan.
 
+**M5-BT4 — "tak terlihat setelah beberapa detik": bukan bug.** Perilaku bawaan
+Android 13: discoverability hanya aktif selama layar Setelan Bluetooth terbuka;
+layar mati (screen timeout device pendek) → discoverability berhenti demi
+privasi. Diverifikasi: dengan `screen_off_timeout` 10 menit, A37 tetap terlihat
+>2 menit. Tak ada yang perlu difix.
+
 Tambahan: visibilitas (A37 terlihat perangkat lain) beres lewat
 `bluetooth_discoverability` yang sebelumnya null — kini persist di
 `bt_config.conf` (ScanMode=2). Patch era UL justru yang menopang BT:
