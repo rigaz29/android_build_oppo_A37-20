@@ -391,18 +391,25 @@ keputusan triase per commit (port/buang), dan catatan resolusi konflik bila ada.
 
 **Kriteria keluar:** jumlah patch cocok tabel; MANIFEST.md lengkap. **Rollback:** hapus `patches/official/`.
 
-### M2 — Ganti basis manifest
-- [ ] `cp A37-20-official.xml .repo/local_manifests/A37-20.xml` (versi baru).
-- [ ] `repo init -u https://github.com/LineageOS/android.git -b lineage-20.0 --git-lfs`
-- [ ] `repo sync -c -j8 --force-sync --no-clone-bundle` — **TANPA `--no-tags`**
-      (remote aosp official juga dipin ke tag `android-13.0.0_r75`; jebakan yang sama,
-      HANDOFF §5.1). `--force-sync` akan menimpa checkout UL + commit lokal (sudah
-      diarsip di M0/M1 — memang dimaksudkan).
-- [ ] Integritas: `repo forall -c 'git rev-parse --verify HEAD >/dev/null || pwd'` →
-      nol HEAD kosong; `device/oppo/A37` tetap `7938923` dst.
-
-**Kriteria keluar:** tree sehat di basis official. **Rollback:** `repo init -u
-LineageOS-UL/android` + sync ulang (objek UL masih ada di `.git` tiap project — hemat).
+### M2 — Ganti basis manifest ✅ **SELESAI 6 Agustus 2026**
+- [x] `A37-20-official.xml` ditulis, divalidasi, dipasang ke `.repo/local_manifests/`
+      (dua koreksi vs draf Lampiran B — lihat lampiran).
+- [x] `repo init -u https://github.com/LineageOS/android.git -b lineage-20.0 --git-lfs`
+- [x] `repo sync -c -j8 --force-sync --no-clone-bundle` **TANPA `--no-tags`** —
+      sukses di lintasan ke-4 (`work/sync-official4.log`, EXIT=0). Tiga lintasan
+      pertama gagal oleh dua jebakan baru (HANDOFF §5.7–5.8): downgrade repo tool
+      ke versi Python-2, dan state setengah-jadi pasca-ganti manifest
+      (`frameworks/base` korup; sm8450/sm8550/gs201 worktree tanpa
+      `.repo/projects`). Perbaikan: checkout tag `v2.66` + `REPO_REV=v2.66`, lalu
+      hapus state korup dan sync ulang.
+- [x] **Integritas terverifikasi:** nol HEAD kosong (repo forall, 1213→ project);
+      repo A37 utuh (device `7902422`, kernel `8cc1519`, vendor `2e5c6f7`);
+      repo kunci di HEAD official — `frameworks/av` `9309f12a7c` (2025-10-17),
+      `frameworks/base` `45a6bfd66cd8` (**2026-02-05, +144 commit ASB dari titik
+      fork UL**), adb `18b2072d`, vendor/lineage `e855b469` (flag HAL1 = 0 file ✓),
+      bpf/art di tag AOSP r75 ✓; pin `sepolicy-legacy` `470e8d8` dan tambahan
+      `timekeep` `11c1535` masuk ✓; `transport_legacy.cpp` absen ✓ (dipulihkan M3).
+      Disk pasca-sync: 105 GB bebas.
 
 ### M3 — Terapkan patch legacy
 - [ ] Jalankan `tools/apply-official-patches.sh` (§4.2). Setiap konflik diselesaikan

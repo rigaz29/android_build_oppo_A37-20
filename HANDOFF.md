@@ -141,6 +141,21 @@ Semuanya benar-benar terjadi di proyek ini, bukan teori.
    memuat pola itu. Pakai pola yang tidak cocok dengan diri sendiri, mis.
    `pkill -f "repo/mai[n].py"`.
 
+7. **`repo init` ke manifest lineage-20.0 official men-DOWNGRADE `.repo/repo`** ke
+   revisi era Python 2 (`4b32581`); Python sistem ≥ 3.10 tidak punya modul
+   `formatter` → semua perintah repo mati seketika dengan `ModuleNotFoundError`.
+   Perbaikan (dialami M2, 6 Agu 2026):
+   `git -C .repo/repo fetch --tags && git -C .repo/repo checkout v2.66`, lalu
+   jalankan semua perintah repo dengan **`REPO_REV=v2.66`** di depan.
+
+8. **Sync pertama pasca-ganti basis manifest bisa meninggalkan state setengah-jadi.**
+   Gejala (M2): `fatal: not a git repository: .repo/projects/<path>.git` (direktori
+   ada tapi tanpa HEAD/refs) dan error `checkout <sha>` pada project baru
+   (worktree terisi tapi `.repo/projects`-nya tidak dibuat). Perbaikan: hapus
+   **dua-duanya** — `.repo/projects/<path>.git` + `.repo/project-objects/<nama>.git`
+   bila korup, plus worktree project gagal — lalu `repo sync --force-sync` ulang.
+   `--force-sync` saja TIDAK membersihkan state ini.
+
 ---
 
 ## 6. Fase 3 — status 5 Agustus 2026
