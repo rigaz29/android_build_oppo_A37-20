@@ -563,9 +563,9 @@ toleransi opcode vendor `hci_layer.cc` + standard inquiry scan `btm_api.cc`.
 Verifikasi runtime tuntas (11 profil aktif, audio TWS jalan) sebelum commit;
 permanennya menunggu rebuild+flash (prop runtime hilang saat reboot).
 
-### M6 — Opsional: RIL
-Hanya setelah M5 paritas. Port T-RIL (`frameworks/opt/telephony` 8 + `hardware/ril`
-8 commit), uji terpisah, tetap berstatus risiko terbuka.
+### M6 — RIL ✅ **SELESAI 7 Agustus 2026** (fix 1 baris, bukan port T-RIL)
+Ternyata hanya prop `vendor.rild.libpath` yang hilang (lihat temuan di bawah);
+telepon/SMS/LTE teruji jalan. Rebuild+flash permanen menunggu persetujuan.
 
 #### Temuan M5 — RIL (7 Agustus 2026, diagnostik adb; bug KONFIRMASI)
 
@@ -574,16 +574,25 @@ CarrierConfigLoader null, rild "hidup tapi diam". Diagnosis berjenjang:
 modem subsys **ONLINE**, qmuxd+netmgrd jalan, rild×2 menyelesaikan RIL_Init
 ("sleep loop" = kondisi normal main thread), tapi **`com.android.phone` loop
 selamanya menunggu `android.hardware.radio@1.1::IRadio/slot1`** yang tak pernah
-terdaftar (log HidlServiceManagement). Akar: blob vendor `libril-qc-qmi-1.so`
-adalah RIL CAF era-socket (0 string `android.hardware.radio` — diverifikasi)
-sehingga tak ada yang mendaftarkan IRadio; manifest VINTF sudah benar
-(1.1 hwbinder, warisan fix era 19.1). Perbaikan = port T-RIL UL: fork
-`LineageOS-UL/android_hardware_ril` + `android_frameworks_opt_telephony`
-(branch `lineage-20.0`) diverifikasi masih ada di GitHub (HEAD `c572abee` /
-`f7125bf8`). Patch T-RIL sengaja belum diekstraksi M1 (tier-1 kondisional) —
-kini gejalanya nyata. Status RIL baseline UL sendiri belum diketahui.
-Catatan minor terkait: `/dev/smd8` root:root 600 (ueventd.qcom.rc tak punya
-aturannya) — perbaiki sekalian saat M6 (`/dev/smd8 0660 radio radio`).
+terdaftar (log HidlServiceManagement).
+
+**AKAR SEBENARNYA (bukan port T-RIL!)**: `hardware/ril/rild/rild.c:39` di
+Android 13 membaca **`vendor.rild.libpath`**, bukan `rild.libpath` legacy —
+prop vendor kosong → rild masuk jalur *"no-ril"* (`goto done`) → blob CAF
+`libril-qc-qmi-1.so` **tak pernah dimuat** (bukti `/proc/PID/maps` hanya
+`libril.so` AOSP) → IRadio HIDL dari ril_service.cpp tak terdaftar. Device.mk
+hanya menyet nama legacy.
+
+**RESOLUSI (device tree `c5291cc`, sudah push)**: tambah
+`vendor.rild.libpath=/system/vendor/lib/libril-qc-qmi-1.so`. Tes runtime 7 Agu
+2026 (SIM by.U/Telkomsel 51010, slot 1): IRadio slot1/slot2 + ISap terdaftar,
+semua libril-qc termuat, baseband terbaca via QMI, SIM LOADED, registrasi
+**LTE HOME** (voice+data IN_SERVICE, sinyal level 4), dan **telepon/SMS/data
+seluler teruji jalan oleh pemilik device**. **16 patch T-RIL UL
+(hardware/ril `c572abee` + frameworks/opt/telephony `f7125bf8`) ternyata TIDAK
+diperlukan** — libril T menerima blob CAF apa adanya. `/dev/smd8` root:root
+pun bukan pemblokir (QMI lewat qmuxd yang root) — dibiarkan. M6 praktis
+selesai: tinggal rebuild+flash permanen.
 
 ---
 
