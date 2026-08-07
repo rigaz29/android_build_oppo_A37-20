@@ -565,7 +565,10 @@ permanennya menunggu rebuild+flash (prop runtime hilang saat reboot).
 
 ### M6 — RIL ✅ **SELESAI 7 Agustus 2026** (fix 1 baris, bukan port T-RIL)
 Ternyata hanya prop `vendor.rild.libpath` yang hilang (lihat temuan di bawah);
-telepon/SMS/LTE teruji jalan. Rebuild+flash permanen menunggu persetujuan.
+telepon/SMS/LTE teruji jalan. Rebuild final **selesai**: zip
+`lineage-20.0-20260807_122340-UNOFFICIAL-A37.zip` (build 05:15 rc=0, verify-rom
+SEMUA LOLOS, sha256 `ae261c4b…` di `/root/a37-dl/lineage-20.0-official-FINAL-BT-RIL-20260807_122340.zip`)
+memuat fix RIL + BT permanen; flash di sisi user.
 
 #### Temuan M5 — RIL (7 Agustus 2026, diagnostik adb; bug KONFIRMASI)
 

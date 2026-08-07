@@ -37,12 +37,15 @@ yang bisa diverifikasi ulang. Kalau ada konflik antara berkas ini dan `PLAN.md`,
 > 2025-03). Tiga pemblokir M4: korupsi Android.bp warisan keep-both M3 (seri
 > vendor_lineage diregenerasi, SHA `977058d5…69d8465e`), `libcnefeatureconfig`
 > dibuang (device tree `434e530` sudah push), patch T3 wlan dipromosikan wajib.
-> Rincian: PLAN-OFFICIAL §"Pemblokir M4". **M5 berjalan** — uji BT via adb
-> menemukan 2 bug device tree (bukan patch UL): gating profil sysprop Android 13
-> + modul audio policy `a2dp`→`bluetooth`; fix device tree `ddf0253` (push),
-> diverifikasi runtime (11 profil aktif, audio TWS jalan). Rincian:
-> PLAN-OFFICIAL §"Temuan M5". ⚠️ Disk tinggal 32 GB. Berikutnya: rebuild dengan
-> fix BT → flash → lanjut matriks paritas (matikan `WITH_ADB_INSECURE` sebelum rilis).
+> Rincian: PLAN-OFFICIAL §"Pemblokir M4". **M5 berjalan + M6 SELESAI (7 Agustus)** —
+> uji BT menemukan 3 bug device tree (fix `ddf0253`); RIL mati ternyata karena
+> prop `vendor.rild.libpath` hilang (fix 1 baris `c5291cc`; telepon/SMS/LTE by.U
+> teruji jalan; 16 patch T-RIL UL tak diperlukan). **Zip final**
+> `lineage-20.0-20260807_122340-UNOFFICIAL-A37.zip` (verify lolos, sha256
+> `ae261c4b…`, di `/root/a37-dl/lineage-20.0-official-FINAL-BT-RIL-…zip`) memuat
+> fix BT+RIL permanen — menunggu flash user. Rincian: PLAN-OFFICIAL §"Temuan M5".
+> ⚠️ Disk ~30 GB. Sisa M5: matriks paritas Wi-Fi/kamera/sensor/audio/charging;
+> matikan `WITH_ADB_INSECURE` sebelum rilis publik.
 
 ---
 
