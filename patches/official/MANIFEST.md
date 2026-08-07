@@ -67,6 +67,20 @@ regresi hijau** (run verifikasi terakhir).
   (RFC-2822 folding) sehingga cek subjek terpotong dan seri diterapkan dua kali;
   diperbaiki dengan `git mailinfo` (unfolding).
 
+## Perubahan M4 (7 Agustus 2026)
+
+- **Seri `vendor_lineage` diregenerasi ulang (M4.1a)**: korupsi warisan keep-both
+  di `build/soong/Android.bp` (penutup blok `qti_vibrator_hal_defaults` + header
+  `soong_config_module_type` stagefright tertelan) diperbaiki dan dilipat ke
+  commit aslinya; SHA baru `977058d5..69d8465e` (pahole kini `69d8465e`). Hunk
+  HOSTCFLAGS kini ikut di `0008` — langkah sed skrip tetap idempoten (grep dulu,
+  skip bila sudah ada).
+- **`hardware_qcom-caf_wlan` DIPROMOSIKAN ke seri wajib (M4.4a)**: `m bacon` gagal
+  `-Werror=format` tanpa kedua patch (u64 vs `%lu`,
+  `driver_cmd_nl80211.c:2835/5704`) — kondisi T3 PLAN-OFFICIAL §3 terbukti.
+  Dipindah dari opt-in `--t3` ke SERIES di `tools/apply-official-patches.sh`.
+  bionic/jemalloc tetap opt-in.
+
 ## Yang dibuang saat triase (jangan dikembalikan tanpa alasan baru)
 
 | Berkas | Commit | Alasan |

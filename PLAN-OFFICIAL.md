@@ -291,7 +291,7 @@ Commit yang dicetak adalah isi sebenarnya di fork UL (log lengkap:
 |---|---|---|
 | `bionic` (7) | `81d13327e` SHIM libraries · `29425b71f` pre-P mutex · `d51393f91` per-process target SDK override · 2× hosts file · `7bdcdf399` switch jemalloc · `b73b342e8` revert scudo-free | blob gagal link/mutex deadlock. **Pengecualian:** `d51393f91` diverifikasi DULU saat M3 — `TARGET_PROCESS_SDK_VERSION_OVERRIDE` kita setel; jika mekanisme official tak mencakup sisi runtime-nya, commit ini naik kelas ke T1 |
 | `external/jemalloc_new` (3) | tuning jemalloc | hanya bila `bionic` switch jemalloc diambil |
-| `hardware/qcom-caf/wlan` (2) | `607daca` %llx format · `fc391a4` revert TSF fixup | bila build wcnss/wpa gagal di M4 |
+| `hardware/qcom-caf/wlan` (2) | `607daca` %llx format · `fc391a4` revert TSF fixup | bila build wcnss/wpa gagal di M4 — **TERBUKTI 7 Agu 2026 (M4.4a): naik kelas ke seri wajib** |
 
 ### Opsional — fase RIL tersendiri (16 commit)
 
@@ -478,7 +478,21 @@ fork UL — tidak ada di manifest official (§1.2C) dan memang diverifikasi tida
 dikonsumsi build A37 (§1.5). Bukti penguat: zip baseline UL yang jalan TIDAK
 mengirim file-nya (`unzip -l` baseline zip) — entri ini bobot mati bahkan di
 basis UL. Perbaikan: buang dari `device.mk` blok RIL (device tree commit
-`434e530` di atas `7902422`; lokal, belum push).
+`434e530` di atas `7902422`; sudah di-push `7902422..434e530`).
+
+**M4.4a — `hardware/qcom-caf/wlan` gagal `-Werror=format` (T3 wlan naik
+kelas).** Gejala: run pertama `m bacon` mati 01:37 — tiga error
+`format specifies type 'unsigned long' but the argument has type 'u64'` di
+`qcwcn/wpa_supplicant_8_lib/driver_cmd_nl80211.c` (2835 `wake_tsf`; 5704
+`tsf_value`/`host_time`). Akar: inilah kondisi T3 §3 ("bila build wcnss/wpa
+gagal di M4") — fork UL membawa `607daca` (%llx) + `fc391a4` (revert fixup
+TSF yang reintroduksi `%lul`), official `lineage-20.0-caf` beku persis di
+merge-base (delta 0, `.meta`) jadi tak punya keduanya. Perbaikan: kedua patch
+`patches/official/hardware_qcom-caf_wlan/` **dipromosikan dari opt-in `--t3`
+ke seri wajib** di `tools/apply-official-patches.sh` (hasil aplikasi = state
+wlan UL persis = baseline Wi-Fi jalan); diterapkan bersih (commit
+`d947baf`+`1b0b986` di atas `b93dc5e`), `m bacon` diulang. bionic/jemalloc
+T3 tetap opt-in — belum ada gejala.
 
 ### M5 — Uji paritas di perangkat
 - [ ] Flash; protokol `tools/test-device.sh` + manual M1–M17 (PLAN §10b).

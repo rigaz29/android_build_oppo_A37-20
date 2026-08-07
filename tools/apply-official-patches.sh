@@ -15,7 +15,8 @@
 #     vendor_lineage/0013 (verifikasi di penjaga regresi).
 #   - langkah sysfs_disk_stat sisi system/sepolicy hilang — official tidak punya
 #     tipe itu dari sananya. Sisi device/qcom/sepolicy-legacy TETAP ada (langkah K).
-#   - patch T3 (bionic/jemalloc/wlan) opt-in lewat flag --t3.
+#   - patch T3 bionic/jemalloc opt-in lewat flag --t3; wlan TIDAK lagi opt-in —
+#     dipromosikan wajib sejak M4.4 (build gagal tanpanya; lihat blok SERIES).
 #
 # Pemakaian:
 #   tools/apply-official-patches.sh [--check] [--t3] [/path/ke/tree]
@@ -72,12 +73,17 @@ T1 frameworks_native             frameworks/native
 T1 packages_modules_Wifi         packages/modules/Wifi
 T1 packages_modules_Bluetooth    packages/modules/Bluetooth
 T2 frameworks_av                 frameworks/av
-T2 frameworks_base               frameworks/base"
+T2 frameworks_base               frameworks/base
+T3 hardware_qcom-caf_wlan        hardware/qcom-caf/wlan"
+# hardware_qcom-caf_wlan DIPROMOSIKAN dari opt-in --t3 ke wajib (M4.4, 7 Agu
+# 2026): tanpa kedua patch ini m bacon gagal -Werror=format (u64 vs %lu di
+# driver_cmd_nl80211.c) — kondisi 'bila build wcnss/wpa gagal' di PLAN-OFFICIAL
+# §3 T3 terbukti. official lineage-20.0-caf beku di merge-base (delta 0), jadi
+# hasil aplikasi = state wlan UL persis (baseline Wi-Fi jalan).
 
 SERIES_T3="\
 T3 bionic                        bionic
-T3 external_jemalloc_new         external/jemalloc_new
-T3 hardware_qcom-caf_wlan        hardware/qcom-caf/wlan"
+T3 external_jemalloc_new         external/jemalloc_new"
 
 apply_series(){ # dirpatch pathtree
   local dp="$1" pt="$2"
