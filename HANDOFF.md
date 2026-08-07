@@ -37,9 +37,12 @@ yang bisa diverifikasi ulang. Kalau ada konflik antara berkas ini dan `PLAN.md`,
 > 2025-03). Tiga pemblokir M4: korupsi Android.bp warisan keep-both M3 (seri
 > vendor_lineage diregenerasi, SHA `977058d5…69d8465e`), `libcnefeatureconfig`
 > dibuang (device tree `434e530` sudah push), patch T3 wlan dipromosikan wajib.
-> Rincian: PLAN-OFFICIAL §"Pemblokir M4". ⚠️ Disk tinggal 32 GB — bersihkan
-> sebelum rebuild. Berikutnya: **M5 uji paritas di perangkat** (menunggu flash
-> oleh pemilik A37; matikan `WITH_ADB_INSECURE` sebelum rilis).
+> Rincian: PLAN-OFFICIAL §"Pemblokir M4". **M5 berjalan** — uji BT via adb
+> menemukan 2 bug device tree (bukan patch UL): gating profil sysprop Android 13
+> + modul audio policy `a2dp`→`bluetooth`; fix device tree `ddf0253` (push),
+> diverifikasi runtime (11 profil aktif, audio TWS jalan). Rincian:
+> PLAN-OFFICIAL §"Temuan M5". ⚠️ Disk tinggal 32 GB. Berikutnya: rebuild dengan
+> fix BT → flash → lanjut matriks paritas (matikan `WITH_ADB_INSECURE` sebelum rilis).
 
 ---
 

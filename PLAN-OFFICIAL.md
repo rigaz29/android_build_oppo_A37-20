@@ -509,8 +509,40 @@ T3 tetap opt-in — belum ada gejala.
       boot ✅ · Wi-Fi ✅ · kamera ✅ · BT ON ✅ (connect/inquiry §10.6 masih uji) ·
       volume ✅ · sensor ✅ · audio ✅ · charging control ✅ · RIL ❌ terbuka):
       setiap komponen harus **≥ status baseline**; regresi = pemblokir rilis.
-- [ ] Bukti tujuan migrasi: `ro.build.version.security_patch` **> 2025-03-01**.
+- [x] Bukti tujuan migrasi: `ro.build.version.security_patch` **> 2025-03-01** —
+      terukur di build M4.4: **2026-02-01**.
 - [ ] Matikan `WITH_ADB_INSECURE` sebelum zip dirilis (HANDOFF §9.3).
+
+#### Temuan M5 — Bluetooth (7 Agustus 2026, uji langsung via adb)
+
+Gejala awal: BT ON + discovery bisa, tapi (a) A37 tak terlihat perangkat lain,
+(b) pairing gagal, (c) transfer file gagal, (d) TWS konek tapi suara tetap di
+speaker. Akar masalah **bukan patch UL** — dua gap device tree terhadap
+mekanisme Android 13, keduanya fix di device tree commit `ddf0253`
+(`434e530..ddf0253`, sudah push):
+
+**M5-BT1 — gating profil sysprop Android 13.** T menggating profile services
+via sysprop `bluetooth.profile.<nama>.enabled` (BluetoothProperties libsysprop,
+`orElse(false)`); tanpa itu hanya GattService jalan — OPP/A2DP/HFP/PBAP/MAP/
+PAN/SAP tak start (pairing oke, transfer gagal). Fix: 12 prop di `device.mk`.
+Fork UL tak menyediakan prop ini juga — baseline UL hampir pasti bawa bug sama
+(BT belum pernah diuji di baseline).
+
+**M5-BT2 — modul audio policy salah pasang.** `audio_policy_configuration.xml`
+meng-include `a2dp_audio_policy_configuration.xml` (modul `"a2dp"` → butuh
+`audio.a2dp.default.so` yang tak dibangun di konfigurasi non-APEX LOS 20) →
+`APM::HwModule: createDevice: could not find HW module for device 0080`,
+Handle: 0, routing jatuh ke speaker. Fix: include
+`bluetooth_audio_policy_configuration.xml` (modul `"bluetooth"` dari
+`audio.bluetooth.default.so` yang memang sudah di PRODUCT_PACKAGES) → Handle
+18, suara masuk TWS.
+
+Tambahan: visibilitas (A37 terlihat perangkat lain) beres lewat
+`bluetooth_discoverability` yang sebelumnya null — kini persist di
+`bt_config.conf` (ScanMode=2). Patch era UL justru yang menopang BT:
+toleransi opcode vendor `hci_layer.cc` + standard inquiry scan `btm_api.cc`.
+Verifikasi runtime tuntas (11 profil aktif, audio TWS jalan) sebelum commit;
+permanennya menunggu rebuild+flash (prop runtime hilang saat reboot).
 
 ### M6 — Opsional: RIL
 Hanya setelah M5 paritas. Port T-RIL (`frameworks/opt/telephony` 8 + `hardware/ril`
