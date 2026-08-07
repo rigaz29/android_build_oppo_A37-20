@@ -507,8 +507,9 @@ T3 tetap opt-in — belum ada gejala.
 - [ ] Flash; protokol `tools/test-device.sh` + manual M1–M17 (PLAN §10b).
 - [ ] **Matriks paritas** terhadap build UL terakhir yang jalan (baseline:
       boot ✅ · Wi-Fi ✅ · kamera ✅ · BT ON ✅ (connect/inquiry §10.6 masih uji) ·
-      volume ✅ · sensor ✅ · audio ✅ · charging control ✅ · RIL ❌ terbuka):
-      setiap komponen harus **≥ status baseline**; regresi = pemblokir rilis.
+      volume ✅ · sensor ✅ · audio ✅ **glitch saat buka/tutup app — temuan M5-Audio** ·
+      charging control ✅ · RIL ✅ (sejak M6)): setiap komponen harus **≥ status
+      baseline**; regresi = pemblokir rilis.
 - [x] Bukti tujuan migrasi: `ro.build.version.security_patch` **> 2025-03-01** —
       terukur di build M4.4: **2026-02-01**.
 - [ ] Matikan `WITH_ADB_INSECURE` sebelum zip dirilis (HANDOFF §9.3).
@@ -562,6 +563,40 @@ Tambahan: visibilitas (A37 terlihat perangkat lain) beres lewat
 toleransi opcode vendor `hci_layer.cc` + standard inquiry scan `btm_api.cc`.
 Verifikasi runtime tuntas (11 profil aktif, audio TWS jalan) sebelum commit;
 permanennya menunggu rebuild+flash (prop runtime hilang saat reboot).
+
+#### Temuan M5 — Audio: glitch saat buka/tutup app (7 Agustus 2026, diagnostik adb; bug KONFIRMASI)
+
+Gejala: saat mendengarkan musik, muncul glitch/putus pendek tiap kali membuka
+atau menutup aplikasi. Ini **bukan kegagalan HW dan bukan zram** — akarnya
+jitter scheduling yang menimpa jalur audio ber-buffer kecil.
+
+Bukti dari perangkat (ROM M4 berjalan):
+
+| Bukti | Nilai terukur | Implikasi |
+|---|---|---|
+| Underrun counter AudioFlinger | `underruns=7893 overruns=4632` pada track aktif; ada track lain `208` | jalur audio konsisten kelaparan data — glitch bukan sesekali |
+| Swap | `SwapFree` 55 MB dari 256 MB (1 jam sebelumnya 176 MB) | tekanan memori berat; tiap buka/tutup app memicu swap-in/out (zram lz4 memakan CPU) |
+| Audio policy | hanya `primary output` + `low_latency` (FAST) — **TIDAK ADA `deep_buffer`** | musik diputar lewat buffer orde milidetik → sangat sensitif jitter |
+| Governor | `interactive`, min 200 MHz, tanpa tuning hispeed | frekuensi naik lambat saat burst app open |
+
+Mekanisme: buka/tutup app → fork zygote + JIT + render → ledakan alokasi →
+reclaim/swap (lz4) → thread audio (deadline ms) telat dijadwalkan → **underrun**
+→ glitch.
+
+**RENCANA PERBAIKAN (belum dieksekusi — menunggu build berikutnya):**
+
+1. **Tambah `deep_buffer` mixPort** di `audio_policy_configuration.xml`
+   (device tree). Buffer besar menyerap jitter; pola standar CAF msm8916
+   (a6010 memakainya). Perbaikan terbesar, perkiraan dampak: menghilangkan
+   mayoritas glitch.
+2. **Tuning LMKD** (device tree, pola a6010): `ro.lmk.swap_free_low_percentage`,
+   "significant thrashing critical", batas cputime app background — mengurangi
+   thrash swap yang menyakiti audio.
+3. **Tuning governor** (opsional): `hispeed_load` turun (a6010: 70) supaya
+   frekuensi cepat naik saat burst.
+
+Belum diverifikasi apakah HAL audio `@6.0` msm8916 mendukung deep_buffer —
+cek dulu sebelum commit (bila tidak, opsi 2+3 menjadi pengganti).
 
 ### M6 — RIL ✅ **SELESAI 7 Agustus 2026** (fix 1 baris, bukan port T-RIL)
 Ternyata hanya prop `vendor.rild.libpath` yang hilang (lihat temuan di bawah);
