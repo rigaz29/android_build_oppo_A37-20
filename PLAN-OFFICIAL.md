@@ -567,6 +567,24 @@ permanennya menunggu rebuild+flash (prop runtime hilang saat reboot).
 Hanya setelah M5 paritas. Port T-RIL (`frameworks/opt/telephony` 8 + `hardware/ril`
 8 commit), uji terpisah, tetap berstatus risiko terbuka.
 
+#### Temuan M5 — RIL (7 Agustus 2026, diagnostik adb; bug KONFIRMASI)
+
+Gejala: OUT_OF_SERVICE permanen, seluruh `gsm.*` kosong, `isub` tak ada,
+CarrierConfigLoader null, rild "hidup tapi diam". Diagnosis berjenjang:
+modem subsys **ONLINE**, qmuxd+netmgrd jalan, rild×2 menyelesaikan RIL_Init
+("sleep loop" = kondisi normal main thread), tapi **`com.android.phone` loop
+selamanya menunggu `android.hardware.radio@1.1::IRadio/slot1`** yang tak pernah
+terdaftar (log HidlServiceManagement). Akar: blob vendor `libril-qc-qmi-1.so`
+adalah RIL CAF era-socket (0 string `android.hardware.radio` — diverifikasi)
+sehingga tak ada yang mendaftarkan IRadio; manifest VINTF sudah benar
+(1.1 hwbinder, warisan fix era 19.1). Perbaikan = port T-RIL UL: fork
+`LineageOS-UL/android_hardware_ril` + `android_frameworks_opt_telephony`
+(branch `lineage-20.0`) diverifikasi masih ada di GitHub (HEAD `c572abee` /
+`f7125bf8`). Patch T-RIL sengaja belum diekstraksi M1 (tier-1 kondisional) —
+kini gejalanya nyata. Status RIL baseline UL sendiri belum diketahui.
+Catatan minor terkait: `/dev/smd8` root:root 600 (ueventd.qcom.rc tak punya
+aturannya) — perbaiki sekalian saat M6 (`/dev/smd8 0660 radio radio`).
+
 ---
 
 ## 6. Risiko migrasi ini
