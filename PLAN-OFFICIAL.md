@@ -537,6 +537,19 @@ Handle: 0, routing jatuh ke speaker. Fix: include
 `audio.bluetooth.default.so` yang memang sudah di PRODUCT_PACKAGES) → Handle
 18, suara masuk TWS.
 
+**M5-BT3 — opsi "Bluetooth" tak muncul di share sheet** (laporan lanjutan).
+Lapisan ketiga dari akar yang sama: `BluetoothManagerService`
+(service/.../BluetoothManagerService.java:3038
+`updateOppLauncherComponentState`) meng-enable
+`BluetoothOppLauncherActivity` (+ 3 activity BtEnable/Enabling/Error) hanya
+bila `BluetoothProperties.isProfileOppEnabled()` true — dievaluasi saat
+boot/user-switch. Saat boot prop OPP masih kosong → komponen dibiarkan
+DEFAULT → manifest `android:enabled="false"` → opsi share tak ada.
+Fix runtime: `pm enable` keempat komponen (terverifikasi: query
+ACTION_SEND image/jpeg kini meresolvasi activity-nya). Fix permanen sudah
+tercakup prop OPP di `ddf0253` — setelah rebuild, evaluasi boot melihat
+prop=true dan meng-enable sendiri; tanpa perubahan kode tambahan.
+
 Tambahan: visibilitas (A37 terlihat perangkat lain) beres lewat
 `bluetooth_discoverability` yang sebelumnya null — kini persist di
 `bt_config.conf` (ScanMode=2). Patch era UL justru yang menopang BT:
