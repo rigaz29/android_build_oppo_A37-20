@@ -436,17 +436,49 @@ keputusan triase per commit (port/buang), dan catatan resolusi konflik bila ada.
 ulang per project (patch hilang, bisa diterap ulang — idempoten).
 
 ### M4 — Build bertahap (setiap sub-langkah menunggu persetujuan)
-- [ ] `m nothing` (kati menerima tree).
-- [ ] `m selinux_policy` (Fase 5 pola lama; kali ini tanpa pemblokir sysfs_disk_stat
-      sisi platform — diverifikasi, bukan diasumsikan).
-- [ ] Modul sasaran: `adbd` (transport_legacy), `libcameraservice` (HAL1), `netd`,
-      `wcnss_service` + `libwcnss_qmi`, `hwcomposer.msm8916` (libbfqio),
-      `android.hardware.audio@6.0-impl`, `android.hardware.drm@1.4-service.clearkey`.
+- [x] `m nothing` (kati menerima tree) — **LOLOS 7 Agu 2026, 01:28**, setelah dua
+      pemblokir M4.1a/M4.1b di bawah.
+- [x] `m selinux_policy` — **LOLOS 01:53**, tanpa pemblokir sysfs_disk_stat sisi
+      platform (terverifikasi, bukan diasumsikan).
+- [x] Modul sasaran — **LOLOS 05:43 (8/8 tanpa pemblokir)**: `adbd` (terpasang di
+      `system/apex/com.android.adbd/bin/adbd` — transport_legacy terkompilasi),
+      `libcameraservice` (HAL1), `netd`, `wcnss_service` + `libwcnss_qmi`,
+      `hwcomposer.msm8916` (libbfqio tertaut), `android.hardware.audio@6.0-impl`,
+      `android.hardware.drm@1.4-service.clearkey`.
 - [ ] `m bacon` → `tools/verify-rom.sh` LOLOS (properti sdk 33, zygote32, 320 blob,
       lokasi sepolicy, adbd legacy, boot.img dt_size 210944).
 
 **Kriteria keluar:** zip lolos verify-rom. Pemblokir baru (pasti ada beberapa)
-didokumentasikan ke dokumen ini sebagai §5.x seperti pola PLAN §8.1a–d.
+didokumentasikan di bawah ini seperti pola PLAN §8.1a–d.
+
+#### Pemblokir M4
+
+**M4.1a — Korupsi `vendor/lineage/build/soong/Android.bp` (warisan resolusi
+keep-both M3).** Gejala: `m nothing` gagal 2 detik —
+`Android.bp:561:1: expected "}", found Ident`. Akar: resolusi keep-both M3
+menelan penutup blok `qti_vibrator_hal_defaults` (tiga baris `}`) DAN header
+`soong_config_module_type {` milik blok `stagefright_qcom_legacy` — dua blok
+dari sisi berbeda (official vs patch UL `Revert "config: Remove
+TARGET_USES_QCOM_BSP_LEGACY"`) tergabung salah di titik sisip yang sama;
+korupsi ikut ter-commit dan teregenerasi ke seri patch M3. Perbaikan (7 Agu
+2026): rekonstruksi diverifikasi terhadap fork UL (fetch GitHub; ekor file
+kini identik — satu-satunya selisih vs UL adalah baris HOSTCFLAGS sah);
+`git commit --fixup` + `rebase -i --autosquash` memasukkan perbaikan ke commit
+yang benar; seri `patches/official/vendor_lineage/` diregenerasi (13 patch;
+SHA baru `977058d5…69d8465e`, pahole kini `69d8465e`). Audit dua file
+keep-both lain: `config/BoardConfigQcom.mk` sehat (rantai VIDC utuh termasuk
+cabang `BR_FAMILY`→msm8916; warna metadata ikut bentuk bersyarat UL) dan
+`config/BoardConfigSoong.mk` sehat (semua variabel resmi+UL ada).
+`apply-official-patches.sh --check`: semua ok, rc=0.
+
+**M4.1b — `libcnefeatureconfig` tidak ada di basis official.** Gejala: kati
+error `lineage_A37.mk includes non-existent modules in PRODUCT_PACKAGES:
+libcnefeatureconfig`. Akar: modul hanya disediakan `external/connectivity`
+fork UL — tidak ada di manifest official (§1.2C) dan memang diverifikasi tidak
+dikonsumsi build A37 (§1.5). Bukti penguat: zip baseline UL yang jalan TIDAK
+mengirim file-nya (`unzip -l` baseline zip) — entri ini bobot mati bahkan di
+basis UL. Perbaikan: buang dari `device.mk` blok RIL (device tree commit
+`434e530` di atas `7902422`; lokal, belum push).
 
 ### M5 — Uji paritas di perangkat
 - [ ] Flash; protokol `tools/test-device.sh` + manual M1–M17 (PLAN §10b).

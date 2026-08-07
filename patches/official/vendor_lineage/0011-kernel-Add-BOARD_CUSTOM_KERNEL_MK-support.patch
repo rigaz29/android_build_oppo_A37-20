@@ -1,4 +1,4 @@
-From 4514f173cc431448045c4a28c03f1ae60ed99fe9 Mon Sep 17 00:00:00 2001
+From 94a8f7ef103eafab0e48b290cdaa6d6e47e9af9a Mon Sep 17 00:00:00 2001
 From: Dominggoes Isakh <drjisakh@gmail.com>
 Date: Mon, 3 Jan 2022 01:01:03 +0100
 Subject: [PATCH 11/13] kernel: Add BOARD_CUSTOM_KERNEL_MK support

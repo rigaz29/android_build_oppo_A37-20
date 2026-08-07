@@ -30,7 +30,11 @@ yang bisa diverifikasi ulang. Kalau ada konflik antara berkas ini dan `PLAN.md`,
 > legacy, fase M0–M5). **Update 7 Agustus:** **M0–M3 selesai** — tree `/root/los20`
 > kini berbasis official lineage-20.0 tersinkron + 135 patch legacy terpasang
 > (skrip `tools/apply-official-patches.sh`, rc=0). Fase 10 basis UL (status di
-> bawah) menjadi baseline paritas; build M4 menunggu persetujuan.
+> bawah) menjadi baseline paritas. **M4 berjalan** — dua pemblokir pertama
+> dibereskan (korupsi Android.bp warisan keep-both M3 → seri patch vendor_lineage
+> diregenerasi dengan SHA baru `977058d5…69d8465e`; `libcnefeatureconfig` dibuang
+> dari PRODUCT_PACKAGES, device tree commit lokal `434e530` belum push).
+> Rincian: PLAN-OFFICIAL §"Pemblokir M4".
 
 ---
 

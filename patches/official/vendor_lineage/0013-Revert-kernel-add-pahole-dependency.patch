@@ -1,4 +1,4 @@
-From 456e238c49703491374a3a06a14f4c25de580349 Mon Sep 17 00:00:00 2001
+From 69d8465e3f252da8ed4f16304b35459c96801521 Mon Sep 17 00:00:00 2001
 From: rigaz29 <ryanbagas27@gmail.com>
 Date: Fri, 7 Aug 2026 01:04:19 +0000
 Subject: [PATCH 13/13] Revert "kernel: add `pahole` dependency"

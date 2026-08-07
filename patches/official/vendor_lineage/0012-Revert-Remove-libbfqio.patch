@@ -1,4 +1,4 @@
-From fa5edfbb4023aba97690a26ffa3caa2a6e37460b Mon Sep 17 00:00:00 2001
+From bcb5087a67adb2c1dff48cebac28c71f13efd715 Mon Sep 17 00:00:00 2001
 From: rigaz29 <ryanbagas27@gmail.com>
 Date: Wed, 5 Aug 2026 10:02:06 +0000
 Subject: [PATCH 12/13] Revert "Remove libbfqio"

@@ -1,23 +1,34 @@
-From 4560f59f89a279f266cfad7565ef51c92e3cd26d Mon Sep 17 00:00:00 2001
+From 76319606851d8a195c0157583bda1c5dd5c822ab Mon Sep 17 00:00:00 2001
 From: Khalvat-M <mmba313@gmail.com>
 Date: Tue, 25 Oct 2022 06:48:06 +0330
 Subject: [PATCH 08/13] Revert "config: Remove TARGET_USES_QCOM_BSP_LEGACY"
 
 This reverts commit 89fd58c860714648ec2bbcfdd29f1f5915fbf58b.
 ---
- build/soong/Android.bp     | 12 ++++++++++++
+ build/soong/Android.bp     | 19 ++++++++++++++++++-
  config/BoardConfigQcom.mk  |  1 +
  config/BoardConfigSoong.mk |  4 +++-
- 3 files changed, 16 insertions(+), 1 deletion(-)
+ 3 files changed, 22 insertions(+), 2 deletions(-)
 
 diff --git a/build/soong/Android.bp b/build/soong/Android.bp
-index 1ee18c3d..84da9d82 100644
+index 1ee18c3d..f8b3a241 100644
 --- a/build/soong/Android.bp
 +++ b/build/soong/Android.bp
-@@ -533,6 +533,18 @@ qti_vibrator_hal {
+@@ -21,7 +21,7 @@ lineage_generator {
+     name: "generated_kernel_includes",
+ 
+     // The headers make command
+-    cmd: "$(PATH_OVERRIDE_SOONG) $(KERNEL_MAKE_CMD) $(KERNEL_MAKE_FLAGS) -C $(TARGET_KERNEL_SOURCE) O=$(KERNEL_BUILD_OUT_PREFIX)$(genDir) ARCH=$(KERNEL_ARCH) $(KERNEL_CROSS_COMPILE) headers_install",
++    cmd: "$(PATH_OVERRIDE_SOONG) $(KERNEL_MAKE_CMD) $(KERNEL_MAKE_FLAGS) HOSTCFLAGS=\"-fuse-ld=lld -Wno-unused-command-line-argument\" -C $(TARGET_KERNEL_SOURCE) O=$(KERNEL_BUILD_OUT_PREFIX)$(genDir) ARCH=$(KERNEL_ARCH) $(KERNEL_CROSS_COMPILE) headers_install",
+ 
+     // Directories that can be imported by a cc_* module generated_headers property
+     export_include_dirs: [
+@@ -536,3 +536,20 @@ qti_vibrator_hal {
          },
-         qti_vibrator_effect_lib: {
-             shared_libs: ["%s"],
+     },
+ }
++
++soong_config_module_type {
 +    name: "stagefright_qcom_legacy",
 +    module_type: "cc_defaults",
 +    config_namespace: "lineageQcomVars",
@@ -30,9 +41,9 @@ index 1ee18c3d..84da9d82 100644
 +    soong_config_variables: {
 +        uses_qcom_bsp_legacy: {
 +            cppflags: ["-DQCOM_BSP_LEGACY"],
-         },
-     },
- }
++        },
++    },
++}
 diff --git a/config/BoardConfigQcom.mk b/config/BoardConfigQcom.mk
 index a7ca7a6e..3b67eb3f 100644
 --- a/config/BoardConfigQcom.mk

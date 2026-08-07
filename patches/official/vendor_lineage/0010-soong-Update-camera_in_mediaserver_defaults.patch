@@ -1,4 +1,4 @@
-From cd7ecb125dd9ceb3cf5303811aeab9a0086035b1 Mon Sep 17 00:00:00 2001
+From a690811db615bd760e7c320153a361cf20e47903 Mon Sep 17 00:00:00 2001
 From: Kyle Harrison <khwebmail@gmail.com>
 Date: Wed, 27 Oct 2021 14:54:44 +0100
 Subject: [PATCH 10/13] soong: Update camera_in_mediaserver_defaults
@@ -11,7 +11,7 @@ Change-Id: I1ad534d87ce3b35d0116bccdbc0ac7f70c799c00
  1 file changed, 1 insertion(+)
 
 diff --git a/build/soong/Android.bp b/build/soong/Android.bp
-index 0197efa0..3993dde2 100644
+index 59ac016c..b7e0e8cf 100644
 --- a/build/soong/Android.bp
 +++ b/build/soong/Android.bp
 @@ -332,6 +332,7 @@ camera_in_mediaserver {

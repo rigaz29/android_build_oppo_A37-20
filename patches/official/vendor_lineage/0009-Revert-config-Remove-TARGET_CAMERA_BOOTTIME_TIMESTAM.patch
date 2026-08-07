@@ -1,4 +1,4 @@
-From c82e6ece91c909591d664a0ef94c4e6d598b6e38 Mon Sep 17 00:00:00 2001
+From 9acaa43c4a1e9cbb22898e0a7a02221ca59b403a Mon Sep 17 00:00:00 2001
 From: Khalvat-M <mmba313@gmail.com>
 Date: Tue, 25 Oct 2022 07:15:01 +0330
 Subject: [PATCH 09/13] Revert "config: Remove
@@ -11,7 +11,7 @@ This reverts commit ed8e192818f89f04d6e18c8f97da35e1b166db3f.
  2 files changed, 19 insertions(+)
 
 diff --git a/build/soong/Android.bp b/build/soong/Android.bp
-index 84da9d82..0197efa0 100644
+index f8b3a241..59ac016c 100644
 --- a/build/soong/Android.bp
 +++ b/build/soong/Android.bp
 @@ -255,6 +255,23 @@ trust_usb_control {
