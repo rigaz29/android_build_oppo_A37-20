@@ -435,7 +435,7 @@ keputusan triase per commit (port/buang), dan catatan resolusi konflik bila ada.
 **Kriteria keluar:** skrip exit 0 + seluruh penjaga lolos. **Rollback:** `repo sync`
 ulang per project (patch hilang, bisa diterap ulang — idempoten).
 
-### M4 — Build bertahap (setiap sub-langkah menunggu persetujuan)
+### M4 — Build bertahap ✅ **SELESAI 7 Agustus 2026** (3 pemblokir: M4.1a, M4.1b, M4.4a)
 - [x] `m nothing` (kati menerima tree) — **LOLOS 7 Agu 2026, 01:28**, setelah dua
       pemblokir M4.1a/M4.1b di bawah.
 - [x] `m selinux_policy` — **LOLOS 01:53**, tanpa pemblokir sysfs_disk_stat sisi
@@ -445,8 +445,17 @@ ulang per project (patch hilang, bisa diterap ulang — idempoten).
       `libcameraservice` (HAL1), `netd`, `wcnss_service` + `libwcnss_qmi`,
       `hwcomposer.msm8916` (libbfqio tertaut), `android.hardware.audio@6.0-impl`,
       `android.hardware.drm@1.4-service.clearkey`.
-- [ ] `m bacon` → `tools/verify-rom.sh` LOLOS (properti sdk 33, zygote32, 320 blob,
-      lokasi sepolicy, adbd legacy, boot.img dt_size 210944).
+- [x] `m bacon` → `tools/verify-rom.sh` — **LOLOS 7 Agu 2026**: run pertama gagal
+      (pemblokir M4.4a); run kedua `build completed successfully (01:38:57)`,
+      **verify-rom.sh SEMUA LOLOS** (sdk 33, ebpf.supported=false, low_ram,
+      zygote32, 320 blob, sepolicy monolitik+CIL+precompiled, adbd
+      transport_legacy, pagesize 2048, dt_size 210944, zip 587M). Zip
+      `lineage-20.0-20260807_020319-UNOFFICIAL-A37.zip` disalin independen ke
+      `/root/a37-dl/lineage-20.0-official-M4-20260807_020319.zip` (sha256
+      `2a78a1b6…`). Bukti tujuan migrasi terukur di build:
+      `ro.build.version.security_patch=2026-02-01` (baseline UL beku
+      2025-03-01). ⚠️ Disk pasca-build tinggal **32 GB** (out/ ~73 GB) —
+      bersihkan sebelum rebuild berikutnya.
 
 **Kriteria keluar:** zip lolos verify-rom. Pemblokir baru (pasti ada beberapa)
 didokumentasikan di bawah ini seperti pola PLAN §8.1a–d.

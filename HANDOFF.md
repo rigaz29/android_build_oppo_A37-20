@@ -27,15 +27,19 @@ yang bisa diverifikasi ulang. Kalau ada konflik antara berkas ini dan `PLAN.md`,
 
 > **6 Agustus 2026:** ada rencana baru — **migrasi basis ke LineageOS official** —
 > di [`PLAN-OFFICIAL.md`](PLAN-OFFICIAL.md) (delta UL↔official terukur, seri patch
-> legacy, fase M0–M5). **Update 7 Agustus:** **M0–M3 selesai** — tree `/root/los20`
-> kini berbasis official lineage-20.0 tersinkron + 135 patch legacy terpasang
-> (skrip `tools/apply-official-patches.sh`, rc=0). Fase 10 basis UL (status di
-> bawah) menjadi baseline paritas. **M4 berjalan** — M4.1–M4.3 lolos; tiga
-> pemblokir dibereskan: korupsi Android.bp warisan keep-both M3 (seri patch
-> vendor_lineage diregenerasi, SHA baru `977058d5…69d8465e`),
-> `libcnefeatureconfig` dibuang dari PRODUCT_PACKAGES (device tree `434e530`,
-> sudah push), dan patch T3 `hardware/qcom-caf/wlan` dipromosikan wajib setelah
-> `m bacon` gagal `-Werror=format` (M4.4a). Rincian: PLAN-OFFICIAL §"Pemblokir M4".
+> legacy, fase M0–M5). **Update 7 Agustus:** **M0–M4 SELESAI** — tree `/root/los20`
+> berbasis official lineage-20.0 tersinkron + 135 patch legacy terpasang
+> (skrip `tools/apply-official-patches.sh`, rc=0), dan ROM basis official
+> **TERBUILD PENUH**: `m bacon` 01:38:57 rc=0 + `verify-rom.sh` SEMUA LOLOS;
+> zip `lineage-20.0-20260807_020319-UNOFFICIAL-A37.zip` (587M, sha256
+> `2a78a1b6…`, salinan di `/root/a37-dl/lineage-20.0-official-M4-20260807_020319.zip`),
+> `ro.build.version.security_patch=2026-02-01` (tujuan migrasi tercapai; UL beku
+> 2025-03). Tiga pemblokir M4: korupsi Android.bp warisan keep-both M3 (seri
+> vendor_lineage diregenerasi, SHA `977058d5…69d8465e`), `libcnefeatureconfig`
+> dibuang (device tree `434e530` sudah push), patch T3 wlan dipromosikan wajib.
+> Rincian: PLAN-OFFICIAL §"Pemblokir M4". ⚠️ Disk tinggal 32 GB — bersihkan
+> sebelum rebuild. Berikutnya: **M5 uji paritas di perangkat** (menunggu flash
+> oleh pemilik A37; matikan `WITH_ADB_INSECURE` sebelum rilis).
 
 ---
 
