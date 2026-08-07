@@ -1,7 +1,7 @@
-From bf7ca85ef36231bfe1589de8ea20421c9f25a6e0 Mon Sep 17 00:00:00 2001
+From c4656cc3190b6a58ea2a74349466009e6e6deb5b Mon Sep 17 00:00:00 2001
 From: TARKZiM <tom8476oo@gmail.com>
 Date: Sat, 12 Feb 2022 19:16:35 +0800
-Subject: [PATCH 1/5] audio: Bring back 2.0 hal support
+Subject: [PATCH 1/4] audio: Bring back 2.0 hal support
 
 Change-Id: Ib70c271393f2079f9ff60b442ee3ee431b15b3c2
 ---

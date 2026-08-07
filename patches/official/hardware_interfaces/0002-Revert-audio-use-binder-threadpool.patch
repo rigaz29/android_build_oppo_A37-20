@@ -1,7 +1,7 @@
-From 5f8be69294f9591df34f1a420f9ddc52a7fc42b2 Mon Sep 17 00:00:00 2001
+From 35bc17970114959e739def5d8c9d80a5302a269e Mon Sep 17 00:00:00 2001
 From: TARKZiM <tom8476oo@gmail.com>
 Date: Sat, 27 Aug 2022 21:00:34 +0800
-Subject: [PATCH 3/5] Revert "audio: use binder threadpool"
+Subject: [PATCH 2/4] Revert "audio: use binder threadpool"
 
 This reverts commit d90c47420af3aa59c6fc864c30023ec62b0a26ac.
 ---

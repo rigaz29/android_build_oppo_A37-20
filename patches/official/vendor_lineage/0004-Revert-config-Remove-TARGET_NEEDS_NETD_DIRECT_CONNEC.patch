@@ -1,4 +1,4 @@
-From 9c7c9094225a89504bd9c30fb0f26c6415f511c0 Mon Sep 17 00:00:00 2001
+From aad8199ec6a267f01e7a10627fef9360d0d26a04 Mon Sep 17 00:00:00 2001
 From: Khalvat-M <mmba313@gmail.com>
 Date: Tue, 25 Oct 2022 06:44:08 +0330
 Subject: [PATCH 04/13] Revert "config: Remove
@@ -11,10 +11,10 @@ This reverts commit 3bff07a50650798c40519dc84fa6eb78e23ba8c3.
  2 files changed, 19 insertions(+)
 
 diff --git a/build/soong/Android.bp b/build/soong/Android.bp
-index 4eda6a5c..95870a17 100644
+index 5c7d905c..2f4affbb 100644
 --- a/build/soong/Android.bp
 +++ b/build/soong/Android.bp
-@@ -201,6 +201,23 @@ trust_usb_control {
+@@ -255,6 +255,23 @@ trust_usb_control {
      },
  }
  
@@ -39,25 +39,25 @@ index 4eda6a5c..95870a17 100644
      name: "bootloader_message_offset",
      module_type: "cc_defaults",
 diff --git a/config/BoardConfigSoong.mk b/config/BoardConfigSoong.mk
-index eff0a9e8..f3879a64 100644
+index 28db5b5e..40d1c8d0 100644
 --- a/config/BoardConfigSoong.mk
 +++ b/config/BoardConfigSoong.mk
-@@ -32,6 +32,7 @@ SOONG_CONFIG_lineageGlobalVars += \
-     bootloader_message_offset \
-     disable_postrender_cleanup \
-     gralloc_handle_has_reserved_size \
+@@ -42,6 +42,7 @@ SOONG_CONFIG_lineageGlobalVars += \
+     target_health_charging_control_supports_bypass \
+     target_health_charging_control_supports_deadline \
+     target_health_charging_control_supports_toggle \
 +    needs_netd_direct_connect_rule \
      target_init_vendor_lib \
      target_ld_shim_libs \
      target_process_sdk_version_override \
-@@ -59,6 +60,7 @@ endif
- # Soong bool variables
+@@ -73,6 +74,7 @@ SOONG_CONFIG_lineageGlobalVars_camera_override_format_from_reserved := $(TARGET_
  SOONG_CONFIG_lineageGlobalVars_disable_postrender_cleanup := $(TARGET_DISABLE_POSTRENDER_CLEANUP)
+ SOONG_CONFIG_lineageGlobalVars_gralloc_handle_has_custom_content_md_reserved_size := $(TARGET_GRALLOC_HANDLE_HAS_CUSTOM_CONTENT_MD_RESERVED_SIZE)
  SOONG_CONFIG_lineageGlobalVars_gralloc_handle_has_reserved_size := $(TARGET_GRALLOC_HANDLE_HAS_RESERVED_SIZE)
 +SOONG_CONFIG_lineageGlobalVars_needs_netd_direct_connect_rule := $(TARGET_NEEDS_NETD_DIRECT_CONNECT_RULE)
  SOONG_CONFIG_lineageGlobalVars_uses_egl_display_array := $(TARGET_USES_EGL_DISPLAY_ARRAY)
  SOONG_CONFIG_lineageNvidiaVars_uses_nvidia_enhancements := $(NV_ANDROID_FRAMEWORK_ENHANCEMENTS)
- SOONG_CONFIG_lineageQcomVars_supports_extended_compress_format := $(AUDIO_FEATURE_ENABLED_EXTENDED_COMPRESS_FORMAT)
+ SOONG_CONFIG_lineageQcomVars_qti_vibrator_use_effect_stream := $(TARGET_QTI_VIBRATOR_USE_EFFECT_STREAM)
 -- 
 2.43.0
 

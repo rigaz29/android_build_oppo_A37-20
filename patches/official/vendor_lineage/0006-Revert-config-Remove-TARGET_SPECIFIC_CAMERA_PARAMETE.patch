@@ -1,4 +1,4 @@
-From 0b45b0addf3c441c237eb17c54ccaea8fc5f3753 Mon Sep 17 00:00:00 2001
+From 15eaff7599446aa9c133b5297033170949e55125 Mon Sep 17 00:00:00 2001
 From: Khalvat-M <mmba313@gmail.com>
 Date: Tue, 25 Oct 2022 07:11:07 +0330
 Subject: [PATCH 06/13] Revert "config: Remove
@@ -11,10 +11,10 @@ This reverts commit 1cfc6cbf4b259a6357cf2c2d897430266c13b748.
  2 files changed, 20 insertions(+)
 
 diff --git a/build/soong/Android.bp b/build/soong/Android.bp
-index c75ecba6..031aee75 100644
+index a6170af6..9928d13f 100644
 --- a/build/soong/Android.bp
 +++ b/build/soong/Android.bp
-@@ -256,6 +256,23 @@ bootloader_message_offset {
+@@ -310,6 +310,23 @@ bootloader_message_offset {
      },
  }
  
@@ -39,10 +39,10 @@ index c75ecba6..031aee75 100644
      name: "egl_display_array",
      module_type: "cc_defaults",
 diff --git a/config/BoardConfigSoong.mk b/config/BoardConfigSoong.mk
-index 277d99fa..2944c580 100644
+index ac277aae..d60e6821 100644
 --- a/config/BoardConfigSoong.mk
 +++ b/config/BoardConfigSoong.mk
-@@ -41,6 +41,7 @@ SOONG_CONFIG_lineageGlobalVars += \
+@@ -51,6 +51,7 @@ SOONG_CONFIG_lineageGlobalVars += \
      target_trust_usb_control_path \
      target_trust_usb_control_enable \
      target_trust_usb_control_disable \
@@ -50,15 +50,15 @@ index 277d99fa..2944c580 100644
      uses_egl_display_array
  
  SOONG_CONFIG_NAMESPACES += lineageNvidiaVars
-@@ -73,6 +74,7 @@ BOOTLOADER_MESSAGE_OFFSET ?= 0
- TARGET_ADDITIONAL_GRALLOC_10_USAGE_BITS ?= 0
- TARGET_GRALLOC_HANDLE_HAS_RESERVED_SIZE ?= false
+@@ -96,6 +97,7 @@ TARGET_HEALTH_CHARGING_CONTROL_SUPPORTS_DEADLINE ?= false
+ TARGET_HEALTH_CHARGING_CONTROL_SUPPORTS_TOGGLE ?= true
  TARGET_INIT_VENDOR_LIB ?= vendor_init
+ TARGET_QTI_VIBRATOR_EFFECT_LIB ?= libqtivibratoreffect
 +TARGET_SPECIFIC_CAMERA_PARAMETER_LIBRARY ?= libcamera_parameters
  TARGET_SURFACEFLINGER_UDFPS_LIB ?= surfaceflinger_udfps_lib
  TARGET_TRUST_USB_CONTROL_PATH ?= /proc/sys/kernel/deny_new_usb
  TARGET_TRUST_USB_CONTROL_ENABLE ?= 1
-@@ -88,6 +90,7 @@ SOONG_CONFIG_lineageGlobalVars_target_surfaceflinger_udfps_lib := $(TARGET_SURFA
+@@ -119,6 +121,7 @@ SOONG_CONFIG_lineageGlobalVars_target_surfaceflinger_udfps_lib := $(TARGET_SURFA
  SOONG_CONFIG_lineageGlobalVars_target_trust_usb_control_path := $(TARGET_TRUST_USB_CONTROL_PATH)
  SOONG_CONFIG_lineageGlobalVars_target_trust_usb_control_enable := $(TARGET_TRUST_USB_CONTROL_ENABLE)
  SOONG_CONFIG_lineageGlobalVars_target_trust_usb_control_disable := $(TARGET_TRUST_USB_CONTROL_DISABLE)

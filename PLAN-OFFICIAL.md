@@ -411,12 +411,26 @@ keputusan triase per commit (port/buang), dan catatan resolusi konflik bila ada.
       `timekeep` `11c1535` masuk ✓; `transport_legacy.cpp` absen ✓ (dipulihkan M3).
       Disk pasca-sync: 105 GB bebas.
 
-### M3 — Terapkan patch legacy
-- [ ] Jalankan `tools/apply-official-patches.sh` (§4.2). Setiap konflik diselesaikan
-      per SOP skrip; resolusi di-commit balik ke `patches/official/`.
-- [ ] Verifikasi tiga item §4.2 langkah warisan terhadap HEAD official
-      (HOSTCFLAGS, enum-enum, konteks patch BT).
-- [ ] Semua penjaga regresi hijau.
+### M3 — Terapkan patch legacy ✅ **SELESAI 7 Agustus 2026**
+- [x] `tools/apply-official-patches.sh` dijalankan: **135 patch T0+T1+T2 terpasang,
+      rc=0, 11 penjaga regresi hijau** (run verifikasi idempoten). T3 tidak ikut
+      (opt-in `--t3`).
+- [x] Konflik teresolusi: vendor/lineage (3 file, keep-both — official menambah
+      modul/flag baru di titik sisip yang sama); system/sepolicy dan
+      hardware/interfaces selesai via `am -3` + deteksi already-applied.
+- [x] **Temuan:** 5 dari 6 patch sepolicy legacy + keymasterV4 FBE tag **sudah ada
+      di upstream official** (LOS merge ke lineage-20.0) — beban port lebih kecil
+      dari rencana. Revert pahole sempat hilang saat resolusi keep-both; dipulihkan
+      (`456e238c`). HOSTCFLAGS generator butuh pola sed baru (format cmd official
+      berubah). Bug idempotensi subjek-terlipat diperbaiki via `git mailinfo`.
+- [x] Seri patch vendor_lineage/system_sepolicy/hardware_interfaces
+      **diregenerasi dari state teresolusi** — reaplikasi pasca-sync berikutnya
+      bersih. Rincian: `patches/official/MANIFEST.md` §"Hasil aplikasi M3".
+- [x] Verifikasi tiga item §4.2 langkah warisan terhadap HEAD official:
+      HOSTCFLAGS (dipasang, pola baru), enum-enum display (sudah ada dari era UL,
+      repo pin tak berubah), konteks patch BT (keduanya terap bersih di upstream
+      baru — `hci_layer.cc` & `btm_api.cc`).
+- [x] Semua penjaga regresi hijau.
 
 **Kriteria keluar:** skrip exit 0 + seluruh penjaga lolos. **Rollback:** `repo sync`
 ulang per project (patch hilang, bisa diterap ulang — idempoten).

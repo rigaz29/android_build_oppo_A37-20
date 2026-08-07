@@ -1,4 +1,4 @@
-From bfa35ee6e4a0a5205ce60544fe6527fcdfaa5394 Mon Sep 17 00:00:00 2001
+From 977058d5d1858a015cb0e9234bb5607ed5d26ddf Mon Sep 17 00:00:00 2001
 From: Khalvat-M <mmba313@gmail.com>
 Date: Sun, 9 Apr 2023 10:35:33 +0330
 Subject: [PATCH 01/13] Revert "QCOM: RIP pre-UM families"
@@ -10,12 +10,12 @@ This reverts commit 1c39c90a8d09772d475282b066168b55f71c2f02.
  2 files changed, 58 insertions(+), 3 deletions(-)
 
 diff --git a/build/core/vendor/qcom_boards.mk b/build/core/vendor/qcom_boards.mk
-index 88a44329..4c593cef 100644
+index 33b6ecb5..fed5f33f 100644
 --- a/build/core/vendor/qcom_boards.mk
 +++ b/build/core/vendor/qcom_boards.mk
-@@ -13,6 +13,30 @@ LAHAINA := lahaina #SM8350
- HOLI := holi #SM4350
- TARO := taro #SM8450
+@@ -15,6 +15,30 @@ TARO := taro #SM8450
+ PARROT := parrot #SM6450
+ KALAMA := kalama #SM8550
  
 +# A Family
 +QCOM_BOARD_PLATFORMS += msm7x27a
@@ -45,12 +45,12 @@ index 88a44329..4c593cef 100644
  QCOM_BOARD_PLATFORMS += msm8937
  QCOM_BOARD_PLATFORMS += msm8953
 diff --git a/config/BoardConfigQcom.mk b/config/BoardConfigQcom.mk
-index 1c1acdc1..8ac35cbf 100644
+index 79e10ca9..a7ca7a6e 100644
 --- a/config/BoardConfigQcom.mk
 +++ b/config/BoardConfigQcom.mk
-@@ -10,6 +10,9 @@ LAHAINA := lahaina #SM8350
- HOLI := holi #SM4350
- TARO := taro #SM8450
+@@ -12,6 +12,9 @@ TARO := taro #SM8450
+ PARROT := parrot #SM6450
+ KALAMA := kalama #SM8550
  
 +B_FAMILY := msm8226 msm8610 msm8974
 +B64_FAMILY := msm8992 msm8994
@@ -58,9 +58,9 @@ index 1c1acdc1..8ac35cbf 100644
  UM_3_18_FAMILY := msm8996
  UM_4_4_FAMILY := msm8998
  UM_4_9_FAMILY := sdm845 sdm710
-@@ -84,17 +87,31 @@ SOONG_CONFIG_qtidisplay_var1 ?= false
- SOONG_CONFIG_qtidisplay_var2 ?= false
- SOONG_CONFIG_qtidisplay_var3 ?= false
+@@ -99,17 +102,31 @@ SOONG_CONFIG_rmnetctl += \
+ # Set default values for rmnetctl config
+ SOONG_CONFIG_rmnetctl_old_rmnet_data ?= false
  
 +# UM platforms no longer need this set on O+
 +ifneq ($(filter $(B_FAMILY) $(B64_FAMILY) $(BR_FAMILY),$(TARGET_BOARD_PLATFORM)),)
@@ -91,8 +91,8 @@ index 1c1acdc1..8ac35cbf 100644
 +endif
  
  # Enable DRM PP driver on UM platforms that support it
- ifneq ($(filter $(UM_4_9_FAMILY) $(UM_4_14_FAMILY) $(UM_4_19_FAMILY) $(UM_5_4_FAMILY) $(UM_5_10_FAMILY),$(TARGET_BOARD_PLATFORM)),)
-@@ -118,6 +135,11 @@ endif
+ ifneq ($(filter $(UM_4_9_FAMILY) $(UM_4_14_FAMILY) $(UM_4_19_FAMILY) $(UM_5_4_FAMILY) $(UM_5_10_FAMILY) $(UM_5_15_FAMILY),$(TARGET_BOARD_PLATFORM)),)
+@@ -134,6 +151,11 @@ endif
  
  TARGET_ADDITIONAL_GRALLOC_10_USAGE_BITS ?= 0
  
@@ -104,9 +104,9 @@ index 1c1acdc1..8ac35cbf 100644
  # Mark GRALLOC_USAGE_EXTERNAL_DISP as valid gralloc bit
  TARGET_ADDITIONAL_GRALLOC_10_USAGE_BITS += | (1 << 13)
  
-@@ -132,7 +154,16 @@ endif
- # List of targets that use master side content protection
- MASTER_SIDE_CP_TARGET_LIST := msm8996 $(UM_4_4_FAMILY) $(UM_4_9_FAMILY) $(UM_4_14_FAMILY) $(UM_4_19_FAMILY)
+@@ -159,7 +181,16 @@ ifneq ($(filter $(UM_5_10_FAMILY) $(UM_5_15_FAMILY),$(TARGET_BOARD_PLATFORM)),)
+     TARGET_GRALLOC_HANDLE_HAS_RESERVED_SIZE ?= true
+ endif
  
 -ifneq ($(filter $(UM_3_18_FAMILY),$(TARGET_BOARD_PLATFORM)),)
 +ifneq ($(filter $(B_FAMILY),$(TARGET_BOARD_PLATFORM)),)

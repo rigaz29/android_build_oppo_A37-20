@@ -1,4 +1,4 @@
-From 09e39bf411405dda37f71bb144a6c8add03c9e06 Mon Sep 17 00:00:00 2001
+From c82e6ece91c909591d664a0ef94c4e6d598b6e38 Mon Sep 17 00:00:00 2001
 From: Khalvat-M <mmba313@gmail.com>
 Date: Tue, 25 Oct 2022 07:15:01 +0330
 Subject: [PATCH 09/13] Revert "config: Remove
@@ -11,10 +11,10 @@ This reverts commit ed8e192818f89f04d6e18c8f97da35e1b166db3f.
  2 files changed, 19 insertions(+)
 
 diff --git a/build/soong/Android.bp b/build/soong/Android.bp
-index 965a4f45..a5bd78ba 100644
+index 84da9d82..0197efa0 100644
 --- a/build/soong/Android.bp
 +++ b/build/soong/Android.bp
-@@ -201,6 +201,23 @@ trust_usb_control {
+@@ -255,6 +255,23 @@ trust_usb_control {
      },
  }
  
@@ -39,18 +39,18 @@ index 965a4f45..a5bd78ba 100644
      name: "needs_netd_direct_connect_rule",
      module_type: "cc_defaults",
 diff --git a/config/BoardConfigSoong.mk b/config/BoardConfigSoong.mk
-index a3219c2a..32151898 100644
+index fbc9f021..006c2b72 100644
 --- a/config/BoardConfigSoong.mk
 +++ b/config/BoardConfigSoong.mk
-@@ -34,6 +34,7 @@ SOONG_CONFIG_lineageGlobalVars += \
-     gralloc_handle_has_reserved_size \
+@@ -44,6 +44,7 @@ SOONG_CONFIG_lineageGlobalVars += \
+     target_health_charging_control_supports_toggle \
      has_legacy_camera_hal1 \
      has_memfd_backport \
 +    needs_camera_boottime \
      needs_netd_direct_connect_rule \
      target_init_vendor_lib \
      target_ld_shim_libs \
-@@ -66,6 +67,7 @@ SOONG_CONFIG_lineageGlobalVars_disable_postrender_cleanup := $(TARGET_DISABLE_PO
+@@ -80,6 +81,7 @@ SOONG_CONFIG_lineageGlobalVars_gralloc_handle_has_custom_content_md_reserved_siz
  SOONG_CONFIG_lineageGlobalVars_gralloc_handle_has_reserved_size := $(TARGET_GRALLOC_HANDLE_HAS_RESERVED_SIZE)
  SOONG_CONFIG_lineageGlobalVars_has_legacy_camera_hal1 := $(TARGET_HAS_LEGACY_CAMERA_HAL1)
  SOONG_CONFIG_lineageGlobalVars_has_memfd_backport := $(TARGET_HAS_MEMFD_BACKPORT)

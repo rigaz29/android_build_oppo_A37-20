@@ -1,4 +1,4 @@
-From 8a81cccc5c1b7e5afab5766e448c0ef82f3ab673 Mon Sep 17 00:00:00 2001
+From 7a12662c6bf70cd65411dbaba231a5d55e07f80f Mon Sep 17 00:00:00 2001
 From: Khalvat-M <mmba313@gmail.com>
 Date: Tue, 25 Oct 2022 06:39:51 +0330
 Subject: [PATCH 02/13] Revert "config: Remove
@@ -11,10 +11,10 @@ This reverts commit 50fb6998709eae4cb592e0bb22cf5c76beab5326.
  2 files changed, 19 insertions(+)
 
 diff --git a/build/soong/Android.bp b/build/soong/Android.bp
-index e53586f0..7e778857 100644
+index 2029d7ec..7ea9cdde 100644
 --- a/build/soong/Android.bp
 +++ b/build/soong/Android.bp
-@@ -85,6 +85,23 @@ gralloc_handle_reserved_size {
+@@ -139,6 +139,23 @@ gralloc_handle_reserved_size {
      },
  }
  
@@ -39,19 +39,19 @@ index e53586f0..7e778857 100644
      name: "target_shim_libs",
      module_type: "cc_defaults",
 diff --git a/config/BoardConfigSoong.mk b/config/BoardConfigSoong.mk
-index 35da6a1a..b54c263f 100644
+index 651d3372..fd029dcf 100644
 --- a/config/BoardConfigSoong.mk
 +++ b/config/BoardConfigSoong.mk
-@@ -33,6 +33,7 @@ SOONG_CONFIG_lineageGlobalVars += \
-     gralloc_handle_has_reserved_size \
+@@ -43,6 +43,7 @@ SOONG_CONFIG_lineageGlobalVars += \
+     target_health_charging_control_supports_toggle \
      target_init_vendor_lib \
      target_ld_shim_libs \
 +    target_process_sdk_version_override \
      target_surfaceflinger_udfps_lib \
      target_trust_usb_control_path \
      target_trust_usb_control_enable \
-@@ -76,6 +77,7 @@ SOONG_CONFIG_lineageGlobalVars_additional_gralloc_10_usage_bits := $(TARGET_ADDI
- SOONG_CONFIG_lineageGlobalVars_bootloader_message_offset := $(BOOTLOADER_MESSAGE_OFFSET)
+@@ -107,6 +108,7 @@ SOONG_CONFIG_lineageGlobalVars_target_health_charging_control_supports_deadline
+ SOONG_CONFIG_lineageGlobalVars_target_health_charging_control_supports_toggle := $(TARGET_HEALTH_CHARGING_CONTROL_SUPPORTS_TOGGLE)
  SOONG_CONFIG_lineageGlobalVars_target_init_vendor_lib := $(TARGET_INIT_VENDOR_LIB)
  SOONG_CONFIG_lineageGlobalVars_target_ld_shim_libs := $(subst $(space),:,$(TARGET_LD_SHIM_LIBS))
 +SOONG_CONFIG_lineageGlobalVars_target_process_sdk_version_override := $(TARGET_PROCESS_SDK_VERSION_OVERRIDE)

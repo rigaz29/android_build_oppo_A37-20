@@ -1,4 +1,4 @@
-From c36deab64b4941323efd551573ca7797a82fa3ed Mon Sep 17 00:00:00 2001
+From 458cb67ab6981d9be33f389a5d63e61a91a4450c Mon Sep 17 00:00:00 2001
 From: Khalvat-M <mmba313@gmail.com>
 Date: Tue, 25 Oct 2022 06:45:07 +0330
 Subject: [PATCH 05/13] Revert "config: Remove TARGET_HAS_MEMFD_BACKPORT"
@@ -10,10 +10,10 @@ This reverts commit e020bffce2a1f5a0ba074cede2ce072221a5a6eb.
  2 files changed, 19 insertions(+)
 
 diff --git a/build/soong/Android.bp b/build/soong/Android.bp
-index 95870a17..c75ecba6 100644
+index 2f4affbb..a6170af6 100644
 --- a/build/soong/Android.bp
 +++ b/build/soong/Android.bp
-@@ -218,6 +218,23 @@ needs_netd_direct_connect_rule {
+@@ -272,6 +272,23 @@ needs_netd_direct_connect_rule {
      },
  }
  
@@ -38,20 +38,20 @@ index 95870a17..c75ecba6 100644
      name: "bootloader_message_offset",
      module_type: "cc_defaults",
 diff --git a/config/BoardConfigSoong.mk b/config/BoardConfigSoong.mk
-index f3879a64..277d99fa 100644
+index 40d1c8d0..ac277aae 100644
 --- a/config/BoardConfigSoong.mk
 +++ b/config/BoardConfigSoong.mk
-@@ -32,6 +32,7 @@ SOONG_CONFIG_lineageGlobalVars += \
-     bootloader_message_offset \
-     disable_postrender_cleanup \
-     gralloc_handle_has_reserved_size \
+@@ -42,6 +42,7 @@ SOONG_CONFIG_lineageGlobalVars += \
+     target_health_charging_control_supports_bypass \
+     target_health_charging_control_supports_deadline \
+     target_health_charging_control_supports_toggle \
 +    has_memfd_backport \
      needs_netd_direct_connect_rule \
      target_init_vendor_lib \
      target_ld_shim_libs \
-@@ -60,6 +61,7 @@ endif
- # Soong bool variables
+@@ -74,6 +75,7 @@ SOONG_CONFIG_lineageGlobalVars_camera_override_format_from_reserved := $(TARGET_
  SOONG_CONFIG_lineageGlobalVars_disable_postrender_cleanup := $(TARGET_DISABLE_POSTRENDER_CLEANUP)
+ SOONG_CONFIG_lineageGlobalVars_gralloc_handle_has_custom_content_md_reserved_size := $(TARGET_GRALLOC_HANDLE_HAS_CUSTOM_CONTENT_MD_RESERVED_SIZE)
  SOONG_CONFIG_lineageGlobalVars_gralloc_handle_has_reserved_size := $(TARGET_GRALLOC_HANDLE_HAS_RESERVED_SIZE)
 +SOONG_CONFIG_lineageGlobalVars_has_memfd_backport := $(TARGET_HAS_MEMFD_BACKPORT)
  SOONG_CONFIG_lineageGlobalVars_needs_netd_direct_connect_rule := $(TARGET_NEEDS_NETD_DIRECT_CONNECT_RULE)

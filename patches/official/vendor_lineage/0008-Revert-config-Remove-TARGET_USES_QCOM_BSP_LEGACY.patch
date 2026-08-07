@@ -1,25 +1,23 @@
-From f1a1152fffc0b738bd694850aa51f7e7502fe6a2 Mon Sep 17 00:00:00 2001
+From 4560f59f89a279f266cfad7565ef51c92e3cd26d Mon Sep 17 00:00:00 2001
 From: Khalvat-M <mmba313@gmail.com>
 Date: Tue, 25 Oct 2022 06:48:06 +0330
 Subject: [PATCH 08/13] Revert "config: Remove TARGET_USES_QCOM_BSP_LEGACY"
 
 This reverts commit 89fd58c860714648ec2bbcfdd29f1f5915fbf58b.
 ---
- build/soong/Android.bp     | 17 +++++++++++++++++
+ build/soong/Android.bp     | 12 ++++++++++++
  config/BoardConfigQcom.mk  |  1 +
  config/BoardConfigSoong.mk |  4 +++-
- 3 files changed, 21 insertions(+), 1 deletion(-)
+ 3 files changed, 16 insertions(+), 1 deletion(-)
 
 diff --git a/build/soong/Android.bp b/build/soong/Android.bp
-index 0bb78178..965a4f45 100644
+index 1ee18c3d..84da9d82 100644
 --- a/build/soong/Android.bp
 +++ b/build/soong/Android.bp
-@@ -413,3 +413,20 @@ surfaceflinger_qcom_extensions {
+@@ -533,6 +533,18 @@ qti_vibrator_hal {
          },
-     },
- }
-+
-+soong_config_module_type {
+         qti_vibrator_effect_lib: {
+             shared_libs: ["%s"],
 +    name: "stagefright_qcom_legacy",
 +    module_type: "cc_defaults",
 +    config_namespace: "lineageQcomVars",
@@ -32,14 +30,14 @@ index 0bb78178..965a4f45 100644
 +    soong_config_variables: {
 +        uses_qcom_bsp_legacy: {
 +            cppflags: ["-DQCOM_BSP_LEGACY"],
-+        },
-+    },
-+}
+         },
+     },
+ }
 diff --git a/config/BoardConfigQcom.mk b/config/BoardConfigQcom.mk
-index 8ac35cbf..3a114c69 100644
+index a7ca7a6e..3b67eb3f 100644
 --- a/config/BoardConfigQcom.mk
 +++ b/config/BoardConfigQcom.mk
-@@ -96,6 +96,7 @@ endif
+@@ -111,6 +111,7 @@ endif
  TARGET_COMPILE_WITH_MSM_KERNEL := true
  
  ifneq ($(filter msm7x27a msm7x30 msm8660 msm8960,$(TARGET_BOARD_PLATFORM)),)
@@ -48,12 +46,12 @@ index 8ac35cbf..3a114c69 100644
      ifeq ($(BOARD_USES_LEGACY_ALSA_AUDIO),true)
          USE_CUSTOM_AUDIO_POLICY := 1
 diff --git a/config/BoardConfigSoong.mk b/config/BoardConfigSoong.mk
-index 3d3e3a83..a3219c2a 100644
+index 6a6d4224..fbc9f021 100644
 --- a/config/BoardConfigSoong.mk
 +++ b/config/BoardConfigSoong.mk
-@@ -52,7 +52,8 @@ SOONG_CONFIG_lineageNvidiaVars += \
- SOONG_CONFIG_NAMESPACES += lineageQcomVars
- SOONG_CONFIG_lineageQcomVars += \
+@@ -64,7 +64,8 @@ SOONG_CONFIG_lineageQcomVars += \
+     qti_vibrator_effect_lib \
+     qti_vibrator_use_effect_stream \
      supports_extended_compress_format \
 -    uses_pre_uplink_features_netmgrd
 +    uses_pre_uplink_features_netmgrd \
@@ -61,8 +59,8 @@ index 3d3e3a83..a3219c2a 100644
  
  # Only create display_headers_namespace var if dealing with UM platforms to avoid breaking build for all other platforms
  ifneq ($(filter $(UM_PLATFORMS),$(TARGET_BOARD_PLATFORM)),)
-@@ -70,6 +71,7 @@ SOONG_CONFIG_lineageGlobalVars_uses_egl_display_array := $(TARGET_USES_EGL_DISPL
- SOONG_CONFIG_lineageNvidiaVars_uses_nvidia_enhancements := $(NV_ANDROID_FRAMEWORK_ENHANCEMENTS)
+@@ -85,6 +86,7 @@ SOONG_CONFIG_lineageNvidiaVars_uses_nvidia_enhancements := $(NV_ANDROID_FRAMEWOR
+ SOONG_CONFIG_lineageQcomVars_qti_vibrator_use_effect_stream := $(TARGET_QTI_VIBRATOR_USE_EFFECT_STREAM)
  SOONG_CONFIG_lineageQcomVars_supports_extended_compress_format := $(AUDIO_FEATURE_ENABLED_EXTENDED_COMPRESS_FORMAT)
  SOONG_CONFIG_lineageQcomVars_uses_pre_uplink_features_netmgrd := $(TARGET_USES_PRE_UPLINK_FEATURES_NETMGRD)
 +SOONG_CONFIG_lineageQcomVars_uses_qcom_bsp_legacy := $(TARGET_USES_QCOM_BSP_LEGACY)

@@ -25,13 +25,13 @@ diambil langsung dari fork UL yang checkout-nya terbukti menjalankan ROM A37
 | T0 | `external_perfetto` | 1 | gerbang memfd_create |
 | T0 | `frameworks_libs_net` | 1 | BpfMap isValid non-fatal |
 | T0 | `packages_modules_NetworkStack` | 2 | TCP info opt-out + revert netlink-T |
-| T1 | `vendor_lineage` | 13 | revert flag legacy (HAL1, MEMFD_BACKPORT, dll.) + camera_in_mediaserver_defaults + **0013 = revert libbfqio kita (`d4a23dfd`) — sudah termasuk; skrip apply TIDAK boleh revert ulang** |
+| T1 | `vendor_lineage` | 13 | revert flag legacy (HAL1, MEMFD_BACKPORT, dll.) + camera_in_mediaserver_defaults + **0013 = revert libbfqio kita (`d4a23dfd`)**. ⚠️ Seri sudah **diregenerasi pasca-M3** dari state teresolusi: konflik BoardConfigQcom/Soong+Android.bp diselesaikan keep-both, revert pahole dipulihkan manual |
 | T1 | `system_core` | 4 | cgroupv2 gate, camera extensions, healthd, freezer v1 |
 | T1 | `system_netd` | 3 | no-bpf + direct-connect routes |
 | T1 | `packages_modules_Connectivity` | 4 | BPF-less ×3 + traffic indicators |
-| T1 | `system_sepolicy` | **6** | 7 diekstrak, **1 dibuang** (lihat di bawah) |
+| T1 | `system_sepolicy` | **1** | ⚠️ Pasca-M3: dari 6 yang direncanakan, **5 sudah ada di upstream official** (terverifikasi `git apply --check -R`): recovery whitelist ×2, mediaprovider mlstrustedsubject, sdcard_posix_contextmount_type, adbd_config_prop exempt. Tersisa hanya LeGetVendorCapabilities |
 | T1 | `device_lineage_sepolicy` | 2 | HAL1 sepolicy + qcom ultra legacy |
-| T1 | `hardware_interfaces` | 5 | audio 2.0, revert BT-AIDL/binder-threadpool, keymaster FBE, vendor800 hwc |
+| T1 | `hardware_interfaces` | **4** | audio 2.0, revert BT-AIDL/binder-threadpool, vendor800 hwc. ⚠️ Pasca-M3: **keymasterV4 FBE wrapped key sudah ada di upstream** (7 match TAG_WRAPPED_KEY) → tidak di-port |
 | T1 | `frameworks_native` | 21 | tweak SF/binder UL — port utuh |
 | T1 | `packages_modules_Wifi` | 1 | mWifiLinkLayerStatsSupported |
 | T1 | `packages_modules_Bluetooth` | 1 | toleransi le_set_event_mask. ⚠️ Dua patch device kita (opcode vendor OCF-only + standard inquiry scan) **tidak termasuk di sini** — dipasang terpisah oleh skrip apply |
@@ -41,7 +41,31 @@ diambil langsung dari fork UL yang checkout-nya terbukti menjalankan ROM A37
 | T3 | `external_jemalloc_new` | 3 | hanya bila bionic switch jemalloc diambil |
 | T3 | `hardware_qcom-caf_wlan` | 2 | hanya bila build wcnss/wpa gagal |
 
-**Total: 153 patch siap aplikasi** (155 diekstrak − 2 dibuang triase).
+**Total pasca-M3: 135 patch terpasang (T0+T1+T2)**; T3 menambah 12 bila `--t3`
+(diekstrak, belum dipakai).
+
+## Hasil aplikasi M3 (7 Agustus 2026 — tree official)
+
+Diterapkan lewat `tools/apply-official-patches.sh`; hasil akhir **rc=0, 11 penjaga
+regresi hijau** (run verifikasi terakhir).
+
+- **Konflik teresolusi** (vendor/lineage): `BoardConfigQcom.mk` (2 blok: soong
+  rmnetctl + rantai VIDC — keep-both), `build/soong/Android.bp` (modul
+  aapt_version_code/camera_override vs disable_postrender_cleanup — keep-both),
+  `BoardConfigSoong.mk` (daftar variabel + assignment — keep-both alfabetis).
+  Seri kemudian **diregenerasi** dari state teresolusi supaya reaplikasi pasca-sync
+  bersih.
+- **Patch yang hilang saat resolusi keep-both**: revert pahole — 3-way merge
+  teresolusi kosong dan terlewat; dipulihkan manual (commit `456e238c`) dan masuk
+  seri regenerasi.
+- **Sudah ada di upstream official** (tidak perlu di-port, terverifikasi):
+  5 patch system/sepolicy + keymasterV4 FBE wrapped key tag (hardware/interfaces).
+- **HOSTCFLAGS generator**: cmd soong official berubah format (ada
+  `KERNEL_MAKE_CMD`/`-C`/`ARCH`) — sed lama gagal; pola skrip diperbarui mengikuti
+  format official.
+- **Bug idempotensi skrip** (ditemukan saat M3): baris `Subject:` patch terlipat
+  (RFC-2822 folding) sehingga cek subjek terpotong dan seri diterapkan dua kali;
+  diperbaiki dengan `git mailinfo` (unfolding).
 
 ## Yang dibuang saat triase (jangan dikembalikan tanpa alasan baru)
 

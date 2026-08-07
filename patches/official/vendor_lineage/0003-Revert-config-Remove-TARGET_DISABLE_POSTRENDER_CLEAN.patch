@@ -1,4 +1,4 @@
-From b6fde0b9bbc411acaf28334254d1d284827acc0e Mon Sep 17 00:00:00 2001
+From 6d0fdf8cb7332779e5f578c8ad0c51bc49b65dec Mon Sep 17 00:00:00 2001
 From: Khalvat-M <mmba313@gmail.com>
 Date: Tue, 25 Oct 2022 06:41:39 +0330
 Subject: [PATCH 03/13] Revert "config: Remove
@@ -11,13 +11,13 @@ This reverts commit fa5bc45a95fae4cbd68b3d19265f5f1e799792e2.
  2 files changed, 19 insertions(+)
 
 diff --git a/build/soong/Android.bp b/build/soong/Android.bp
-index 7e778857..4eda6a5c 100644
+index 7ea9cdde..5c7d905c 100644
 --- a/build/soong/Android.bp
 +++ b/build/soong/Android.bp
-@@ -51,6 +51,23 @@ cc_library_headers {
+@@ -88,6 +88,23 @@ camera_override_format_from_reserved {
+     },
  }
  
- // Target platform agnostic config modules
 +soong_config_module_type {
 +    name: "disable_postrender_cleanup",
 +    module_type: "cc_defaults",
@@ -39,25 +39,25 @@ index 7e778857..4eda6a5c 100644
      name: "gralloc_10_usage_bits",
      module_type: "cc_defaults",
 diff --git a/config/BoardConfigSoong.mk b/config/BoardConfigSoong.mk
-index b54c263f..eff0a9e8 100644
+index fd029dcf..28db5b5e 100644
 --- a/config/BoardConfigSoong.mk
 +++ b/config/BoardConfigSoong.mk
-@@ -30,6 +30,7 @@ SOONG_CONFIG_NAMESPACES += lineageGlobalVars
- SOONG_CONFIG_lineageGlobalVars += \
+@@ -32,6 +32,7 @@ SOONG_CONFIG_lineageGlobalVars += \
      additional_gralloc_10_usage_bits \
      bootloader_message_offset \
+     camera_override_format_from_reserved \
 +    disable_postrender_cleanup \
+     gralloc_handle_has_custom_content_md_reserved_size \
      gralloc_handle_has_reserved_size \
-     target_init_vendor_lib \
-     target_ld_shim_libs \
-@@ -56,6 +57,7 @@ SOONG_CONFIG_lineageQcomVars += \
- endif
+     target_health_charging_control_charging_path \
+@@ -69,6 +70,7 @@ endif
  
  # Soong bool variables
+ SOONG_CONFIG_lineageGlobalVars_camera_override_format_from_reserved := $(TARGET_CAMERA_OVERRIDE_FORMAT_FROM_RESERVED)
 +SOONG_CONFIG_lineageGlobalVars_disable_postrender_cleanup := $(TARGET_DISABLE_POSTRENDER_CLEANUP)
+ SOONG_CONFIG_lineageGlobalVars_gralloc_handle_has_custom_content_md_reserved_size := $(TARGET_GRALLOC_HANDLE_HAS_CUSTOM_CONTENT_MD_RESERVED_SIZE)
  SOONG_CONFIG_lineageGlobalVars_gralloc_handle_has_reserved_size := $(TARGET_GRALLOC_HANDLE_HAS_RESERVED_SIZE)
  SOONG_CONFIG_lineageGlobalVars_uses_egl_display_array := $(TARGET_USES_EGL_DISPLAY_ARRAY)
- SOONG_CONFIG_lineageNvidiaVars_uses_nvidia_enhancements := $(NV_ANDROID_FRAMEWORK_ENHANCEMENTS)
 -- 
 2.43.0
 

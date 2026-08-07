@@ -81,16 +81,22 @@ T3 hardware_qcom-caf_wlan        hardware/qcom-caf/wlan"
 
 apply_series(){ # dirpatch pathtree
   local dp="$1" pt="$2"
-  local patches last_subj n
+  local patches last_patch last_subj n
   patches=$(ls "$PATCHES/$dp"/0*.patch 2>/dev/null | sort)
   if [ -z "$patches" ]; then
     c_no "$pt: tidak ada patch di $PATCHES/$dp"; rc=1; return
   fi
   n=$(echo "$patches" | wc -l)
-  last_subj=$(grep -m1 '^Subject:' "$(echo "$patches" | tail -1)" \
+  last_patch="$(echo "$patches" | tail -1)"
+  # Baris Subject patch bisa terlipat beberapa baris (RFC-2822 folding) —
+  # grep biasa memotongnya dan cek idempotensi gagal-palsu (bug M3 run 1→2).
+  # mailinfo melakukan unfolding; fallback grep hanya untuk patch tak wajar.
+  last_subj=$(git mailinfo /dev/null /dev/null < "$last_patch" 2>/dev/null \
+              | grep -m1 '^Subject:' | sed 's/^Subject: //')
+  [ -z "$last_subj" ] && last_subj=$(grep -m1 '^Subject:' "$last_patch" \
               | sed 's/^Subject: //; s/^\[PATCH [0-9/]*\] //')
   # Idempotensi: subjek patch terakhir sudah ada di riwayat = seri terpasang
-  if git -C "$pt" log --format=%s -n "$n" 2>/dev/null | grep -qxF "$last_subj"; then
+  if git -C "$pt" log --format=%s -n $((n + 5)) 2>/dev/null | grep -qxF "$last_subj"; then
     c_ok "$pt: $n patch sudah terpasang"
     return
   fi
@@ -152,6 +158,8 @@ fi
 # H. HOSTCFLAGS generator kernel headers (pemblokir Fase 8 PLAN lama).
 # Regresi -fuse-ld=lld di HOSTLDFLAGS diverifikasi masih ada atau tidak di
 # vendor/lineage official; bila cmd generator tak punya HOSTCFLAGS, tambahkan.
+# Catatan M3: pola sed lama gagal di basis official karena format cmd berubah
+# (ada KERNEL_MAKE_CMD/-C/ARCH); pola di bawah mengikuti format official.
 GENBP=vendor/lineage/build/soong/Android.bp
 GENBP_PAT='HOSTCFLAGS=\\"-fuse-ld=lld -Wno-unused-command-line-argument\\"'
 if [ ! -f "$GENBP" ]; then
@@ -162,7 +170,7 @@ elif [ "$CHECK" = 1 ]; then
   c_do "kernel headers generator: PERLU tambah HOSTCFLAGS"
 else
   c_do "kernel headers generator: tambah HOSTCFLAGS"
-  if sed -i 's|\(cmd: "\$PATH_OVERRIDE_SOONG.*\$KERNEL_MAKE_FLAGS\) \(.*headers_install"\),|\1 HOSTCFLAGS=\\"-fuse-ld=lld -Wno-unused-command-line-argument\\" \2,|' "$GENBP" \
+  if sed -i 's|\(cmd: "\$(PATH_OVERRIDE_SOONG) \$(KERNEL_MAKE_CMD) \$(KERNEL_MAKE_FLAGS)\) \(.*headers_install"\),|\1 HOSTCFLAGS=\\"-fuse-ld=lld -Wno-unused-command-line-argument\\" \2,|' "$GENBP" \
       && grep -q "$GENBP_PAT" "$GENBP"; then
     c_ok "kernel headers generator: HOSTCFLAGS ditambahkan"
   else

@@ -27,8 +27,10 @@ yang bisa diverifikasi ulang. Kalau ada konflik antara berkas ini dan `PLAN.md`,
 
 > **6 Agustus 2026:** ada rencana baru — **migrasi basis ke LineageOS official** —
 > di [`PLAN-OFFICIAL.md`](PLAN-OFFICIAL.md) (delta UL↔official terukur, seri patch
-> legacy, fase M0–M5). **Belum dieksekusi**; seluruh status di dokumen ini (basis UL)
-> tetap berlaku sampai migrasi itu disetujui dan dijalankan.
+> legacy, fase M0–M5). **Update 7 Agustus:** **M0–M3 selesai** — tree `/root/los20`
+> kini berbasis official lineage-20.0 tersinkron + 135 patch legacy terpasang
+> (skrip `tools/apply-official-patches.sh`, rc=0). Fase 10 basis UL (status di
+> bawah) menjadi baseline paritas; build M4 menunggu persetujuan.
 
 ---
 

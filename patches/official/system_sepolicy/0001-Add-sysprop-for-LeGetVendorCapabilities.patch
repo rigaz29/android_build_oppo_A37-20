@@ -1,7 +1,7 @@
-From 85a0067c5c562f05ce520d45aee05e08f2d540a4 Mon Sep 17 00:00:00 2001
+From 067940c24574ef3e0d50f22a9a9370a7a70beb4b Mon Sep 17 00:00:00 2001
 From: Abhishek Pandit-Subedi <abhishekpandit@google.com>
 Date: Thu, 26 Jan 2023 16:10:07 -0800
-Subject: [PATCH 7/7] Add sysprop for LeGetVendorCapabilities
+Subject: [PATCH] Add sysprop for LeGetVendorCapabilities
 
 Added new sysprop to configure getting vendor capabilities.
 
