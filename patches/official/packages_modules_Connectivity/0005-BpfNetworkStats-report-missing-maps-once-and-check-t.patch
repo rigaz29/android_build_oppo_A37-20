@@ -1,0 +1,78 @@
+From 11ea21cf9c0ad161d85d367c811767f5d731817e Mon Sep 17 00:00:00 2001
+From: rigaz29 <ryanbagas27@gmail.com>
+Date: Sat, 8 Aug 2026 05:25:55 +0000
+Subject: [PATCH] BpfNetworkStats: report missing maps once, and check the
+ right map
+
+Dua cacat pada jalur BPF-less, ditemukan dari perangkat A37 (msm8916,
+kernel 3.10.108) yang menjalankan LineageOS 20.
+
+1. Banjir log. Pada kernel tanpa eBPF map-nya tidak pernah ada, jadi
+   kegagalan ini sifat permanen perangkat, bukan kejadian.
+   NetworkStatsService memanggil bpfGetIfaceStats() secara berkala,
+   sehingga ALOGE tanpa syarat membanjiri log: terukur 760 dari 3000
+   baris logcat terakhir (25%) di perangkat uji. Sekarang dilaporkan
+   sekali agar kondisinya tetap terlihat, lalu diam. Nilai kembalian
+   tidak berubah.
+
+2. Salah map. Cabang kedua memeriksa ifaceStatsMap.isOk() padahal
+   yang baru dibuka ifaceIndexNameMap. Diperkenalkan oleh commit
+   "BpfMap() implemented new checks for kernel >=4.14 but as assert."
+   Di perangkat BPF-less dampaknya nihil karena keduanya gagal, tapi
+   pada kernel yang map pertamanya ada dan kedua tidak, cabang ini
+   tidak akan pernah kena.
+
+Diuji: m libnetworkstats rc=0; kedua string baru terverifikasi ada di
+libnetworkstats.so hasil build.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Change-Id: I954e60b10a5b61dee8ff4540c459b732e9484062
+---
+ .../libs/libnetworkstats/BpfNetworkStats.cpp  | 21 ++++++++++++++++---
+ 1 file changed, 18 insertions(+), 3 deletions(-)
+
+diff --git a/service-t/native/libs/libnetworkstats/BpfNetworkStats.cpp b/service-t/native/libs/libnetworkstats/BpfNetworkStats.cpp
+index ee30f3db3..37dc47dca 100644
+--- a/service-t/native/libs/libnetworkstats/BpfNetworkStats.cpp
++++ b/service-t/native/libs/libnetworkstats/BpfNetworkStats.cpp
+@@ -17,6 +17,7 @@
+ #include <inttypes.h>
+ #include <net/if.h>
+ #include <string.h>
++#include <atomic>
+ #include <unordered_set>
+ 
+ #include <utils/Log.h>
+@@ -102,15 +103,29 @@ int bpfGetIfaceStatsInternal(const char* iface, Stats* stats,
+ int bpfGetIfaceStats(const char* iface, Stats* stats) {
+     BpfMapRO<uint32_t, StatsValue> ifaceStatsMap(IFACE_STATS_MAP_PATH);
+     int ret;
++    // On a BPF-less kernel these maps never appear, so the failure is a
++    // permanent property of the device rather than an event. NetworkStatsService
++    // polls this function, so an unconditional ALOGE floods the log: measured at
++    // 760 of the last 3000 logcat lines (25%) on a kernel 3.10 device. Report
++    // once so the condition stays discoverable, then stay quiet. Return values
++    // are unchanged.
++    static std::atomic_flag ifaceStatsReported = ATOMIC_FLAG_INIT;
++    static std::atomic_flag ifaceIndexNameReported = ATOMIC_FLAG_INIT;
+     if (!ifaceStatsMap.isValid() || !ifaceStatsMap.isOk()) {
+         ret = -errno;
+-        ALOGE("get ifaceStats map fd failed: %s", strerror(errno));
++        if (!ifaceStatsReported.test_and_set()) {
++            ALOGE("get ifaceStats map fd failed: %s (further reports suppressed)",
++                  strerror(errno));
++        }
+         return ret;
+     }
+     BpfMapRO<uint32_t, IfaceValue> ifaceIndexNameMap(IFACE_INDEX_NAME_MAP_PATH);
+-    if (!ifaceIndexNameMap.isValid() || !ifaceStatsMap.isOk()) {
++    if (!ifaceIndexNameMap.isValid() || !ifaceIndexNameMap.isOk()) {
+         ret = -errno;
+-        ALOGE("get ifaceIndexName map fd failed: %s", strerror(errno));
++        if (!ifaceIndexNameReported.test_and_set()) {
++            ALOGE("get ifaceIndexName map fd failed: %s (further reports suppressed)",
++                  strerror(errno));
++        }
+         return ret;
+     }
+     return bpfGetIfaceStatsInternal(iface, stats, ifaceStatsMap, ifaceIndexNameMap);

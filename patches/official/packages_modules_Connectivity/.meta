@@ -6,5 +6,8 @@ official-ref: lineage-20.0
 official-head: 205270f5728b3c1fda246ec413ee39e83a73df03
 merge-base: 1fa42c03891ba203a321b597fb5709e3a9131f0e
 merge-base-tanggal: 2023-03-22
-jumlah-patch: 4
+jumlah-patch: 5
 tanggal-ekstraksi: 2026-08-06T23:44:31Z
+catatan: 0005 adalah patch MILIK PROYEK INI (bukan port dari UL) — perbaikan
+  banjir log BpfNetworkStats + salah-map pada cabang isOk. Layak dikirim ke hulu
+  LineageOS-UL karena cacatnya ada di sana, bukan khas A37.
