@@ -4,60 +4,64 @@ Rencana dan build kit **LineageOS 20 (Android 13, SDK 33)** untuk
 **OPPO A37 / A37f / A37fw** — Qualcomm MSM8916 (Snapdragon 410), kernel 3.10.108,
 2 GB RAM, Adreno 306.
 
-> ## Status: Fase 1–9 selesai — ROM BOOT; Fase 10 berjalan (6 Agustus 2026)
+> ## Status: **ROM terpasang dan dipakai di perangkat** (8 Agustus 2026)
+>
+> Boot, **Wi-Fi**, **Bluetooth**, dan **RIL (telepon/SMS/LTE)** berfungsi — dikonfirmasi
+> pemilik perangkat.
+>
+> | | |
+> |---|---|
+> | ROM terakhir | `lineage-20.0-official-FINAL-BT-RIL-20260807_122340.zip` (615 MB) |
+> | Basis | **`LineageOS/android` `lineage-20.0` official** + 135 patch legacy |
+> | Device tree | [`rb_device_oppo_A37`](https://github.com/rigaz29/rb_device_oppo_A37) `lineage-20` @ `c5291cc` |
+> | Kernel | [`kernel_oppo_msm8939`](https://github.com/rigaz29/kernel_oppo_msm8939) `lineage-20` @ `8cc1519` |
 >
 > | Fase | Status |
 > |---|---|
-> | **1 Kernel** | ✅ build — branch `lineage-20` @ `8cc1519`, zip AnyKernel3 siap. Uji di perangkat (1.5b) menunggu pemilik |
-> | **2 Manifest & sync** | ✅ **`lunch lineage_A37-userdebug` berhasil** — `PLATFORM_VERSION=13` |
-> | **3 Device tree** | ✅ **seluruh pemblokir kati beres, `m nothing` exit 0** — device tree @ `7938923` |
-> | **4 VINTF** | ✅ **nol perubahan source** — sepolicy 33.0 ter-injeksi `assemble_vintf`; manifest terakit identik ROM jangkar. Catatan `check_vintf_compatible` → PLAN §4.7 |
-> | **5 SEPolicy** | ✅ **`m selinux_policy` exit 0** — layout sepolicy identik ROM yang boot; tiga pemblokir dibereskan (PLAN §5.1b–5.1d). ⚠️ `apply-legacy-patches.sh` punya langkah baru |
-> | **6 Vendor blobs** | ✅ **set 19.1 dipertahankan** (320 terpasang, nol hilang); HAL iop dibuang dari manifest (PLAN §6.2); `verify-rom.sh` diperluas |
-> | **7 Init & rootdir** | ✅ **nol perubahan source** — rc file lolos verifier init A13; ueventd gate API 21 terbuka |
-> | **8 Build** | ✅ **`m -j6 bacon` rc=0** — zip 588 MB; `verify-rom.sh` LOLOS semua; 7 pemblokir dibereskan (PLAN §8.1a–d), termasuk 5 pin anti-hanyut baru |
-> | **9 Boot pertama** | ✅ **homescreen tercapai 6 Agu 2026** — pemblokir boot terakhir dibereskan (charging control/Watchdog, PLAN §9.6). ⚠️ adb diagnostik aktif |
-> | 10 Debug device | berjalan — Wi-Fi diperbaiki (PLAN §10.1); RIL risiko terbuka; kamera/sensor/audio/BT belum diuji |
+> | **1 Kernel** | ✅ satu perubahan fungsional (`binder_alloc` mmap_sem), **tidak berubah sejak itu** |
+> | **2–7** | ✅ manifest, device tree, VINTF, sepolicy, blob, init |
+> | **8 Build** | ✅ `m bacon` rc=0, `verify-rom.sh` lolos |
+> | **9 Boot** | ✅ homescreen 6 Agu 2026 |
+> | **M0–M6 migrasi basis** | ✅ UL → official, 7 Agu 2026 — lihat [`PLAN-OFFICIAL.md`](PLAN-OFFICIAL.md) |
+> | **10 Debug device** | 🔧 berjalan — audio, kamera, sensor |
 >
-> ⚠️ **Baca lingkupnya dengan benar:** `m nothing` hanya **membaca makefile**, tidak
-> mengompilasi apa pun. Kegagalan kompilasi nyata belum tersentuh — validasi
-> sesungguhnya `mka bacon` di Fase 8. "Fase 3 ✅" berarti *build system menerima
-> device tree*, bukan *ROM bisa dibangun*.
+> **Yang masih menunggu:**
+> - ⚠️ `WITH_ADB_INSECURE` masih aktif — **matikan sebelum rilis publik**
+> - Glitch audio saat buka/tutup app — terdiagnosis, belum ditambal
+> - Kamera normal di build basis UL; **paritas di basis official belum diuji ulang**
 >
-> Tree di `/root/los20`: 1213 project, 0 HEAD kosong, 131 GB.
->
-> Pendahulunya: [`a37-19.1`](../a37-19.1) — LineageOS 19.1, **boot sampai homescreen di
-> perangkat nyata**, kamera depan+belakang dan Bluetooth berfungsi, enam kegagalan boot
-> (10.A–10.F) sudah ditemukan akarnya dan diperbaiki. Seluruh temuannya dibawa ke sini.
+> Pendahulunya: [`a37-19.1`](../a37-19.1) — LineageOS 19.1, boot sampai homescreen,
+> kamera depan+belakang dan Bluetooth berfungsi, enam kegagalan boot (10.A–10.F) sudah
+> ditemukan akarnya. Seluruh temuannya jadi modal proyek ini.
 
 ---
 
-## Perubahan terbesar dari 19.1: basis manifest
+## Bagaimana fungsi legacy didapat — dan kenapa berubah dua kali
 
-```bash
-repo init -u https://github.com/LineageOS-UL/android.git -b lineage-20.0 --git-lfs
-```
+Kernel 3.10 pada Android 13 butuh sejumlah fungsi yang sudah dicabut hulu: `adb` di
+FunctionFS lama, Camera HAL1, gerbang eBPF/netd untuk kernel < 4.9, gerbang
+`memfd_create`, dan `sepolicy-legacy`. Proyek ini menempuh **tiga pendekatan berturut**:
 
-**Bukan** `LineageOS/android`. `LineageOS-UL` ("Ultra Legacy") memasang **37 fork legacy**
-lewat `snippets/losul.xml`. Yang di 19.1 harus di-repopick manual setiap habis `repo sync`
-sekarang datang sendiri — dan isinya sudah diverifikasi satu per satu, bukan dipercaya
-dari namanya:
-
-| Kebutuhan | Di 19.1 | Di 20 (fork UL) |
+| | Cara | Hasil |
 |---|---|---|
-| `adb` di FunctionFS kernel 3.10 | repopick 326385 (ABANDONED) | ✅ `transport_legacy.cpp` ada |
-| Camera HAL1 | 22+1 patch + revert `f224255c` | ✅ `CameraProviderManager.cpp:1667` → `case 1: initializeDeviceInfo<DeviceInfo1>` |
-| Gerbang eBPF / netd kernel < 4.9 | repopick 320591 + 320592 | ✅ fork `system/bpf`, `system/netd` |
-| Gerbang `memfd_create` | repopick 318097 + 287706 | ✅ fork `art`, `external/perfetto` |
-| `sepolicy-legacy` | pin manual | ✅ `device/qcom/sepolicy-legacy` @ `lineage-20.0-legacy` |
+| 19.1 | `LineageOS/android` + 9 repopick Gerrit + 23 patch Camera HAL1 manual | boot, tapi tambalan mudah hilang tiap `repo sync` |
+| 20 tahap 1 | **`LineageOS-UL/android`** — 37 fork legacy pra-terpasang | **9 repopick + 23 patch → nol.** ROM boot, Wi-Fi/BT/kamera jalan |
+| 20 tahap 2 (**sekarang**) | **`LineageOS/android` official + 135 patch** hasil ekstraksi dari fork UL | fungsi legacy yang sama, **plus ASB yang masih berjalan** |
 
-**9 repopick + 23 patch kamera → nol.**
+**Kenapa pindah dari UL ke official.** Seluruh lini LineageOS-UL (19.1, 20.0, 21.0) beku
+di **2025-04-04**; ASB terakhir yang dilacaknya **2025-03**. Basis official masih menerima
+tambalan keamanan. Selisihnya ~15 bulan ASB — dan tidak akan pernah tertutup dari UL.
 
-⚠️ Tapi catat: lini `lineage-20.0` UL **beku sejak 2025-04-04**, ASB terbaru yang dilacaknya
-**2025-03** (branch `lineage-19.1` dan `lineage-21.0` beku di tanggal yang sama). Fungsi
-legacy yang kita butuhkan sudah lengkap di dalamnya dan terbukti jalan di ROM gt58wifi —
-tapi untuk paritas keamanan perlu set patch retiredtab (`20/UL-patches-2024/`), dikerjakan
-setelah boot pertama. Rinciannya di `PLAN.md` §1.1 dan §1.4.
+Pemindahannya diukur, bukan ditebak: **142 commit fungsional wajib** dikategorikan T0/T1/T2,
+diekstrak dengan `git format-patch`, disimpan di [`patches/official/`](patches/official/),
+dan diterapkan skrip idempoten pasca-sync. Rinciannya di
+**[`PLAN-OFFICIAL.md`](PLAN-OFFICIAL.md)**.
+
+Fork UL tetap berharga sebagai **sumber patch** dan sebagai bukti *apa* yang dibutuhkan —
+tapi tidak lagi sebagai basis.
+
+⚠️ `device/qcom/sepolicy-legacy` **tetap** diambil dari UL (`lineage-20.0-legacy`) — repo
+itu tidak ada di manifest official. Satu-satunya sisa ketergantungan langsung.
 
 ---
 
@@ -65,19 +69,20 @@ setelah boot pertama. Rinciannya di `PLAN.md` §1.1 dan §1.4.
 
 | Berkas | Keterangan |
 |---|---|
-| **[`PLAN.md`](PLAN.md)** | Dokumen utama. 10 fase, setiap klaim teknis diikat ke sumber yang bisa diverifikasi |
-| **[`PLAN-OFFICIAL.md`](PLAN-OFFICIAL.md)** | **Rencana baru (6 Agu 2026): migrasi basis ke LineageOS official** — delta UL↔official terukur per commit, seri patch legacy, fase M0–M5. Belum dieksekusi |
-| **[`HANDOFF.md`](HANDOFF.md)** | **Konteks lengkap untuk melanjutkan tanpa riwayat percakapan** — status, keputusan yang sudah diambil, jebakan yang pernah menjebak |
-| [`A37-20.xml`](A37-20.xml) | Local manifest. Seluruh SHA diverifikasi 5 Agustus 2026 |
-| **[`ref/evidence/`](ref/evidence/)** | **Hasil bedah ROM LOS 20 msm8916 yang terbukti boot** — `build.prop`, VINTF, fstab, `init*.rc`, daftar sepolicy, header boot.img |
-| [`tools/repo-doctor.sh`](tools/repo-doctor.sh) | Perbaiki dua kegagalan `repo sync` yang benar-benar dialami saat menyiapkan tree ini |
-| [`tools/check-drift.sh`](tools/check-drift.sh) | Deteksi project yang hanyut dari era LineageOS-UL — penyebab pemblokir build pertama Fase 2 |
-| [`tools/apply-legacy-patches.sh`](tools/apply-legacy-patches.sh) | 2 tambalan + 5 penjaga regresi. **Wajib dijalankan ulang tiap habis `repo sync`** |
-| `tools/build-kernel-zip.sh` | Bangun kernel + bungkus zip AnyKernel3 — uji kernel tanpa membangun ROM penuh |
-| `tools/envsetup-a37.sh` | Bersihkan environment sisa proyek lain lalu `lunch`. Source ini, jangan `lunch` langsung |
-| `tools/verify-rom.sh` | Verifikasi ROM **sebelum** flash |
-| `tools/qbootimg.py` | Unpack `boot.img` bergaya Qualcomm (header ber-`dt_size`) |
-| `research/` | 10 clone referensi + artikel dev.to yang sudah diekstrak |
+| **[`HANDOFF.md`](HANDOFF.md)** | **Baca ini pertama.** Keadaan sekarang, keputusan yang sudah diambil, delapan jebakan yang benar-benar pernah menjebak proyek ini |
+| **[`PLAN-OFFICIAL.md`](PLAN-OFFICIAL.md)** | **Basis yang berlaku sekarang** — migrasi UL → official, delta terukur per commit, fase M0–M6 (selesai) |
+| [`PLAN.md`](PLAN.md) | 10 fase asli di atas basis UL. **Arsip yang masih berlaku** untuk seluruh temuan khas A37 (10.A–10.F, VINTF, sepolicy, blob) |
+| [`PLAN-LOS21.md`](PLAN-LOS21.md) · [`PLAN-LOS22.md`](PLAN-LOS22.md) | Studi kelayakan LOS 21 / 22 — keduanya **ALPHA**, belum dikerjakan |
+| [`A37-20.xml`](A37-20.xml) | Local manifest: 3 repo proyek, 3 pin qcom-caf msm8916, `sepolicy-legacy` dari UL, + 6 pin anti-hanyut |
+| [`patches/official/`](patches/official/) | **135 patch legacy** hasil ekstraksi dari fork UL, per repo |
+| **[`ref/evidence/`](ref/evidence/)** | Hasil bedah ROM LOS 20 msm8916 yang terbukti boot — `build.prop`, VINTF, fstab, `init*.rc`, header boot.img |
+| `tools/apply-official-patches.sh` | **Terapkan 135 patch. WAJIB tiap habis `repo sync`** |
+| `tools/repo-doctor.sh` | Perbaiki kegagalan `repo sync` yang pernah dialami |
+| `tools/check-drift.sh` | Deteksi project yang hanyut dari basis |
+| `tools/verify-rom.sh` · `tools/test-device.sh` | Verifikasi ROM sebelum flash · uji fungsi di perangkat |
+| `tools/build-kernel-zip.sh` | Bangun kernel + zip AnyKernel3 tanpa membangun ROM penuh |
+| `tools/envsetup-a37.sh` | Bersihkan environment lalu `lunch`. Source ini, jangan `lunch` langsung |
+| `tools/apply-legacy-patches.sh` | ⚠️ **arsip basis UL** — jangan dipakai di tree official |
 
 ---
 
@@ -186,38 +191,62 @@ Kernel kita sudah punya `F_SEAL_FUTURE_WRITE`, `RT_GROUP_SCHED` mati, dan
 
 ## Membangun
 
+**Basis OFFICIAL, bukan UL.**
+
 ```bash
 mkdir -p ~/los20 && cd ~/los20
-repo init -u https://github.com/LineageOS-UL/android.git -b lineage-20.0 --git-lfs
+
+# repo init official MEN-DOWNGRADE .repo/repo ke era Python 2 -> ModuleNotFoundError.
+# Karena itu REPO_REV dipaksa di setiap perintah repo. Lihat HANDOFF sec.5 jebakan #7.
+REPO_REV=v2.66 repo init -u https://github.com/LineageOS/android.git -b lineage-20.0 --git-lfs
+
 mkdir -p .repo/local_manifests
 cp /path/ke/repo-ini/A37-20.xml .repo/local_manifests/
 
-# JANGAN pakai --no-tags. Remote aosp dipin ke refs/tags/android-13.0.0_r75
-# dan --no-tags membuat 1051 project AOSP gagal checkout. Lihat PLAN.md §0.3.
-repo sync -c -j8 --force-sync --no-clone-bundle
+# JANGAN pakai --no-tags: remote aosp dipin ke refs/tags/android-13.0.0_r75,
+# dan --no-tags membuat 1051 project AOSP gagal checkout.
+REPO_REV=v2.66 repo sync -c -j8 --force-sync --no-clone-bundle
 
 # Kalau sync pernah terputus:
 /path/ke/repo-ini/tools/repo-doctor.sh ~/los20
 
-source /path/ke/repo-ini/tools/envsetup-a37.sh
-lunch lineage_A37-userdebug        # userdebug, BUKAN eng — lihat 19.1 §10.F
-mka bacon
+# 135 patch legacy -- WAJIB, dan WAJIB DIULANG tiap habis repo sync
+/path/ke/repo-ini/tools/apply-official-patches.sh ~/los20
+
+source /path/ke/repo-ini/tools/envsetup-a37.sh   # sudah lunch userdebug (BUKAN eng, lihat 10.F)
+m bacon
 ```
 
-⚠️ **Disk.** Tree 131 GB + `out/` ± 45–50 GB. Sisa 127 GB per 5 Agustus 2026 — cukup,
-tanpa margin. Bersihkan sebelum `mka bacon`.
+⚠️ **Disk.** Sisa **29 GB (92% terpakai)** per 8 Agustus 2026, sementara build penuh butuh
+45–50 GB. **Periksa `df -h /` dan bersihkan `out/` sebelum rebuild.**
 
 ---
 
 ## Risiko terbesar yang diakui
 
-**RIL.** Belum pernah berfungsi di 19.1 kita, dan tidak berfungsi di tree meghs
-("no signal"). Tidak ada satu pun sumber referensi yang membuktikan RIL jalan di A37 pada
-Android 12+. Jangan jadikan RIL kriteria keberhasilan boot pertama.
+~~**RIL.**~~ **TERJAWAB 7 Agustus 2026.** Dokumen ini sebelumnya menyebut RIL sebagai
+risiko terbuka terbesar — "tidak ada satu pun sumber yang membuktikannya jalan di A37 pada
+Android 12+". Kehati-hatiannya benar, **skalanya salah besar**: penyebabnya properti
+`vendor.rild.libpath` yang hilang, dan perbaikannya **satu baris** (`c5291cc`).
+Telepon, SMS, dan LTE teruji di perangkat. 16 patch T-RIL dari fork UL tidak diperlukan.
+
+**`WITH_ADB_INSECURE` masih aktif.** Dinyalakan untuk diagnosis Fase 9–10: adb hidup dari
+awal boot **tanpa otorisasi**. Aman di meja kerja, **tidak boleh ikut rilis publik**.
+Matikan lalu rebuild sebelum membagikan ROM.
 
 **`/data` tidak terenkripsi.** fstab `/data` tanpa `encryptable=` — sama seperti ROM msm8916
 Android 13 yang boot. FBE di kernel 3.10 adalah proyek tersendiri, di luar lingkup.
 Perangkat uji saja, bukan untuk data pribadi.
+
+**Paritas basis official belum diuji penuh.** Wi-Fi, Bluetooth, dan RIL sudah dikonfirmasi
+di perangkat pada build official. Kamera normal di build basis **UL**, tapi belum diuji
+ulang setelah pindah basis; sensor dan charging belum diuji sama sekali. Kolom ❔ di
+`HANDOFF.md` §2 berarti *belum diuji* — bukan rusak, dan bukan jalan.
+
+**Basis official bergerak.** Berbeda dari UL yang beku, `lineage-20.0` official masih
+menerima commit. `repo sync` bisa menarik perubahan yang memutus build kapan saja —
+jalankan `tools/check-drift.sh`, dan **selalu** `tools/apply-official-patches.sh` sesudah
+sync.
 
 ---
 
