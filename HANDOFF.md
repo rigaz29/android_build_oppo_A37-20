@@ -299,6 +299,17 @@ diteruskan di sini:
   perubahan opsional supaya uji perangkat hanya menguji satu hal.
 - **Verifikasi di lapisan terendah yang masuk akal.** Contoh: perubahan binder tidak cuma
   dicek di source, tapi lewat `nm` pada object file hasil kompilasi.
+- **"Dibaca" bukan "dipakai" — dan "ada di tree rujukan" bukan "berlaku untuk kita".**
+  Dua kali tertipu pola ini (8 Agustus 2026):
+
+  | Yang nyaris/terlanjur dipasang | Kenapa keliru |
+  |---|---|
+  | mixPort `deep_buffer` | Disalin dari a6010. Ternyata HAL kita sudah memetakan `primary output` ke usecase deep buffer (`audio_hw.c:87-94`, `USE_LL_AS_PRIMARY_OUTPUT` tak disetel), jadi redundan **dan** berisiko dua thread berebut `DEEP_BUFFER_PCM_DEVICE 0`. Di-revert (`8dad618`) |
+  | `ro.hwui.render_ahead=20` | Getternya ADA di `Properties.cpp:42` dan dua tree rujukan memakainya — tapi getter itu **tidak pernah dipanggil**; mekanisme A11-nya sudah dicabut. Tidak jadi ditambahkan |
+
+  Uji yang benar bukan "apakah propertinya dibaca / apakah tree lain memakainya",
+  melainkan **"siapa yang mengonsumsinya di versi kita, dan apakah prasyaratnya sama"**.
+  Untuk properti: cari konsumen getternya. Untuk konfigurasi: cari pemetaannya di HAL.
 - **Deklarasikan interface HIDL hanya kalau servisnya terbukti register di ROM ini** —
   bukan karena ia pernah jalan di versi Android sebelumnya. Ini pelajaran termahal 19.1
   (bug 10.C: Watchdog membunuh `system_server` tiap ~2 menit).

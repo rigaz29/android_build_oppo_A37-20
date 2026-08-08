@@ -688,6 +688,75 @@ selesai: tinggal rebuild+flash permanen.
 
 ---
 
+## 8. Investigasi performa (8 Agustus 2026) — empat kandidat, satu lolos
+
+Dilakukan atas pertanyaan "apa yang perlu di-tweak agar perangkat lawas ini lancar".
+Metode: ukur dulu di perangkat, jangan menyalin saran umum.
+
+### 8.1 Yang sudah baik — jangan disentuh
+
+| Aspek | Terukur | Putusan |
+|---|---|---|
+| Tekanan memori | `lmkd kill = 0` dalam 16 jam; MemFree 208 MB, Cached 847 MB, SwapFree 185/256 MB | sehat; tidak ada masalah untuk dipecahkan |
+| zram | 44 MB → 15 MB (rasio **2,9×**), 76 MB terpakai dari 256 MB | bekerja, masih longgar — **jangan dibesarkan** |
+| Governor | `interactive` dengan `hispeed_freq=998400`, `target_loads` 8 titik per-frekuensi, `timer_rate=30000` | **sudah dituning**, bukan default |
+| Dalvik heap | `init/init_msm8916.cpp:127-133` menyetel runtime via `is2GB()` → 256m/512m/2m, `bg_apps_limit=17` | disengaja; blok di `device.mk` memang kalah dan sudah diberi komentar |
+
+Kesimpulan penting: **perangkat tidak sedang tercekik.** Menaikkan zram, mengganti
+governor, atau mengecilkan heap tidak didukung data apa pun.
+
+### 8.2 Benchmark I/O — metode
+
+Cold start `com.android.settings`; tiap iterasi `force-stop` → `sync` →
+`drop_caches` → `am start -W`, ambil `TotalTime`. Dua ronde terpisah untuk
+memastikan bisa direproduksi. Skrip: `/data/local/tmp/iobench.sh` (dibuat saat itu).
+
+| Konfigurasi | n | median | mean | min–max |
+|---|---|---|---|---|
+| `noop` / ra 128 (baseline) | 12 | **1274,5 ms** | 1273,1 | 1239–1306 |
+| `noop` / ra **512** | 10 | **1231,5 ms** | 1248,6 | 1209–1318 |
+| `row` / ra 128 | 6 | 1268,0 | 1279,3 | 1254–1316 |
+
+**`row` DITOLAK (−0,5%).** Hipotesis "scheduler Qualcomm untuk eMMC lebih baik"
+tidak terbukti: median di dalam noise, mean justru lebih buruk. Dikembalikan ke `noop`.
+
+**`read_ahead_kb` 128→512: −3,4%, reproducible.** Penanda yang meyakinkan bukan
+median, melainkan: nilai terendah dari 12 run pada 128 = 1239 ms, dan **6 dari 10**
+run pada 512 berada di bawah angka itu. Pola sama di kedua ronde (run pertama
+setelah ganti nilai selalu tinggi — efek pemanasan — lalu turun mantap).
+
+⚠️ **Tapi 43 ms dari 1275 ms tidak akan terasa**, dan read-ahead lebih besar
+menggerus margin page cache di perangkat 2 GB. Dibiarkan sebagai setelan runtime
+untuk dinilai subjektif; **tidak** dipermanenkan tanpa bukti bahwa ia terasa.
+
+### 8.3 Dua properti HWUI yang MATI
+
+| Properti | Status | Bukti |
+|---|---|---|
+| `debug.hwui.renderer=opengl` | **mati**, dibuang di device tree `fdf400f` | `Properties.cpp:198-199` hanya mencocokkan `"skiavk"`; nilai lain → SkiaGL. Pipeline OpenGL HWUI dicabut sejak Android 10 |
+| `ro.hwui.render_ahead=20` | **mati**, TIDAK ditambahkan | getter `render_ahead()` di `Properties.cpp:42` tidak pernah dipanggil; `Properties::renderAhead` tidak ada; `setRenderAheadDepth`/`mRenderAheadDepth` (mekanisme A11) dicabut |
+
+Keduanya dipakai meghs A37 `lineage-20` dan a6010 `lineage-20.0`. Keduanya tidak
+berpengaruh apa pun di Android 13.
+
+Konsekuensi yang perlu diketahui: SurfaceFlinger memang menghindari Skia lewat
+`debug.renderengine.backend=gles` (10.B), tapi **HWUI tetap di SkiaGL** dan di A13
+tidak ada alternatifnya. Kelambatan rendering yang tersisa lebih mungkin berasal
+dari situ daripada dari setelan yang bisa kita ubah.
+
+### 8.4 Pelajaran metode
+
+**"Dibaca" bukan "dipakai".** `ro.hwui.render_ahead` nyaris ditambahkan karena
+getternya ada di source dan dua tree rujukan memakainya. Pemeriksaan sebenarnya
+adalah mencari **konsumen** getter itu — dan tidak ada. Ini pengulangan pola yang
+sama dengan mixPort `deep_buffer` (di-revert di device tree `8dad618`): menyalin
+dari tree rujukan tanpa memverifikasi prasyaratnya berlaku untuk kita.
+
+Dari empat kandidat yang tampak menjanjikan, **satu** yang berdasar — dan itu
+pembersihan, bukan peningkatan performa.
+
+---
+
 ## Lampiran A — Perintah yang mereproduksi data dokumen ini
 
 ```bash

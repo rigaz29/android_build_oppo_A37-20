@@ -35,3 +35,6 @@ __pycache__/
 # State lokal harness, bukan isi proyek
 .claude/
 .aider*
+
+# State lokal harness AI lain, bukan isi proyek
+.qwen/
