@@ -33,10 +33,36 @@
 | 1 | **Basis: `repo init -u https://github.com/LineageOS/android.git -b lineage-20.0`** | §0.1 — ASB berjalan; cabang `lineage-20.0` diverifikasi masih ada di semua repo kunci |
 | 2 | **Fungsi legacy UL dibawa sebagai seri patch per-repo** (`git format-patch` dari fork UL, disimpan di `patches/official/`, diterapkan skrip idempoten pasca-sync) — **bukan** dengan mem-pin fork UL | Mem-pin fork UL = repo terpenting (`frameworks/av`, `frameworks/base`) tetap di ASB 2025-03 → tujuan pindah basis gugur. Precedent: proyek 19.1 kita sendiri (official + 8 repopick + 22+5 patch kamera + revert libbfqio) **boot, kamera+BT jalan** |
 | 3 | **Beban port terukur: 142 commit fungsional wajib** (T0=8, T1=60 —termasuk 1 revert libbfqio kita—, T2=74), 12 commit T3 kondisional, 16 commit opsional RIL. Dua repo besar hanya 2 dari 23; sisanya 1–21 commit kecil | Tabel §1.3 + daftar commit §3 |
-| 4 | **Enam pin anti-hanyut di `A37-20.xml` DIHAPUS** (dng_sdk, skia, Mms, Telephony, Trebuchet, Settings) | Semua pin itu ada karena **campuran** UL-beku × official-bergerak (komentar tiap pin di `A37-20.xml` sendiri yang menyatakan: "tak ada di fork UL beku"). Basis official murni menghapus akar masalahnya — tree konsisten sebagai satu set |
+| 4 | **Enam pin anti-hanyut dilepas dulu, lalu dipasang ulang hanya yang terbukti memutus build** (dng_sdk, skia, Mms, Telephony, Trebuchet, Settings) | Hipotesisnya: pin itu ada karena **campuran** UL-beku × official-bergerak, jadi basis official murni mestinya menghapus akar masalahnya. ⚠️ **Hipotesis ini TIDAK terbukti** — lihat §0.2b |
 | 5 | **Satu-satunya pin baru: `device/qcom/sepolicy-legacy`** → `LineageOS-UL/android_device_qcom_sepolicy` @ `470e8d88` (branch `lineage-20.0-legacy`) | Tidak ada di manifest official (diverifikasi); repo official hanya punya branch `lineage-20.0` dan `lineage-20.0-legacy-um` (bukan yang kita pakai). Precedent: resep retiredtab 19.1 juga mengambil repo ini dari UL |
 | 6 | **Semua yang khas A37 tidak berubah**: device tree `7938923`, kernel `8cc1519`, vendor `2e5c6f7`, qcom-caf msm8916 (3 SHA), seluruh properti 10.A–10.F | Fase 3–7 PLAN.md; migrasi ini hanya mengganti **userspace platform** di bawahnya |
 | 7 | **Rebuild penuh + uji perangkat ulang wajib** — ROM UL yang sekarang jalan jadi **baseline paritas**, bukan alasan melonggarkan uji | Kebijakan §7 HANDOFF: klaim fungsi hanya dengan log perangkat |
+
+### 0.2b Hasil nyata keputusan #4 — keenam pin kembali
+
+Ditulis 8 Agustus 2026, setelah M4 selesai. Draf pertama dokumen ini menyatakan keenam
+pin "DIHAPUS" secara absolut. **Yang benar-benar terjadi:** keenamnya dilepas di awal M4,
+lalu **keenam-enamnya dipasang ulang** karena masing-masing terbukti memutus build di
+atas basis official juga. Jadi hipotesis "campuran UL-beku × official-bergerak" **keliru**:
+akar hanyutnya bukan UL, melainkan `lineage-20.0` official sendiri yang terus bergerak
+sementara sisa tree kita dipatok ke era tertentu.
+
+| Pin | SHA | Verifikasi |
+|---|---|---|
+| `external/dng_sdk` | `880b6833f9` | pemblokir soong asli (`libjpeg` varian `sdk:sdk`), PLAN §2.7 |
+| `external/skia` | `0c334c1c2f` | `m libskia` exit 0 — pasangan sezaman `dng_sdk` (r28) |
+| `packages/services/Mms` | `0cc94f1ad6` | `m MmsService` exit 0 |
+| `packages/services/Telephony` | `288c28358b` | `m TeleService` exit 0 |
+| `packages/apps/Trebuchet` | `1273734a5f` | `m Launcher3QuickStepLib` exit 0 |
+| `packages/apps/Settings` | `823af438e1` | `m Settings-core` exit 0 |
+
+Prosedurnya tetap sesuai kebijakan §2.7 `PLAN.md` dan baris mitigasi risiko #2 di §6
+dokumen ini — *"pin lama dihapus dulu, dipasang ulang hanya bila terbukti putus"*. Yang
+salah hanya kalimat absolutnya di draf pertama, bukan langkahnya.
+
+**Pelajaran yang dibawa:** basis official **bergerak**, tidak seperti UL yang beku. Pin
+anti-hanyut bukan artefak sementara era UL — ia kebutuhan permanen selama sebagian tree
+dipatok. Jalankan `tools/check-drift.sh` sesudah tiap `repo sync`.
 
 ### 0.3 Satu kalimat
 
@@ -313,7 +339,8 @@ RIL tetap **risiko terbuka** (PLAN §10.3-D); tidak masuk kriteria keberhasilan 
 
 Isi: remote `gh` + `losul`; tiga repo proyek (device `lineage-20`, kernel
 `lineage-20`, vendor `2e5c6f7`); tiga pin qcom-caf msm8916 (SHA tidak berubah);
-pin sepolicy-legacy (§3). **Dihapus:** seluruh enam pin anti-hanyut (§0.2#4).
+pin sepolicy-legacy (§3). Enam pin anti-hanyut **dilepas di awal M4, lalu keenamnya
+dipasang ulang** setelah masing-masing terbukti memutus build — rincian dan SHA di §0.2b.
 **Tidak dideklarasikan:** repo-repo yang ditambal — patch bekerja di atas checkout
 official, bukan lewat manifest.
 

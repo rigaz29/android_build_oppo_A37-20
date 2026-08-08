@@ -183,9 +183,17 @@ Semuanya benar-benar terjadi di proyek ini, bukan teori.
    python3 -c "import xml.etree.ElementTree as E; E.parse('A37-20.xml')"
    ```
 
-4. **Hulu hanyut (upstream drift).** Manifest UL menyematkan project ke **branch**, bukan
-   SHA. Lini UL **beku 2025-04-04**, tapi repo LineageOS terus bergerak di branch bernama
-   sama. Ini **sudah memutus build** (lihat `PLAN.md` §2.7 — `external/dng_sdk`).
+4. **Hulu hanyut (upstream drift) — dan ini PERMANEN, bukan gejala era UL.**
+   Manifest menyematkan project ke **branch**, bukan SHA, jadi `repo sync` bisa menarik
+   kode jauh lebih baru daripada sisa tree yang dipatok. Pertama kali memutus build di
+   era UL (`PLAN.md` §2.7 — `external/dng_sdk`).
+
+   ⚠️ Sempat diduga hanyut itu artefak **campuran** UL-beku × official-bergerak, sehingga
+   basis official murni akan menghapusnya. **Dugaan itu salah:** setelah pindah ke
+   official, **keenam pin dilepas lalu keenam-enamnya harus dipasang ulang** karena
+   masing-masing tetap memutus build (`PLAN-OFFICIAL.md` §0.2b). Akarnya `lineage-20.0`
+   official sendiri yang terus bergerak.
+
    Deteksi: **`tools/check-drift.sh`**. Kebijakan: **pin hanya yang terbukti memutus
    build**, jangan memin semuanya secara preventif.
 
