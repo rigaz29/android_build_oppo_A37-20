@@ -72,7 +72,6 @@ itu tidak ada di manifest official. Satu-satunya sisa ketergantungan langsung.
 | **[`HANDOFF.md`](HANDOFF.md)** | **Baca ini pertama.** Keadaan sekarang, keputusan yang sudah diambil, delapan jebakan yang benar-benar pernah menjebak proyek ini |
 | **[`PLAN-OFFICIAL.md`](PLAN-OFFICIAL.md)** | **Basis yang berlaku sekarang** — migrasi UL → official, delta terukur per commit, fase M0–M6 (selesai) |
 | [`PLAN.md`](PLAN.md) | 10 fase asli di atas basis UL. **Arsip yang masih berlaku** untuk seluruh temuan khas A37 (10.A–10.F, VINTF, sepolicy, blob) |
-| [`PLAN-LOS21.md`](PLAN-LOS21.md) · [`PLAN-LOS22.md`](PLAN-LOS22.md) | Studi kelayakan LOS 21 / 22 — keduanya **ALPHA**, belum dikerjakan |
 | [`A37-20.xml`](A37-20.xml) | Local manifest: 3 repo proyek, 3 pin qcom-caf msm8916, `sepolicy-legacy` dari UL, + 6 pin anti-hanyut |
 | [`patches/official/`](patches/official/) | **135 patch legacy** hasil ekstraksi dari fork UL, per repo |
 | **[`ref/evidence/`](ref/evidence/)** | Hasil bedah ROM LOS 20 msm8916 yang terbukti boot — `build.prop`, VINTF, fstab, `init*.rc`, header boot.img |

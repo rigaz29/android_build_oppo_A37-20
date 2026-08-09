@@ -46,7 +46,6 @@ perbaikannya jadi modal proyek ini**, bukan diulang dari nol.
 | **`HANDOFF.md`** (ini) | keadaan sekarang, keputusan, jebakan | **selalu, pertama** |
 | **`PLAN-OFFICIAL.md`** | migrasi basis UL → official; delta terukur per commit; fase M0–M6 | pekerjaan basis/patch sekarang |
 | `PLAN.md` | 10 fase asli di atas basis UL — **arsip yang masih berlaku** untuk seluruh temuan A37 (10.A–10.F, VINTF, sepolicy, blob) | menelusuri *kenapa* sesuatu begitu |
-| `PLAN-LOS21.md` / `PLAN-LOS22.md` | studi kelayakan LOS 21 / 22 — keduanya **ALPHA**, belum dikerjakan | kalau ditanya soal versi lebih baru |
 
 ⚠️ **Urutan otoritas kalau ada konflik:** `HANDOFF.md` (keadaan) → `PLAN-OFFICIAL.md`
 (basis sekarang) → `PLAN.md` (temuan A37). `PLAN.md` masih menyebut basis UL di §0–§2;
