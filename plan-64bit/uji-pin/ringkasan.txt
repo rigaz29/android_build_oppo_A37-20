@@ -1,0 +1,31 @@
+=== PUTARAN A — keenam DIPIN ===
+  external/dng_sdk               880b683 2025-04-17
+  external/skia                  0c334c1c2f 2025-04-17
+  packages/services/Mms          0cc94f1 2024-12-02
+  packages/services/Telephony    288c28358 2025-04-18
+  packages/apps/Trebuchet        1273734a5f 2024-12-02
+  packages/apps/Settings         823af438e1 2025-02-07
+  (lunch ok, TARGET_ARCH=arm64)
+  libskia                    LOLOS  (1252s)
+  MmsService                 GAGAL  (933s) -> /root/los20/work/uji-pin-20260913_145749/A-MmsService.log
+  TeleService                LOLOS  (386s)
+  Launcher3QuickStepLib      GAGAL  (500s) -> /root/los20/work/uji-pin-20260913_145749/A-Launcher3QuickStepLib.log
+  Settings-core              LOLOS  (299s)
+
+=== melepas keenam pin ke lineage-20.0 HEAD ===
+  external/dng_sdk               2d4fcef 2026-03-10
+  external/skia                  926265bb27 2025-08-07
+  packages/services/Mms          d2f1fe6 2025-08-14
+  packages/services/Telephony    43f185c72 2026-05-04
+  packages/apps/Trebuchet        966aeecfe2 2026-01-21
+  packages/apps/Settings         0c16382cfc 2026-05-15
+
+=== PUTARAN B — keenam DILEPAS ===
+  (lunch ok, TARGET_ARCH=arm64)
+  libskia                    LOLOS  (1036s)
+  MmsService                 LOLOS  (136s)
+  TeleService                GAGAL  (128s) -> /root/los20/work/uji-pin-20260913_145749/B-TeleService.log
+  Launcher3QuickStepLib      LOLOS  (171s)
+  Settings-core              LOLOS  (216s)
+
+log lengkap: /root/los20/work/uji-pin-20260913_145749

@@ -1,0 +1,5 @@
+packages/services/Mms/src/com/android/mms/service/MmsService.java:210: error: <anonymous com.android.mms.service.MmsService$1> is not abstract and does not override abstract method addMultimediaMessageDraft(int,String,Uri) in IMms
+packages/services/Mms/src/com/android/mms/service/MmsService.java:211: error: method does not override or implement a method from a supertype
+packages/services/Mms/src/com/android/mms/service/MmsService.java:289: error: method does not override or implement a method from a supertype
+packages/services/Mms/src/com/android/mms/service/MmsService.java:431: error: method does not override or implement a method from a supertype
+packages/services/Mms/src/com/android/mms/service/MmsService.java:525: error: method does not override or implement a method from a supertype

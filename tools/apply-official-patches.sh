@@ -56,6 +56,7 @@ rc=0
 # ---------------------------------------------------------------------------
 # tier path-patch path-tree
 SERIES="\
+T0 build_soong                   build/soong
 T0 packages_modules_adb          packages/modules/adb
 T0 art                           art
 T0 system_bpf                    system/bpf
@@ -75,6 +76,14 @@ T1 packages_modules_Bluetooth    packages/modules/Bluetooth
 T2 frameworks_av                 frameworks/av
 T2 frameworks_base               frameworks/base
 T3 hardware_qcom-caf_wlan        hardware/qcom-caf/wlan"
+# build_soong DITAMBAHKAN 13 Sep 2026 untuk build 64-bit: soong_build dijalankan
+# dengan `env -i` sehingga GOMEMLIMIT dari shell tidak pernah sampai, dan
+# build/soong Android 13 nol sebutan GOMEMLIMIT. Tanpa patch ini `m nothing`
+# setelah TARGET_ARCH=arm64 dibunuh penjaga memori di mesin 11 GB. Ditandai T0
+# karena ia prasyarat menjalankan build sama sekali, bukan prasyarat fungsi ROM.
+# Pada build 32-bit patch ini tidak berbahaya: tanpa SOONG_GOMEMLIMIT disetel,
+# cabangnya tidak pernah diambil.
+#
 # hardware_qcom-caf_wlan DIPROMOSIKAN dari opt-in --t3 ke wajib (M4.4, 7 Agu
 # 2026): tanpa kedua patch ini m bacon gagal -Werror=format (u64 vs %lu di
 # driver_cmd_nl80211.c) — kondisi 'bila build wcnss/wpa gagal' di PLAN-OFFICIAL

@@ -492,7 +492,13 @@ for f in $(find proprietary/vendor/lib   -name '*.so'); do file -b "$f" | grep -
 Salah arch **tidak akan tertangkap saat build** — ia muncul sebagai HAL gagal dimuat
 saat boot. Proyek 23.2 memeriksa 114 + 160 berkas dan menemukan 0 salah; ulangi.
 
-### Fase 2 — Device tree dan BoardConfig (2–3 jam)
+### Fase 2 — Device tree dan BoardConfig (2–3 jam) — ✅ **SELESAI 13 Sep 2026**
+
+> Hasil dan penjaganya: [`plan-64bit/fase-2/README.md`](plan-64bit/fase-2/README.md).
+> `m nothing` **build completed successfully (19:15)**. Dua temuan yang mengubah
+> rencana: vendor 64-bit dan device tree 32-bit tidak bisa hidup bersama, dan
+> `SOONG_GOMEMLIMIT` menuntut patch `build/soong` lebih dulu (§3 nomor 3 di bawah
+> terlalu ringkas). Zygote dipilih `zygote64_32`, berbeda dari 23.2.
 
 Cabang `lineage-20-64bit` dari `lineage-20` (`caa9882`). Isi `304f179` diterapkan
 dengan tangan:
@@ -821,7 +827,18 @@ tambahan khusus rencana ini, semuanya sudah benar-benar menjebak seseorang:
    benar-benar dikirim LOS 20, cabang itu **cukup** — nol berkas absen dalam arch apa
    pun. Yang tetap berlaku: jangan membaca `proprietary-files.txt` sebagai daftar
    kerja; yang dibaca build adalah `A37-vendor.mk` (§2.3, fase-0 §3).
-7. **Dua manifest di repo ini masing-masing tidak lengkap** (§4.5).
+7. **Dua manifest di repo ini masing-masing tidak lengkap** (§4.5). Penggantinya
+   [`A37-20-64bit.xml`](A37-20-64bit.xml).
+8. **Pin anti-hanyut bisa berbalik jadi penyebab.** Basis official bergerak, jadi pin
+   yang dulu memperbaiki bisa menjadi yang merusak tanpa ada yang menyadarinya. Diuji
+   13 Sep 2026: dari enam pin, dua sudah **merusak** build, dua sudah tidak perlu, satu
+   masih wajib. Uji ulang berkala, jangan diwarisi — `plan-64bit/uji-pin/`.
+9. **`SOONG_GOMEMLIMIT` tidak berlaku tanpa menambal soong.** `soong_build` dijalankan
+   dengan `env -i` dan `build/soong` Android 13 nol sebutan `GOMEMLIMIT`. Patchnya kini
+   T0 di `tools/apply-official-patches.sh`.
+10. **Jangan `set -u` di skrip yang men-`source build/envsetup.sh`.** envsetup menyentuh
+   banyak variabel tak terdefinisi; shell mati seketika, dan kalau stdout dibuang,
+   matinya tanpa jejak.
 8. **Komentar yang menjadi salah lebih berbahaya daripada tidak ada komentar.** Tiga
    tempat yang akan menyesatkan sesudah rencana ini: blok kamera `device.mk:276-291`,
    blok `passthrough` `manifest.xml:80-90`, dan ekor defconfig kernel soal `Image-dtb`.

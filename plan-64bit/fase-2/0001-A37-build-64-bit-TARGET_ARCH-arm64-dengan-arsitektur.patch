@@ -1,0 +1,145 @@
+From 700a8d0d4c7fd41ff2797286f7376bb247c0e01f Mon Sep 17 00:00:00 2001
+From: rigaz29 <ryanbagas27@gmail.com>
+Date: Sun, 13 Sep 2026 14:58:34 +0000
+Subject: [PATCH] A37: build 64-bit -- TARGET_ARCH arm64 dengan arsitektur
+ kedua arm
+
+Userspace arm64 dengan arsitektur kedua arm. Kernel TIDAK berubah: TARGET_KERNEL_ARCH
+sudah arm64 sejak Fase 1 proyek ini dan selama ini menjalankan userspace 32-bit lewat
+compat layer.
+
+Pemilahan blob diukur di Fase 0 atas set yang benar-benar dikirim LOS 20 (A37-vendor.mk
+lineage-18.1: 320 PRODUCT_COPY_FILES + 6 modul Android.bp = 326 entri):
+
+   71 pustaka dual-arch     159 tetap 32-bit (129 kamera/JPEG)     43 naik ke 64-bit
+
+Seluruh 13 biner vendor/bin tetap 32-bit. Qualcomm tidak pernah merilis HAL kamera
+64-bit untuk msm8916, dan ROM LOS 17.1 64-bit A37 pun menjalankannya sebagai proses
+32-bit -- karena itu build ini wajib dual-arch.
+
+WAJIB BERPASANGAN DENGAN vendor/oppo CABANG lineage-20-64bit
+
+Keduanya tidak bisa hidup terpisah, dan ini ditemukan dengan cara yang mahal: menjalankan
+vendor 64-bit di atas device tree 32-bit membuat SELURUH build gagal sebelum mengompilasi
+apa pun --
+
+  device/oppo/A37/lineage_A37.mk includes non-existent modules in PRODUCT_PACKAGES
+  Offending entries: libtime_genoff
+
+karena Android.bp vendor 64-bit mendefinisikan libtime_genoff sebagai arm64-saja.
+Kebalikannya juga berlaku. Kembali ke 32-bit berarti mengembalikan KEDUANYA.
+
+ZYGOTE: zygote64_32, BERBEDA DARI PROYEK LOS 23.2
+
+23.2 memakai ZYGOTE_FORCE_64 (satu zygote) karena tumpukan 32-bitnya tidak lengkap dan
+zygote_secondary dua kali menyebabkan bootloop. Dua alasan memilih berbeda di sini:
+
+  1. Penyebab utamanya sudah hilang -- tumpukan EGL 32-bit lengkap (9 driver + libgsl
+     + libadreno_utils) sudah dibawa cabang vendor lineage-20-64bit.
+  2. Di Android 13 aplikasi 32-bit-saja masih banyak. zygote64 membuat
+     ro.product.cpu.abilist hanya berisi arm64-v8a, sehingga aplikasi seperti itu TIDAK
+     BISA DIPASANG. Di Android 16 pertukaran itu wajar; di Android 13 tidak.
+
+Ongkosnya dua boot image ART di memori, dan itu harus DIUKUR di Fase 8. Kalau RAM tidak
+cukup, ZYGOTE_FORCE_64 := true satu baris, ditaruh SEBELUM inherit core_64_bit.mk.
+
+TERVERIFIKASI
+
+  get_build_var  TARGET_ARCH arm64 | TARGET_CPU_ABI arm64-v8a | TARGET_2ND_ARCH arm
+                 TARGET_2ND_CPU_ABI armeabi-v7a | TARGET_KERNEL_ARCH arm64 (tetap)
+  ro.zygote      zygote64_32 (menang atas ro.zygote?=zygote32 dari base_vendor.mk)
+  init.zygote64_32.rc terpasang lewat PRODUCT_COPY_FILES
+  m nothing      build completed successfully (19:15)
+
+Catatan: rencana induk mengharapkan "3 paket init.zygote*" dan hasilnya 0. Itu BENAR --
+di Android 13 core_64_bit.mk memakai PRODUCT_COPY_FILES, bukan modul; angka 3 milik
+Android 16. Ekspektasinya yang keliru, bukan pohonnya.
+
+m nothing menuntut patch build/soong terpisah (SOONG_GOMEMLIMIT) -- lihat
+patches/official/build_soong/ di repo android_build_oppo_A37-20.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_014BuvxqsBMX7Bb8CRVeSTBj
+---
+ BoardConfig.mk | 32 ++++++++++++++++++++++++++++----
+ lineage_A37.mk | 21 +++++++++++++++++++++
+ 2 files changed, 49 insertions(+), 4 deletions(-)
+
+diff --git a/BoardConfig.mk b/BoardConfig.mk
+index faca21b..bc8a201 100644
+--- a/BoardConfig.mk
++++ b/BoardConfig.mk
+@@ -132,13 +132,37 @@ BUILD_BROKEN_ELF_PREBUILT_PRODUCT_COPY_FILES := true
+ BOARD_PROPERTY_OVERRIDES_SPLIT_ENABLED := true
+ 
+ # Architecture
+-TARGET_BOARD_SUFFIX := _32
+-TARGET_ARCH := arm
++#
++# BUILD 64-BIT. Userspace arm64 dengan arsitektur kedua arm, karena blob kamera
++# msm8916 hanya ada 32-bit: Qualcomm tidak pernah merilis HAL kamera 64-bit
++# untuk SoC ini, dan ROM LOS 17.1 64-bit A37 pun menjalankannya sebagai proses
++# 32-bit. Diukur di Fase 0 atas set blob yang benar-benar dikirim LOS 20:
++#   114 pustaka naik ke vendor/lib64, 159 tetap 32-bit (129 di antaranya kamera),
++#    71 dikirim dua arch. Seluruh 13 biner vendor/bin tetap 32-bit.
++#
++# Kernel TIDAK berubah: TARGET_KERNEL_ARCH sudah arm64 sejak Fase 1 proyek ini,
++# dan selama ini menjalankan userspace 32-bit lewat compat layer.
++#
++# WAJIB BERPASANGAN dengan vendor/oppo cabang lineage-20-64bit. Keduanya tidak
++# bisa hidup terpisah: Android.bp vendor 64-bit mendefinisikan libtime_genoff
++# sebagai arm64-saja, sehingga pada TARGET_ARCH=arm modul itu tidak ada dan
++# enforce-product-packages-exist menggagalkan build sebelum mengompilasi apa pun
++# ("non-existent modules in PRODUCT_PACKAGES: libtime_genoff"). Kebalikannya
++# juga berlaku. Kembali ke 32-bit berarti mengembalikan KEDUANYA.
++TARGET_BOARD_SUFFIX := _64
++TARGET_ARCH := arm64
+ TARGET_ARCH_VARIANT := armv8-a
+-TARGET_CPU_ABI := armeabi-v7a
+-TARGET_CPU_ABI2 := armeabi
++TARGET_CPU_ABI := arm64-v8a
+ TARGET_CPU_VARIANT := cortex-a53
+ 
++TARGET_2ND_ARCH := arm
++TARGET_2ND_ARCH_VARIANT := armv8-a
++TARGET_2ND_CPU_ABI := armeabi-v7a
++TARGET_2ND_CPU_ABI2 := armeabi
++TARGET_2ND_CPU_VARIANT := cortex-a53
++
++TARGET_SUPPORTS_64_BIT_APPS := true
++
+ # Binder
+ TARGET_USES_64_BIT_BINDER := true
+ 
+diff --git a/lineage_A37.mk b/lineage_A37.mk
+index f1e8229..417d0aa 100644
+--- a/lineage_A37.mk
++++ b/lineage_A37.mk
+@@ -72,6 +72,27 @@ LINEAGE_VERSION_APPEND_TIME_OF_DAY := true
+ #WITH_ADB_INSECURE := true
+ 
+ # Inherit from those products. Most specific first.
++#
++# BUILD 64-BIT: core_64_bit.mk menyediakan init.zygote64.rc, init.zygote64_32.rc,
++# dan ro.zygote. TANPA ZYGOTE_FORCE_64 nilainya zygote64_32 -- zygote 64-bit
++# dengan anak 32-bit.
++#
++# zygote64_32 DIPILIH, berbeda dari proyek LOS 23.2 yang memakai ZYGOTE_FORCE_64.
++# Alasannya dua, dan keduanya khas Android 13:
++#   1. Alasan 23.2 memakai satu zygote sudah sebagian hilang -- tumpukan EGL
++#      32-bit lengkap (9 driver + libgsl + libadreno_utils) sudah dibawa cabang
++#      vendor lineage-20-64bit, dan itulah yang dulu menjatuhkan zygote_secondary.
++#   2. Di Android 13 aplikasi 32-bit-saja masih banyak. zygote64 membuat
++#      ro.product.cpu.abilist hanya berisi arm64-v8a, sehingga aplikasi seperti
++#      itu TIDAK BISA DIPASANG sama sekali. Di Android 16 pertukaran itu wajar;
++#      di Android 13 tidak.
++#
++# Ongkosnya dua boot image ART di memori. Itu harus DIUKUR di Fase 8, bukan
++# diasumsikan; kalau RAM tidak cukup, `ZYGOTE_FORCE_64 := true` satu baris --
++# taruh SEBELUM baris inherit ini (gerbangnya core_64_bit.mk:30).
++#
++# Buang baris ini kalau kembali ke build 32-bit.
++$(call inherit-product, $(SRC_TARGET_DIR)/product/core_64_bit.mk)
+ $(call inherit-product, $(SRC_TARGET_DIR)/product/full_base_telephony.mk)
+ $(call inherit-product, $(SRC_TARGET_DIR)/product/product_launched_with_l.mk)
+ $(call inherit-product, device/oppo/A37/device.mk)

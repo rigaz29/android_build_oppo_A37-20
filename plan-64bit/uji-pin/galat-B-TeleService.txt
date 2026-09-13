@@ -1,0 +1,2 @@
+packages/services/Telephony/src/com/android/phone/PhoneInterfaceManager.java:2932: error: cannot find symbol
+  symbol:   method checkSubscriptionAssociatedWithUser(PhoneGlobals,int,UserHandle)

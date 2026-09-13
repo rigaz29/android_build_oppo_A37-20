@@ -1,0 +1,50 @@
+From e0c3bceea8b73b5fea6ee70e2ce31f76a0351e2d Mon Sep 17 00:00:00 2001
+From: rigaz29 <ryanbagas27@gmail.com>
+Date: Sun, 13 Sep 2026 14:57:57 +0000
+Subject: [PATCH] A37: soong hormati SOONG_GOMEMLIMIT
+
+soong_build dijalankan dengan `env -i`, sehingga GOMEMLIMIT yang disetel di shell
+tidak pernah sampai kepadanya. build/soong Android 13 nol sebutan GOMEMLIMIT.
+
+Pada build dua arsitektur (arm64 + arm) analisisnya jauh lebih besar: di mesin
+11 GB RAM, `m nothing` setelah TARGET_ARCH diubah ke arm64 dibunuh penjaga memori
+sebelum selesai. Go dengan GOGC=100 membiarkan heap tumbuh 2x live heap sebelum
+GC; GOMEMLIMIT menekan puncaknya tanpa mengurangi kerja yang dilakukan.
+
+Terverifikasi: /proc/<pid>/environ soong_build memuat GOMEMLIMIT=6GiB sesudah
+patch ini, dan `m nothing` selesai 19:15 dengan RSS puncak 9,8 GB + swap 7,5 GB.
+Batasnya LUNAK -- ia menekan puncak, tidak memotongnya.
+
+Diangkat dari proyek LOS 23.2 (patches/build_soong), ditulis ulang untuk bentuk
+fungsi Android 13 yang memakai `config`, bukan `pb.config`.
+
+Change-Id: If455bcc3c35de4f416db83a0c139387eb403677b
+---
+ ui/build/soong.go | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/ui/build/soong.go b/ui/build/soong.go
+index a0ab1cc10..72fea935a 100644
+--- a/ui/build/soong.go
++++ b/ui/build/soong.go
+@@ -167,6 +167,20 @@ func primaryBuilderInvocation(
+ 
+ 	commonArgs = append(commonArgs, "-l", filepath.Join(config.FileListDir(), "Android.bp.list"))
+ 	invocationEnv := make(map[string]string)
++	// A37 BUILD 64-BIT: soong_build dijalankan dengan `env -i`, sehingga
++	// GOMEMLIMIT yang disetel di shell tidak pernah sampai kepadanya.
++	//
++	// Pada build dua arsitektur (arm64 + arm) analisisnya jauh lebih besar:
++	// di mesin 11 GB RAM soong_build dibunuh saat `m nothing` setelah
++	// TARGET_ARCH diubah ke arm64. Go dengan GOGC=100 membiarkan heap tumbuh
++	// 2x live heap sebelum GC; GOMEMLIMIT menekan puncaknya tanpa mengurangi
++	// kerja yang dilakukan.
++	//
++	// Diangkat dari proyek LOS 23.2 (patches/build_soong), disesuaikan dengan
++	// bentuk fungsi Android 13 yang memakai `config`, bukan `pb.config`.
++	if v := os.Getenv("SOONG_GOMEMLIMIT"); v != "" {
++		invocationEnv["GOMEMLIMIT"] = v
++	}
+ 	debugMode := os.Getenv("SOONG_DELVE") != ""
+ 
+ 	if debugMode {

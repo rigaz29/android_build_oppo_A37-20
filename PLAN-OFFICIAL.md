@@ -64,6 +64,35 @@ salah hanya kalimat absolutnya di draf pertama, bukan langkahnya.
 anti-hanyut bukan artefak sementara era UL — ia kebutuhan permanen selama sebagian tree
 dipatok. Jalankan `tools/check-drift.sh` sesudah tiap `repo sync`.
 
+---
+
+> ### ⚠️ KOREKSI 13 September 2026 — lima dari enam pin itu dibuang
+>
+> Klaim "keenamnya terbukti memutus build" **tidak didukung bukti yang tercatat di
+> tabel ini**. Kolom verifikasinya berisi `m <modul>` exit 0 **sesudah** dipin — itu
+> bukti pinnya bekerja, bukan bukti tanpa pin rusak.
+>
+> Diuji ulang dua putaran di pohon 64-bit (A dipin, B dilepas, target sama persis):
+>
+> | target | A (dipin) | B (dilepas) | putusan |
+> |---|---|---|---|
+> | `libskia` | LOLOS | LOLOS | pin tidak perlu |
+> | `Settings-core` | LOLOS | LOLOS | pin tidak perlu |
+> | `MmsService` | **GAGAL** | LOLOS | pin **justru merusak** |
+> | `Launcher3QuickStepLib` | **GAGAL** | LOLOS | pin **justru merusak** |
+> | `TeleService` | LOLOS | **GAGAL** | pin **masih wajib** |
+>
+> Dua pin sudah berbalik dari obat menjadi penyakit karena `frameworks/base` ikut
+> bergerak; akar `dng_sdk` diperbaiki hulu (`libjpeg-turbo` `97a06ea`, 2025-08-22).
+> Hanya `packages/services/Telephony` yang bertahan, dan sebabnya ketidakcocokan di
+> dalam `lineage-20.0` sendiri.
+>
+> Rinciannya: [`plan-64bit/uji-pin/README.md`](plan-64bit/uji-pin/README.md).
+>
+> Pelajaran yang menggantikan yang di atas: **pin anti-hanyut harus diuji ulang
+> berkala, bukan diwarisi.** Basis yang bergerak bisa membuat sebuah pin berubah dari
+> perbaikan menjadi penyebab tanpa ada yang menyadarinya.
+
 ### 0.3 Satu kalimat
 
 ROM UL kita sudah membuktikan *apa* yang dibutuhkan A37 dari sisi legacy; pekerjaan

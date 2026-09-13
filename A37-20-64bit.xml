@@ -152,73 +152,71 @@
            upstream="lineage-20" />
 
   <!-- ================================================================
-       Enam pin anti-hanyut
+       Pin anti-hanyut — SATU, bukan enam
        ================================================================
        Manifest menyematkan project ke BRANCH, bukan SHA, jadi `repo sync` bisa
        menarik kode jauh lebih baru daripada sisa tree yang dipatok.
 
-       Sempat diduga hanyut itu artefak campuran UL-beku x official-bergerak,
-       sehingga basis official murni akan menghapusnya. DUGAAN ITU SALAH: keenam
-       pin dilepas di awal M4 lalu keenam-enamnya harus dipasang ulang karena
-       masing-masing tetap memutus build. Akarnya lineage-20.0 official sendiri
-       yang terus bergerak. Rinciannya PLAN-OFFICIAL.md sec.0.2b.
+       KEENAM PIN DIUJI ULANG 13 SEPTEMBER 2026 DI POHON 64-BIT, DAN LIMA DIBUANG.
 
-       Kebijakan: pin HANYA yang terbukti memutus build. Deteksi ulang kapan saja
-       dengan tools/check-drift.sh. -->
+       PLAN-OFFICIAL sec.0.2b mengklaim keenamnya "terbukti memutus build" di basis
+       official. Bukti yang tercatat ternyata hanya `m <modul>` exit 0 SESUDAH
+       dipin — bukan log kegagalan tanpa pin. Uji dua putaran (A dipin, B dilepas)
+       dengan target yang sama persis seperti M4 memberi hasil ini:
 
-  <!-- external/dng_sdk: commit 624d019 "Crude DNG SDK 1.7.1 upgrade" menambah
-       sdk_version "current" plus dep libjpeg; external/libjpeg-turbo (dipin ke tag
-       android-13.0.0_r75) tidak punya varian sdk:sdk. -->
-  <remove-project name="LineageOS/android_external_dng_sdk" />
-  <project name="LineageOS/android_external_dng_sdk" path="external/dng_sdk"
-           groups="pdk" remote="gh"
-           revision="880b6833f9d5e131a8d9f92d6d0a836514fc711e"
-           upstream="lineage-20.0" />
+         target                  A (dipin)   B (dilepas)   putusan
+         libskia                 LOLOS       LOLOS         pin TIDAK PERLU
+         Settings-core           LOLOS       LOLOS         pin TIDAK PERLU
+         MmsService              GAGAL       LOLOS         pin JUSTRU MERUSAK
+         Launcher3QuickStepLib   GAGAL       LOLOS         pin JUSTRU MERUSAK
+         TeleService             LOLOS       GAGAL         pin MASIH WAJIB
 
-  <!-- external/skia @ merge android-security-13.0.0_r28 — pasangan sezaman
-       dng_sdk. Skia yang hanyut menuntut API dng_sdk 1.7.1:
-       SkRawCodec.cpp:99: unknown type name 'dng_area_task_progress'.
-       Diverifikasi: m libskia exit 0. -->
-  <remove-project name="LineageOS/android_external_skia" />
-  <project name="LineageOS/android_external_skia" path="external/skia"
-           groups="pdk" remote="gh"
-           revision="0c334c1c2f0fdc89a5f90dddcbe195e160baf02d"
-           upstream="lineage-20.0" />
+       Dua pin sudah berbalik dari obat menjadi penyakit. Kutipan galatnya:
 
-  <!-- packages/services/Mms @ 0cc94f1 — IMms 2-arg, cocok dengan
-       frameworks/base kita. Diverifikasi: m MmsService exit 0. -->
-  <remove-project name="LineageOS/android_packages_services_Mms" />
-  <project name="LineageOS/android_packages_services_Mms" path="packages/services/Mms"
-           groups="pdk" remote="gh"
-           revision="0cc94f1ad63e6a821888784dd1c5aa945f2c4202"
-           upstream="lineage-20.0" />
+         Mms yang dipin (2024-12-02) melawan frameworks/base sekarang:
+           MmsService.java:210: error: is not abstract and does not override
+           abstract method addMultimediaMessageDraft(int,String,Uri) in IMms
+         Trebuchet yang dipin (2024-12-02):
+           SystemUiProxy.java:83: error: is not abstract and does not override
+           abstract method onKeyEvent(int) in ISystemUiProxy
 
-  <!-- packages/services/Telephony @ 288c2835 (merge r28) — hulu yang hanyut
-       memakai TelephonyPermissions.isShell(int) yang tidak ada di tree kita.
-       Diverifikasi: m TeleService exit 0. -->
+       Yang dibuang dan alasannya:
+         external/dng_sdk    akar masalahnya diperbaiki HULU. libjpeg-turbo commit
+                             97a06ea (2025-08-22) "Fix build errors in Crude DNG SDK
+                             1.7.1 upgrade" menambahkan sdk_version "current" pada
+                             modul libjpeg — varian sdk:sdk yang dulu tidak ada.
+         external/skia       pasangan dng_sdk; keduanya HARUS dilepas bersamaan.
+         packages/apps/Settings   tertinggal 33 commit / 15 BULAN. Pinnya (2025-02-07)
+                             bahkan LEBIH TUA daripada pembekuan LineageOS-UL
+                             (2025-04-04) yang jadi alasan proyek ini pindah ke basis
+                             official. Untuk komponen ini migrasinya tidak membeli
+                             apa-apa. Method yang dulu hilang
+                             (BiometricPrompt.setClassNameIfItIs...) kini ADA di
+                             frameworks/base.
+         packages/services/Mms, packages/apps/Trebuchet   lihat galat di atas.
+
+       Kebijakan sec.2.7 PLAN.md tidak berubah: pin HANYA yang terbukti memutus
+       build. Yang berubah, satu-satunya yang lolos uji itu tinggal satu.
+       Deteksi hanyut baru kapan saja: tools/check-drift.sh -->
+
+  <!-- packages/services/Telephony @ 288c28358b (merge android-security-13.0.0_r28).
+
+       SATU-SATUNYA pin yang masih dibutuhkan, dan diuji ulang 13 Sep 2026:
+       melepasnya ke HEAD (43f185c72, 2026-05-04) menggagalkan m TeleService —
+
+         PhoneInterfaceManager.java:2932: error: cannot find symbol
+           symbol: method checkSubscriptionAssociatedWithUser(PhoneGlobals,int,UserHandle)
+
+       Method itu TIDAK ADA di pohon mana pun, dan tidak ada juga di hulu
+       LineageOS/android_frameworks_opt_telephony lineage-20.0 (diverifikasi: nol
+       kemunculan). Jadi ini ketidakcocokan DI DALAM lineage-20.0 sendiri, bukan
+       akibat patch atau pin kita — Telephony bergerak melewati companion repo-nya.
+
+       Tinjau ulang kalau frameworks/opt/telephony hulu kelak menyediakannya. -->
   <remove-project name="LineageOS/android_packages_services_Telephony" />
   <project name="LineageOS/android_packages_services_Telephony" path="packages/services/Telephony"
            groups="pdk" remote="gh"
            revision="288c28358b9cd9c2be1dd13c729668b18eb37550"
-           upstream="lineage-20.0" />
-
-  <!-- packages/apps/Trebuchet @ 1273734a — hulu mengubah signature
-       SystemUiProxy.onBackEvent (menambah displayId).
-       Diverifikasi: m Launcher3QuickStepLib exit 0. -->
-  <remove-project name="LineageOS/android_packages_apps_Trebuchet" />
-  <project name="LineageOS/android_packages_apps_Trebuchet" path="packages/apps/Trebuchet"
-           groups="pdk" remote="gh"
-           revision="1273734a5f484a30dafa5aaecda49f0635b24672"
-           upstream="lineage-20.0" />
-
-  <!-- packages/apps/Settings @ 823af438 (merge r26) — hulu memakai
-       BiometricPrompt.Builder.setClassNameIfItIsConfirmDeviceCredentialActivity()
-       yang tidak ada di frameworks/base kita.
-       Diverifikasi: m Settings-core exit 0. -->
-  <remove-project name="LineageOS/android_packages_apps_Settings" />
-  <project name="LineageOS/android_packages_apps_Settings" path="packages/apps/Settings"
-           groups="pdk" remote="gh"
-           revision="823af438e1ebca33ec8fd601a124f14831430e7d"
            upstream="lineage-20.0" />
 
 </manifest>
