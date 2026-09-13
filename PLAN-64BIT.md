@@ -618,7 +618,16 @@ sebagai `patches/official/hardware_ril/0001-*.patch` dan didaftarkan di
 `readelf -d` pada `libril-qc-qmi-1.so` 32-bit tidak menyisakan `DT_NEEDED` yang hanya
 tersedia 64-bit.
 
-### Fase 6 — Build (4–8 jam termasuk menunggu)
+### Fase 6 — Build (4–8 jam termasuk menunggu) — ✅ **SELESAI 13 Sep 2026**
+
+> Hasil dan penjaganya: [`plan-64bit/fase-6/README.md`](plan-64bit/fase-6/README.md).
+> **ROM 64-bit pertama terbangun** — `m -j10 bacon` 01:42:25, zip 721 MB,
+> `verify-rom.sh` **SEMUA LOLOS**.
+>
+> Kekhawatiran ukuran partisi **terbantah**: perkiraan 2.310–2.590 MB dengan sisa
+> 130–400 MB; nyatanya **1.725 MB dengan sisa 1.001 MB** — bahkan lebih kecil dari
+> ROM 32-bit LOS 23.2 (1.849 MB). Pemblokirnya ternyata patch wlan kita sendiri yang
+> arch-dependent (§3 di sana). Aturan OOM `-j10`→`-j6` tidak pernah terpicu.
 
 ```bash
 export SOONG_GOMEMLIMIT=6GiB          # WAJIB untuk 64-bit (§3 nomor 3)
@@ -817,7 +826,7 @@ sekarang berjalan.
 |---|---|
 | Free RAM turun jauh | > 10 % lebih buruk dari ROM 32-bit (32-bit 23.2 = 989 MB; 64-bit = 974 MB, 1,5 %) |
 | lmkd mulai membunuh aplikasi saat pemakaian normal | ada pembunuhan sama sekali saat idle |
-| `system.img` tidak muat | > 2.859.466.752 byte dan tidak bisa dipangkas tanpa membuang fungsi |
+| ~~`system.img` tidak muat~~ **GUGUR 13 Sep 2026** | Terukur di Fase 6: isi system **1.725 MB dari 2.727 MB, sisa 1.001 MB** |
 | Kamera tidak bisa dipulihkan | Fase 4 + rencana cadangan HAL3on1 sama-sama gagal |
 
 **Yang TIDAK boleh dijadikan alasan batal:** satu HAL gagal dimuat. Itu hampir selalu

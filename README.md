@@ -84,6 +84,7 @@ Repo official LineageOS **tidak bisa** menggantikannya — diukur: kedua cabangn
 | [`PLAN.md`](PLAN.md) | 10 fase asli di atas basis UL. **Arsip yang masih berlaku** untuk seluruh temuan khas A37 (10.A–10.F, VINTF, sepolicy, blob) |
 | [`A37-20.xml`](A37-20.xml) | Local manifest: 3 repo proyek, 3 pin qcom-caf msm8916, + 6 pin anti-hanyut. ⚠️ `sepolicy-legacy` dan `timekeep` hanya ada di [`A37-20-official.xml`](A37-20-official.xml), yang justru tidak memuat keenam pin — lihat `PLAN-64BIT.md` §4.5 |
 | [`A37-20-64bit.xml`](A37-20-64bit.xml) | **Local manifest build 64-bit** — gabungan dua manifest yang masing-masing tidak lengkap, kernel `lineage-24` + vendor `lineage-20-64bit`, 6 pin anti-hanyut. Terverifikasi merakit 1253 project |
+| [`plan-64bit/fase-6/`](plan-64bit/fase-6/) | **Fase 6 selesai** — ROM 64-bit pertama terbangun (721 MB), `verify-rom.sh` semua lolos, isi system 1725 MB sisa 1001 MB |
 | [`plan-64bit/fase-5/`](plan-64bit/fase-5/) | **Fase 5 sisi build selesai** — `rild` 32-bit; kenapa stub `libmedia` ala LOS 23.2 tidak diperlukan di sini |
 | [`plan-64bit/fase-4/`](plan-64bit/fase-4/) | **Fase 4 sisi build selesai** — kamera binderized 32-bit; passthrough mati secara arsitektural di build 64-bit |
 | [`plan-64bit/fase-3/`](plan-64bit/fase-3/) | **Fase 3 selesai** — kernel `lineage-24`, spoof versi kernel dimatikan dengan bukti per-konsumen, `Image` terbangun 0 galat |
