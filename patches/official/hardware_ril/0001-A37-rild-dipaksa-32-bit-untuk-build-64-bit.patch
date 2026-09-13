@@ -1,0 +1,71 @@
+From 64329fb63a71accaf522bfeedc81b55dab1be5a6 Mon Sep 17 00:00:00 2001
+From: rigaz29 <ryanbagas27@gmail.com>
+Date: Sun, 13 Sep 2026 17:36:28 +0000
+Subject: [PATCH] A37: rild dipaksa 32-bit untuk build 64-bit
+
+Tanpa LOCAL_MULTILIB := 32, rild terbangun arm64 pada TARGET_ARCH=arm64 dan seluruh
+rantai RIL patah, karena tiga hal sudah menunjuk 32-bit:
+
+  1. device.mk:870-871 menyetel rild.libpath DAN vendor.rild.libpath ke
+     /system/vendor/lib/libril-qc-qmi-1.so -- path 32-bit. rild 64-bit yang
+     men-dlopen berkas itu gagal seketika (wrong ELF class).
+  2. BoardConfig.mk:490 memetakan shim lewat path ABSOLUT
+     /system/vendor/lib/libril-qc-qmi-1.so|libril_shim.so. Mengarahkan libpath ke
+     lib64 tidak menolong: pemetaannya tidak ikut.
+  3. Blob 2016 itu menuntut simbol yang dihapus libaudioclient sejak Android 11 --
+     diverifikasi readelf pada berkasnya sendiri:
+       android::AudioSystem::setErrorCallback(void (*)(int))
+       android::AudioSystem::setParameters / getParameters
+     libril_shim yang menyediakannya.
+
+Vendor tree kita mengirim blob RIL DUAL-ARCH, jadi 64-bit sebenarnya tersedia. Ia
+tidak dipilih karena set 32-bit inilah yang terbukti: ROM LOS 20 32-bit yang sekarang
+dipakai punya IRadio slot1/slot2 terdaftar, SIM LOADED, LTE. Set 64-bit dari LOS 17.1
+belum pernah diuji di perangkat ini, dan di proyek LOS 23.2 ia GAGAL -- "ril-daemon0
+exited with status 1" berulang, IRadio tak pernah terdaftar, com.android.phone
+menggantung, bootloop.
+
+Pola yang sama dipakai HAL kamera (Fase 4).
+
+Change-Id: I62ed4ea0f72c32f839a6ae421e306252891927a9
+---
+ rild/Android.mk | 26 ++++++++++++++++++++++++++
+ 1 file changed, 26 insertions(+)
+
+diff --git a/rild/Android.mk b/rild/Android.mk
+index d1c1b95..970fee9 100644
+--- a/rild/Android.mk
++++ b/rild/Android.mk
+@@ -29,6 +29,32 @@ endif
+ LOCAL_MODULE_RELATIVE_PATH := hw
+ LOCAL_PROPRIETARY_MODULE := true
+ LOCAL_MODULE:= rild
++
++# A37 BUILD 64-BIT: rild dipaksa 32-bit.
++#
++# Tanpa baris ini LOCAL_MULTILIB default "first" = arm64 pada TARGET_ARCH=arm64,
++# dan seluruh rantai RIL patah karena tiga hal sudah menunjuk 32-bit:
++#
++#   1. device.mk:870-871 menyetel rild.libpath DAN vendor.rild.libpath ke
++#      /system/vendor/lib/libril-qc-qmi-1.so -- path 32-bit. rild 64-bit yang
++#      men-dlopen berkas itu gagal seketika (wrong ELF class).
++#   2. BoardConfig.mk:490 memetakan shim lewat path ABSOLUT
++#      /system/vendor/lib/libril-qc-qmi-1.so|libril_shim.so. Menunjuk libpath ke
++#      lib64 tidak menolong: pemetaannya tidak ikut, dan blobnya butuh shim itu.
++#   3. Blob 2016 itu menuntut simbol yang dihapus dari libaudioclient sejak
++#      Android 11 -- diverifikasi dengan readelf pada berkasnya:
++#        android::AudioSystem::setErrorCallback(void (*)(int))
++#        android::AudioSystem::setParameters / getParameters
++#      libril_shim-lah yang menyediakannya.
++#
++# Set 32-bit inilah yang terbukti berjalan: ROM LOS 20 32-bit yang sekarang
++# dipakai punya IRadio slot1/slot2 terdaftar, SIM LOADED, LTE. Set 64-bit dari
++# LOS 17.1 belum pernah diuji di perangkat ini, dan di proyek LOS 23.2 ia GAGAL
++# ("ril-daemon0 exited with status 1" berulang, IRadio tak pernah terdaftar,
++# com.android.phone menggantung, bootloop).
++#
++# Pola yang sama dipakai HAL kamera (Fase 4).
++LOCAL_MULTILIB := 32
+ LOCAL_LICENSE_KINDS:= SPDX-license-identifier-Apache-2.0
+ LOCAL_LICENSE_CONDITIONS:= notice
+ LOCAL_NOTICE_FILE:= $(LOCAL_PATH)/NOTICE

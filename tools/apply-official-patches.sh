@@ -73,9 +73,18 @@ T1 hardware_interfaces           hardware/interfaces
 T1 frameworks_native             frameworks/native
 T1 packages_modules_Wifi         packages/modules/Wifi
 T1 packages_modules_Bluetooth    packages/modules/Bluetooth
+T1 hardware_ril                  hardware/ril
 T2 frameworks_av                 frameworks/av
 T2 frameworks_base               frameworks/base
 T3 hardware_qcom-caf_wlan        hardware/qcom-caf/wlan"
+# hardware_ril DITAMBAHKAN 13 Sep 2026 untuk build 64-bit: rild dipaksa 32-bit
+# (LOCAL_MULTILIB := 32). Tanpa itu rild terbangun arm64 sementara libpath, pemetaan
+# shim, dan set blob yang terbukti semuanya menunjuk /system/vendor/lib -- 32-bit.
+# Ditandai T1 karena ia prasyarat FUNGSI (telepon/SMS/data), bukan prasyarat build:
+# tanpa patch ini build tetap sukses dan RIL diam-diam mati di perangkat.
+# CATATAN: seri ini BUKAN 16 patch T-RIL dari UL yang sengaja tidak diekstrak
+# (MANIFEST.md "Yang sengaja tidak diekstrak") -- itu tetap tidak diperlukan.
+#
 # build_soong DITAMBAHKAN 13 Sep 2026 untuk build 64-bit: soong_build dijalankan
 # dengan `env -i` sehingga GOMEMLIMIT dari shell tidak pernah sampai, dan
 # build/soong Android 13 nol sebutan GOMEMLIMIT. Tanpa patch ini `m nothing`

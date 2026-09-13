@@ -601,7 +601,14 @@ pertama, karena perubahannya menyentuh `manifest.xml` yang ikut diperiksa
 `lshal | grep camera`; `dmesg` (kini 512 KB berkat Fase 3). Baru setelah itu
 pertimbangkan HAL3on1 (§4.1, rencana cadangan).
 
-### Fase 5 — RIL 32-bit (1–2 jam)
+### Fase 5 — RIL 32-bit (1–2 jam) — ✅ **SISI BUILD SELESAI 13 Sep 2026**
+
+> Hasil dan penjaganya: [`plan-64bit/fase-5/README.md`](plan-64bit/fase-5/README.md).
+> `rild` terverifikasi `ELF 32-bit`, nol varian 64-bit, dan **nol** pustaka yang hanya
+> tersedia 64-bit di closure blob RIL. Temuan sampingan yang penting: `libmedia` tidak
+> punya `vendor_available`, tetapi stub ala LOS 23.2 **tidak diperlukan** di sini karena
+> `BOARD_VNDK_VERSION` memang tidak disetel — dibuktikan dengan membangun
+> `libshim_camera` (modul vendor yang menaut `libmedia`) untuk kedua arch.
 
 Patch `LOCAL_MULTILIB := 32` untuk `hardware/ril/rild/Android.mk` (§4.2), disimpan
 sebagai `patches/official/hardware_ril/0001-*.patch` dan didaftarkan di
