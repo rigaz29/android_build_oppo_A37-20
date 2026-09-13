@@ -32,7 +32,8 @@
   ==================================================================
   YANG BERBEDA DARI BUILD 32-BIT
   ==================================================================
-  kernel  lineage-20  -> lineage-24   fast-forward murni: 399 commit di depan,
+  kernel  lineage-20  -> lineage-20-64bit  (= lineage-24 + 1 commit)
+                                      lineage-24 fast-forward murni: 399 di depan,
                                       NOL di belakang, dan = lineage-23 + 1
                                       commit, yaitu kernel yang sudah dipakai
                                       harian di ROM 23.2. PLAN-64BIT.md sec.2.1
@@ -86,11 +87,20 @@
        Dua commit yang akan merusak LOS 20 sudah di-revert DI HULU, diverifikasi
        di HEAD: pelepasan vndbinder (revert 80535ab — LOS 20 memakai VNDK) dan
        penempelan DTB ke Image (revert e1a4070 — LOS 20 memakai tabel DT
-       terpisah + dtbtool). Satu konfigurasi yang masih harus dinilai di Fase 3:
-       ANDROID_TREBLE_SPOOF_KERNEL_VERSION. -->
+       terpisah + dtbtool).
+
+       CABANG lineage-20-64bit @ b9d9d3fe700 = lineage-24 + SATU commit:
+       CONFIG_ANDROID_TREBLE_SPOOF_KERNEL_VERSION dimatikan. Fase 3 memeriksa
+       setiap konsumen uname() di enam proses yang disaringnya dan tidak satu pun
+       berubah perilaku; ia bahkan meleset dari zygote utama di build 64-bit
+       (comm "zygote64", bukan "zygote"). Yang tersisa hanya ongkosnya:
+       ro.kernel.version berbohong 3.17. Rinciannya plan-64bit/fase-3/.
+
+       Terverifikasi: Image terbangun 18.562.488 byte, 0 galat, kernel.release
+       melaporkan 3.10.108 apa adanya. -->
   <project name="rigaz29/kernel_oppo_msm8939" path="kernel/oppo/msm8939"
-           remote="gh" revision="refs/heads/lineage-24"
-           upstream="lineage-24" />
+           remote="gh" revision="refs/heads/lineage-20-64bit"
+           upstream="lineage-20-64bit" />
 
   <!-- Vendor blob dual-arch, cabang lineage-20-64bit @ 8dcc8a9.
 

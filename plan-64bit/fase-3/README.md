@@ -104,10 +104,18 @@ Untuk pemeriksaan berdiri sendiri, buang flag itu.
 
 ## 5. Yang belum
 
-**Cabang kernel belum di-push.** Ia lokal sebagai `b9d9d3fe700` di atas
-`origin/lineage-24`. Selama belum di-push, **jangan `repo sync`** — manifest masih
-menunjuk `refs/heads/lineage-24` dan sync akan membuang commit ini. Ini jebakan
-yang sama persis dengan device tree di Fase 2.
+~~**Cabang kernel belum di-push.**~~ **Sudah di-push 13 Sep 2026:**
+`gh/lineage-20-64bit` @ `b9d9d3fe700`. `A37-20-64bit.xml` sudah menunjuk ke sana,
+dan ketiga project kunci diverifikasi HEAD-lokal = revisi-manifest, jadi
+`repo sync` aman:
+
+```
+device/oppo/A37       700a8d0d4c  COCOK
+kernel/oppo/msm8939   b9d9d3fe70  COCOK
+vendor/oppo           8dcc8a9812  COCOK
+```
+
+Cabang `lineage-24` (`cb52394`) tidak bergerak.
 
 **Kernel belum diuji di perangkat.** Batas §8 `HANDOFF.md` berlaku penuh: hanya
 pemilik A37 yang bisa membuktikannya. Yang dibuktikan di sini hanya bahwa ia
