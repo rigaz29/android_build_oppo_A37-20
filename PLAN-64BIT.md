@@ -554,7 +554,13 @@ get_build_var TARGET_ARCH TARGET_CPU_ABI TARGET_2ND_ARCH TARGET_2ND_CPU_ABI TARG
 m nothing            # membaca makefile saja -- lolos != ROM bisa dibangun
 ```
 
-### Fase 3 — Kernel naik ke `lineage-24` (1–2 jam)
+### Fase 3 — Kernel naik ke `lineage-24` (1–2 jam) — ✅ **SELESAI 13 Sep 2026**
+
+> Hasil dan penjaganya: [`plan-64bit/fase-3/README.md`](plan-64bit/fase-3/README.md).
+> Keputusan `TREBLE_SPOOF`: **dimatikan** — setiap konsumen `uname()` di enam proses
+> yang disaringnya diperiksa, dan tidak satu pun berubah perilaku; ia bahkan meleset
+> dari zygote utama di build 64-bit (comm `"zygote64"`, bukan `"zygote"`). Kernel
+> terbangun: `Image` 18,5 MB, 0 galat, `kernel.release` melaporkan 3.10.108 apa adanya.
 
 1. Ubah revision kernel di manifest ke `refs/heads/lineage-24`, `repo sync`.
 2. Putuskan `CONFIG_ANDROID_TREBLE_SPOOF_KERNEL_VERSION` (§2.1) — **dengan bukti dari

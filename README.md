@@ -75,6 +75,7 @@ itu tidak ada di manifest official. Satu-satunya sisa ketergantungan langsung.
 | [`PLAN.md`](PLAN.md) | 10 fase asli di atas basis UL. **Arsip yang masih berlaku** untuk seluruh temuan khas A37 (10.A–10.F, VINTF, sepolicy, blob) |
 | [`A37-20.xml`](A37-20.xml) | Local manifest: 3 repo proyek, 3 pin qcom-caf msm8916, + 6 pin anti-hanyut. ⚠️ `sepolicy-legacy` dan `timekeep` hanya ada di [`A37-20-official.xml`](A37-20-official.xml), yang justru tidak memuat keenam pin — lihat `PLAN-64BIT.md` §4.5 |
 | [`A37-20-64bit.xml`](A37-20-64bit.xml) | **Local manifest build 64-bit** — gabungan dua manifest yang masing-masing tidak lengkap, kernel `lineage-24` + vendor `lineage-20-64bit`, 6 pin anti-hanyut. Terverifikasi merakit 1253 project |
+| [`plan-64bit/fase-3/`](plan-64bit/fase-3/) | **Fase 3 selesai** — kernel `lineage-24`, spoof versi kernel dimatikan dengan bukti per-konsumen, `Image` terbangun 0 galat |
 | [`plan-64bit/uji-pin/`](plan-64bit/uji-pin/) | **Uji pelepasan pin anti-hanyut** — dari 6 pin: 2 sudah merusak build, 2 tidak perlu, 1 masih wajib. Settings dapat 15 bulan ASB kembali |
 | [`plan-64bit/fase-2/`](plan-64bit/fase-2/) | **Fase 2 selesai** — device tree arm64, `m nothing` lolos, patch soong `SOONG_GOMEMLIMIT` |
 | [`plan-64bit/fase-1/`](plan-64bit/fase-1/) | **Fase 1 selesai** — vendor tree dual-arch `lineage-20-64bit` (397 berkas), `audit-arch.sh` dengan tujuh penjaga arsitektur |
