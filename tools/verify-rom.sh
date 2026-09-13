@@ -137,6 +137,67 @@ else
     bad "boot.img tidak ada"
 fi
 
+# ------------------------------------------------------------ arsitektur ---
+# DITAMBAHKAN 13 Sep 2026 untuk build 64-bit.
+#
+# Salah arsitektur TIDAK tertangkap saat build. Ia muncul saat boot sebagai HAL
+# yang gagal dimuat, dan ongkosnya satu siklus build penuh. Perangkat ini tanpa
+# partisi vendor terpisah, jadi jalurnya system/vendor/..., bukan vendor/...
+inf "arsitektur (build 64-bit)"
+SYSV="$OUT/system/vendor"
+if [ -d "$SYSV/lib64" ]; then
+    n=0; bad64=0
+    while IFS= read -r f; do n=$((n+1))
+        file -b "$f" | grep -q 'ELF 64-bit.*aarch64' || { bad "SALAH ARCH (bukan 64-bit): ${f#$OUT/}"; bad64=$((bad64+1)); }
+    done < <(find "$SYSV/lib64" -name '*.so' 2>/dev/null)
+    [ "$bad64" = 0 ] && ok "system/vendor/lib64: $n pustaka, semuanya ELF 64-bit aarch64"
+else
+    bad "system/vendor/lib64 tidak ada — build 64-bit seharusnya membuatnya"
+fi
+n=0; bad32=0
+while IFS= read -r f; do n=$((n+1))
+    file -b "$f" | grep -q 'ELF 32-bit.*ARM' || { bad "SALAH ARCH (bukan 32-bit): ${f#$OUT/}"; bad32=$((bad32+1)); }
+done < <(find "$SYSV/lib" -maxdepth 2 -name '*.so' 2>/dev/null)
+[ "$bad32" = 0 ] && ok "system/vendor/lib: $n pustaka, semuanya ELF 32-bit ARM"
+
+# Tiga biner yang WAJIB 32-bit, masing-masing karena blob yang dimuatnya.
+for b in "vendor/bin/hw/rild:blob RIL 2016 + libril_shim" \
+         "vendor/bin/hw/android.hardware.camera.provider@2.4-service:HAL kamera msm8916" \
+         "vendor/bin/mm-qcamera-daemon:daemon kamera QTI"; do
+    path="${b%%:*}"; why="${b#*:}"; f="$OUT/system/$path"
+    if [ -f "$f" ]; then
+        if file -b "$f" | grep -q 'ELF 32-bit'; then ok "$(basename "$path") 32-bit ($why)"
+        else bad "$(basename "$path") BUKAN 32-bit — $why akan gagal dimuat"; fi
+    else
+        bad "$path tidak ada"
+    fi
+done
+
+# Pola khas dual-arch tertinggal: pustaka yang punya versi 64-bit tapi tidak 32-bit
+# padahal ada konsumen 32-bit. Dilaporkan sebagai info, bukan kegagalan.
+only64=$(comm -13 <(find "$SYSV/lib" -maxdepth 1 -name '*.so' -printf '%f\n' 2>/dev/null | sort) \
+                  <(find "$SYSV/lib64" -maxdepth 1 -name '*.so' -printf '%f\n' 2>/dev/null | sort) | wc -l)
+inf "pustaka vendor yang hanya ada 64-bit: $only64 (wajar; periksa bila ada HAL 32-bit gagal dlopen)"
+
+# ------------------------------------------------------------ ukuran image ---
+# BOARD_SYSTEMIMAGE_PARTITION_SIZE := 2859466752 (2.727 MB). Build 64-bit membawa
+# dua set pustaka; margin ini yang paling mungkin habis.
+inf "ukuran image"
+LIMIT=2859466752
+SIMG="$OUT/system.img"
+if [ -f "$SIMG" ]; then
+    sz=$(stat -c%s "$SIMG")
+    sisa=$(( LIMIT - sz ))
+    if [ "$sz" -le "$LIMIT" ]; then
+        ok "system.img $((sz/1048576)) MB dari $((LIMIT/1048576)) MB — sisa $((sisa/1048576)) MB"
+        [ "$sisa" -lt 104857600 ] && inf "margin di bawah 100 MB: pangkas PRODUCT_PACKAGES sebelum menambah apa pun"
+    else
+        bad "system.img $((sz/1048576)) MB MELEBIHI partisi $((LIMIT/1048576)) MB — pangkas PRODUCT_PACKAGES, JANGAN ubah tata letak partisi"
+    fi
+else
+    inf "system.img tidak ada (wajar bila build memakai sparse/dat saja)"
+fi
+
 # --------------------------------------------------------------------- zip ---
 inf "paket"
 ZIP=$(ls -t "$OUT"/lineage-20.0-*.zip 2>/dev/null | head -1)
