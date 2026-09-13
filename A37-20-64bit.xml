@@ -147,15 +147,51 @@
        Dua project yang manifest official TIDAK punya
        ================================================================ -->
 
-  <!-- sepolicy qcom legacy: repo official (LineageOS/android_device_qcom_sepolicy)
-       hanya menyediakan branch lineage-20.0 dan lineage-20.0-legacy-um — BUKAN
-       yang kita pakai. Fork UL branch lineage-20.0-legacy adalah sumbernya
-       (dipakai device tree lewat include device/qcom/sepolicy-legacy/sepolicy.mk).
-       Branch beku sejak 2021-12-11, jadi pin SHA aman.
+  <!-- sepolicy qcom legacy — dari fork rigaz29, BUKAN lagi LineageOS-UL.
 
-       Ini satu-satunya sisa ketergantungan langsung pada LineageOS-UL. -->
-  <project name="LineageOS-UL/android_device_qcom_sepolicy" path="device/qcom/sepolicy-legacy"
-           remote="gh" revision="470e8d88f1490b24bfe76aa17bd2ea57bcaa4c27"
+       Dipakai device tree lewat BoardConfig.mk:511
+       `include device/qcom/sepolicy-legacy/sepolicy.mk`, yang menambahkan
+       common, ssg, msm8916, legacy-common, public, private, test ke jalur
+       sepolicy DAN menyetel BOARD_SEPOLICY_VERS := $(PLATFORM_SDK_VERSION).0.
+       Baris terakhir itu satu-satunya yang menyetelnya di seluruh pohon, dan
+       injeksi sepolicy 33.0 itulah yang membuat Fase 4 (VINTF) lolos tanpa
+       perubahan sumber (HANDOFF sec.2).
+
+       KENAPA BUKAN REPO OFFICIAL LineageOS. Diukur 13 Sep 2026, bukan diasumsikan:
+
+         LineageOS/android_device_qcom_sepolicy  lineage-20.0          msm8916: 0 berkas, sepolicy.mk: 0
+         LineageOS/android_device_qcom_sepolicy  lineage-20.0-legacy-um msm8916: 0 berkas, sepolicy.mk: 0
+         fork ini (isi UL 470e8d8)                                     msm8916: 5 berkas, sepolicy.mk: 1
+
+       Dan SEPolicy.mk official baris 33 bergerbang
+       `filter sdm660 msm8937 msm8953 msm8996 msm8998` — platform tertua yang
+       dikenalnya msm8937, jadi msm8916 tidak menyumbang satu aturan pun walau
+       di-include. Pola yang sama sudah ditemukan proyek LOS 23.2 di
+       hardware/qcom-caf/common.
+
+       Merge-base kedua silsilah 7c26899 dengan divergensi 637 lawan 1666 commit
+       dan 870 berkas berbeda: bukan cabang yang bisa di-rebase, dan "official
+       plus patch" berarti menambahkan 345 berkas / 628 KB lalu merawatnya
+       selamanya. Karena itu jalan yang dipilih bukan mengganti sumber melainkan
+       MEMINDAHKAN KEPEMILIKAN.
+
+       Repo ini fork milik akun sendiri yang sudah dipakai lini lain
+       (lineage-22.2-legacy sampai lineage-24); cabang lineage-20.0-legacy
+       dibuat 13 Sep 2026 dari SHA UL yang sama persis, jadi isinya IDENTIK dan
+       nol patch dibutuhkan. Ini menutup satu-satunya ketergantungan langsung
+       pada LineageOS-UL yang tersisa di proyek ini.
+
+       Pola yang sama dipakai untuk tiga HAL qcom msm8916
+       (rigaz29/android_hardware_qcom_audio / _display / _media).
+
+       Cabangnya beku (isi 2021-12-11), jadi ini membeli kemandirian, bukan ASB.
+
+       CATATAN: 2 baris label sysfs_disk_stat di legacy-common/file_contexts
+       dibuang pasca-sync oleh langkah K tools/apply-official-patches.sh —
+       tipenya tidak ada di sepolicy official dan checkfc menolaknya. Cabang ini
+       sengaja dibiarkan murni supaya tetap sebanding dengan sumber UL-nya. -->
+  <project name="rigaz29/android_device_qcom_sepolicy" path="device/qcom/sepolicy-legacy"
+           remote="gh" revision="refs/heads/lineage-20.0-legacy"
            upstream="lineage-20.0-legacy" />
 
   <!-- timekeep: dipakai device.mk:855 (PRODUCT_PACKAGES) dan

@@ -840,7 +840,16 @@ tambahan khusus rencana ini, semuanya sudah benar-benar menjebak seseorang:
 9. **`SOONG_GOMEMLIMIT` tidak berlaku tanpa menambal soong.** `soong_build` dijalankan
    dengan `env -i` dan `build/soong` Android 13 nol sebutan `GOMEMLIMIT`. Patchnya kini
    T0 di `tools/apply-official-patches.sh`.
-10. **Jangan `set -u` di skrip yang men-`source build/envsetup.sh`.** envsetup menyentuh
+10. **Repo sepolicy qcom official tidak menggantikan yang legacy.** Kedua cabangnya
+   punya 0 berkas msm8916 dan 0 `sepolicy.mk`; `SEPolicy.mk:33` bergerbang
+   `sdm660 msm8937 msm8953 msm8996 msm8998`. Jalan lepas dari LineageOS-UL adalah
+   **memindahkan kepemilikan** (fork), bukan mengganti sumber — sudah dikerjakan
+   13 Sep 2026 ke `rigaz29/android_device_qcom_sepolicy` `lineage-20.0-legacy`.
+11. **Mengubah nama repo sebuah project memindahkan `.repo/project-objects`.**
+   `repo sync` melaporkan `error: hooks is different in ... vs ...` lalu tetap
+   *finished successfully*. Isi project benar; kalau mengganggu, hapus dua direktori
+   itu dan sync ulang (jebakan #8 HANDOFF).
+12. **Jangan `set -u` di skrip yang men-`source build/envsetup.sh`.** envsetup menyentuh
    banyak variabel tak terdefinisi; shell mati seketika, dan kalau stdout dibuang,
    matinya tanpa jejak.
 8. **Komentar yang menjadi salah lebih berbahaya daripada tidak ada komentar.** Tiga

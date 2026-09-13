@@ -60,8 +60,17 @@ dan diterapkan skrip idempoten pasca-sync. Rinciannya di
 Fork UL tetap berharga sebagai **sumber patch** dan sebagai bukti *apa* yang dibutuhkan —
 tapi tidak lagi sebagai basis.
 
-⚠️ `device/qcom/sepolicy-legacy` **tetap** diambil dari UL (`lineage-20.0-legacy`) — repo
-itu tidak ada di manifest official. Satu-satunya sisa ketergantungan langsung.
+~~⚠️ `device/qcom/sepolicy-legacy` **tetap** diambil dari UL.~~ **Tidak lagi, sejak
+13 September 2026:** ia dipindahkan ke fork sendiri
+[`rigaz29/android_device_qcom_sepolicy`](https://github.com/rigaz29/android_device_qcom_sepolicy)
+cabang `lineage-20.0-legacy`, isi identik dengan sumber UL. **Nol rujukan
+LineageOS-UL tersisa di [`A37-20-64bit.xml`](A37-20-64bit.xml).**
+
+Repo official LineageOS **tidak bisa** menggantikannya — diukur: kedua cabangnya
+(`lineage-20.0`, `lineage-20.0-legacy-um`) punya **0 berkas msm8916 dan 0
+`sepolicy.mk`**, dan `SEPolicy.mk:33` miliknya bergerbang
+`sdm660 msm8937 msm8953 msm8996 msm8998` — msm8916 di luar jangkauan. Terverifikasi
+`m selinux_policy` lolos (02:45) sesudah pemindahan.
 
 ---
 
