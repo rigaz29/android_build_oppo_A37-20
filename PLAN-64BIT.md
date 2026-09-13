@@ -572,7 +572,15 @@ m nothing            # membaca makefile saja -- lolos != ROM bisa dibangun
 **Penjaga:** `make ARCH=arm64 lineageos_a37f_defconfig` rc=0, dan
 `CONFIG_ANDROID_BINDER_DEVICES` di `.config` hasil **memuat `vndbinder`** (§2.1).
 
-### Fase 4 — Kamera binderized 32-bit (8–20 jam, paling tidak pasti)
+### Fase 4 — Kamera binderized 32-bit (8–20 jam, paling tidak pasti) — ✅ **SISI BUILD SELESAI 13 Sep 2026**
+
+> Hasil dan penjaganya: [`plan-64bit/fase-4/README.md`](plan-64bit/fase-4/README.md).
+> **Jauh lebih murah dari taksiran:** dua dari tiga pekerjaan ternyata sudah tersedia —
+> modul `@2.4-service` sudah `compile_multilib: "32"` di AOSP 13, dan sepolicy-nya
+> sudah ada di hulu (`system/sepolicy/vendor/file_contexts:25`). Perubahan sumbernya
+> **dua berkas**. Biner terverifikasi `ELF 32-bit`, `@2.4-impl` ada di kedua arch.
+>
+> ⚠️ Yang **belum** terbukti: apakah layar hitam terulang. Itu menuntut Fase 6 + 8.
 
 Ini §4.1. Kerjakan **setelah** Fase 2 lolos `m nothing` tetapi **sebelum** build penuh
 pertama, karena perubahannya menyentuh `manifest.xml` yang ikut diperiksa
