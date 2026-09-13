@@ -1,7 +1,45 @@
-# Fase 4 — kamera binderized 32-bit
+# Fase 4 — kamera binderized 32-bit — ⛔ **DIBATALKAN**
 
-Dikerjakan **13 September 2026**. **Selesai di sisi build.** Perilaku di
-perangkat belum dan tidak bisa dibuktikan di fase ini.
+Dikerjakan **13 September 2026**, lalu **dikembalikan pada hari yang sama** setelah
+audit Fase 7 membuktikan premisnya salah.
+
+> ## ⛔ BACA INI DULU: seluruh dasar fase ini keliru
+>
+> Fase ini berangkat dari klaim: *"di build arm64 `cameraserver` adalah proses
+> 64-bit sehingga tidak bisa memuat `camera.vendor.msm8916.so` yang 32-bit,
+> jadi passthrough mati secara arsitektural."*
+>
+> **`cameraserver` tidak ada di ROM ini sama sekali.** Audit Fase 7 atas image
+> yang benar-benar terbangun:
+>
+> ```
+> bin/cameraserver          TIDAK DIKIRIM
+> bin/mediaserver           ELF 32-bit LSB pie executable
+> lib/libcameraservice.so   ELF 32-bit saja
+> ```
+>
+> Di LOS 20 servis kamera ditaut **ke dalam `mediaserver`**:
+> `vendor/lineage/build/soong/Android.bp:326` `camera_in_mediaserver_defaults`
+> bergerbang `has_legacy_camera_hal1` dan berisi `overrides: ["cameraserver"]` —
+> dihidupkan oleh seri patch kita sendiri (`vendor_lineage/0010`). Dan
+> `mediaserver` ber-`compile_multilib: "prefer32"` dari AOSP sendiri, jadi **32-bit
+> bahkan pada `TARGET_ARCH=arm64`**.
+>
+> Klien HAL kameranya 32-bit. Passthrough memuat blob 32-bit persis seperti di ROM
+> 32-bit — tidak ada yang mati secara arsitektural.
+>
+> **Dikembalikan** ke passthrough di commit `f490492`, karena passthrough terbukti
+> jalan di perangkat ini sedangkan hwbinder punya riwayat layar hitam
+> (`20260803_161352`). Memilih jalur dengan bukti kegagalan, demi alasan yang
+> ternyata tidak ada, adalah pertukaran yang buruk.
+>
+> **Pelajaran:** jangan menyimpulkan dari nama proses tanpa memeriksa apakah proses
+> itu benar-benar ada di image. `HANDOFF.md` §7 sudah memperingatkannya — *"'dibaca'
+> bukan 'dipakai'"* — dan tetap dilanggar di sini.
+>
+> Isi di bawah **dipertahankan sebagai arsip**: temuannya tentang modul AOSP dan
+> sepolicy tetap benar dan berguna kalau suatu saat jalur binderized ditempuh lagi
+> dengan alasan yang sah.
 
 ---
 

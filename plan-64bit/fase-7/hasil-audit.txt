@@ -1,0 +1,13 @@
+indeks: 1708 pustaka unik (arch+nama), dari 1834 berkas
+
+=== AUDIT 1 — DT_NEEDED (tautan saat link) ===
+  11 temuan, 11 sudah diterima (lihat daftar TERIMA di skrip ini)
+  nol temuan BARU
+
+=== AUDIT 2 — nama dlopen (tautan saat runtime) ===
+  hanya-64  libOpenCL.so                   disebut: vendor/lib/egl/libRBEGL_adreno.so
+  hanya-64  libRSDriver_adreno.so          disebut: vendor/lib/hw/android.hardware.renderscript@1.0-impl.so
+  total: 2
+
+AUDIT 1 BERSIH.
+AUDIT 2 menandai kandidat — periksa satu per satu, sebagian bisa wajar.

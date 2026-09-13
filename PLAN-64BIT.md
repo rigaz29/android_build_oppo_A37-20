@@ -287,6 +287,12 @@ Berkas siap pakai yang bisa langsung dipinjam:
 
 ### 4.1 ⚠️ Kamera: passthrough tidak bisa bertahan di build 64-bit
 
+> ⛔ **SELURUH BAGIAN INI GUGUR (13 Sep 2026).** Ia bertumpu pada `cameraserver`
+> yang ternyata **tidak ada di ROM ini** — servis kamera ditaut ke dalam
+> `mediaserver`, yang 32-bit karena `compile_multilib: "prefer32"`. Passthrough
+> tetap berlaku di build 64-bit. Dipertahankan sebagai arsip; lihat
+> [`plan-64bit/fase-4/`](plan-64bit/fase-4/) dan [`plan-64bit/fase-7/`](plan-64bit/fase-7/).
+
 **Ini bagian paling berisiko dari seluruh rencana.** Baca sampai habis sebelum
 menyentuh `BoardConfig.mk`.
 
@@ -572,15 +578,15 @@ m nothing            # membaca makefile saja -- lolos != ROM bisa dibangun
 **Penjaga:** `make ARCH=arm64 lineageos_a37f_defconfig` rc=0, dan
 `CONFIG_ANDROID_BINDER_DEVICES` di `.config` hasil **memuat `vndbinder`** (§2.1).
 
-### Fase 4 — Kamera binderized 32-bit (8–20 jam, paling tidak pasti) — ✅ **SISI BUILD SELESAI 13 Sep 2026**
+### Fase 4 — Kamera binderized 32-bit — ⛔ **DIBATALKAN 13 Sep 2026**
 
-> Hasil dan penjaganya: [`plan-64bit/fase-4/README.md`](plan-64bit/fase-4/README.md).
-> **Jauh lebih murah dari taksiran:** dua dari tiga pekerjaan ternyata sudah tersedia —
-> modul `@2.4-service` sudah `compile_multilib: "32"` di AOSP 13, dan sepolicy-nya
-> sudah ada di hulu (`system/sepolicy/vendor/file_contexts:25`). Perubahan sumbernya
-> **dua berkas**. Biner terverifikasi `ELF 32-bit`, `@2.4-impl` ada di kedua arch.
+> **Premisnya salah, dan seluruh §4.1 di bawah ikut gugur.** `cameraserver` tidak ada
+> di ROM ini: servis kamera ditaut ke dalam `mediaserver`, yang ber-`prefer32` dan
+> karena itu **32-bit bahkan di `TARGET_ARCH=arm64`**. Passthrough tidak pernah mati.
+> Dikembalikan ke passthrough (`f490492`).
 >
-> ⚠️ Yang **belum** terbukti: apakah layar hitam terulang. Itu menuntut Fase 6 + 8.
+> Rinciannya dan pelajarannya: [`plan-64bit/fase-4/README.md`](plan-64bit/fase-4/README.md).
+> Ditemukan oleh audit [`plan-64bit/fase-7/`](plan-64bit/fase-7/).
 
 Ini §4.1. Kerjakan **setelah** Fase 2 lolos `m nothing` tetapi **sebelum** build penuh
 pertama, karena perubahannya menyentuh `manifest.xml` yang ikut diperiksa
@@ -643,7 +649,16 @@ Perluas `tools/verify-rom.sh` dengan dua pemeriksaan baru sebelum dipakai:
   `system/vendor/lib` adalah ELF 32-bit;
 - `system.img` ≤ 2.859.466.752 byte, dengan sisa ruang dilaporkan angkanya.
 
-### Fase 7 — Audit closure SEBELUM flash (3–6 jam)
+### Fase 7 — Audit closure SEBELUM flash (3–6 jam) — ✅ **SELESAI 13 Sep 2026**
+
+> Hasil: [`plan-64bit/fase-7/README.md`](plan-64bit/fase-7/README.md).
+> **Audit 1 BERSIH** (11 temuan, kesebelasnya ditriase, nol yang baru); audit 2
+> menandai 2 kandidat yang keduanya keputusan sadar Fase 0.
+>
+> Hasil terpentingnya bukan angka itu: audit ini **membatalkan Fase 4** — `cameraserver`
+> ternyata tidak ada di ROM ini, servis kamera ditaut ke dalam `mediaserver` yang
+> `prefer32`, jadi passthrough tidak pernah mati. Kamera dikembalikan (`f490492`),
+> ROM dibangun ulang (07:54), `verify-rom.sh` **SEMUA LOLOS**.
 
 Fase ini ada karena proyek 23.2 membayar empat siklus build untuk melewatkannya.
 Jalankan **dua** audit (§3 nomor 4) atas isi image yang benar-benar terbangun — bukan

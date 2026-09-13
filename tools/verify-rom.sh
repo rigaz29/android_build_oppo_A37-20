@@ -166,8 +166,14 @@ done < <(find "$SYSV/lib" -maxdepth 2 -name '*.so' 2>/dev/null)
 [ "$bad32" = 0 ] && ok "system/vendor/lib: $n pustaka, semuanya ELF 32-bit ARM"
 
 # Tiga biner yang WAJIB 32-bit, masing-masing karena blob yang dimuatnya.
+# mediaserver, BUKAN cameraserver: di LOS 20 servis kamera ditaut ke dalam
+# mediaserver lewat camera_in_mediaserver_defaults (overrides:["cameraserver"]),
+# dan mediaserver ber-compile_multilib "prefer32" sehingga 32-bit bahkan pada
+# TARGET_ARCH=arm64. Ia klien HAL kamera, dan justru karena ia 32-bit jalur
+# passthrough tetap berlaku di build 64-bit. Diperbaiki 13 Sep 2026 setelah Fase 4
+# dibatalkan; versi pertama penjaga ini memeriksa @2.4-service yang tidak dipasang.
 for b in "vendor/bin/hw/rild:blob RIL 2016 + libril_shim" \
-         "vendor/bin/hw/android.hardware.camera.provider@2.4-service:HAL kamera msm8916" \
+         "bin/mediaserver:klien HAL kamera, memuat blob kamera 32-bit lewat passthrough" \
          "vendor/bin/mm-qcamera-daemon:daemon kamera QTI"; do
     path="${b%%:*}"; why="${b#*:}"; f="$OUT/system/$path"
     if [ -f "$f" ]; then
@@ -177,6 +183,13 @@ for b in "vendor/bin/hw/rild:blob RIL 2016 + libril_shim" \
         bad "$path tidak ada"
     fi
 done
+# cameraserver TIDAK boleh ada: camera_in_mediaserver_defaults meng-override-nya.
+# Kalau ia muncul, flag has_legacy_camera_hal1 mati dan jalur HAL1 ikut mati.
+if [ -e "$OUT/system/bin/cameraserver" ]; then
+    bad "bin/cameraserver ADA — TARGET_HAS_LEGACY_CAMERA_HAL1 mati, jalur HAL1 putus"
+else
+    ok "bin/cameraserver tidak dikirim (di-override camera_in_mediaserver_defaults)"
+fi
 
 # Pola khas dual-arch tertinggal: pustaka yang punya versi 64-bit tapi tidak 32-bit
 # padahal ada konsumen 32-bit. Dilaporkan sebagai info, bukan kegagalan.
