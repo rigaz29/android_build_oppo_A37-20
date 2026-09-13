@@ -12,7 +12,17 @@ Seluruh angka hasil pemeriksaan langsung; perintahnya di §9.
 
 ## 1. Hasil utama
 
-Set yang benar-benar dikirim LOS 20 — **323 entri** — dipetakan ke susunan
+> **Dikoreksi 13 Sep 2026 saat Fase 1.** Angka pertama dokumen ini 323/394.
+> Yang benar **326/397**: tiga berkas sumber modul `Android.bp` terlewat —
+> `qcrilmsgtunnel.apk`, `shutdownlistener.apk`, `imscmlibrary.jar`. Ketiganya
+> memang dikirim LOS 20 lewat `PRODUCT_PACKAGES`, dan saya sudah menghitung tiga
+> modul *native* di kelompok yang sama (`libloc_api_v02`, `libloc_ds_api`,
+> `libtime_genoff`) tetapi lupa tiga yang non-native. Ketahuan karena Fase 1
+> mengadu pohon cabang dengan daftar ini dan mendapat "3 kelebihan" yang ternyata
+> bukan kelebihan. Berkasnya sudah diperbaiki; pemilahan arsitektur tidak berubah
+> sama sekali, karena ketiganya bukan pustaka.
+
+Set yang benar-benar dikirim LOS 20 — **326 entri** — dipetakan ke susunan
 arsitektur cabang `lineage-23-64bit`:
 
 ```
@@ -21,9 +31,10 @@ arsitektur cabang `lineage-23-64bit`:
     159  32-bit saja  (129 kamera/JPEG, 25 lain-lain, 5 codec/media)
      43  64-bit saja
       0  tidak dikenal cabang 64-bit
- 50 bukan pustaka (firmware 17, bin 13, etc 10, lib/ 8, framework 2)
+ 53 bukan pustaka (firmware 17, bin 13, etc 10, lib/ 8, framework 3,
+                   app 1, priv-app 1)
 ---
-323 entri sumber  ->  394 tujuan pemasangan (230 vendor/lib + 114 vendor/lib64 + 50)
+326 entri sumber  ->  397 tujuan pemasangan (230 vendor/lib + 114 vendor/lib64 + 53)
 ```
 
 Pembanding kewarasan: `A37-vendor-v5.mk` proyek 23.2 berakhir di **228 entri lib
@@ -196,8 +207,8 @@ supaya tidak dipangkas nanti tanpa sadar.
 
 | Berkas | Isi |
 |---|---|
-| `keputusan-arch.txt` | **323 entri sumber**, satu baris per entri: `dual` / `32` / `64` / `n/a` |
-| `set-dual-arch.txt` | **394 tujuan pemasangan** — masukan langsung Fase 1 |
+| `keputusan-arch.txt` | **326 entri sumber**, satu baris per entri: `dual` / `32` / `64` / `n/a` |
+| `set-dual-arch.txt` | **397 tujuan pemasangan** — masukan langsung Fase 1 |
 | `dual-arch.txt` | 71 pustaka dikirim dua arch |
 | `tetap-32bit.txt` | 159 pustaka 32-bit saja |
 | `hanya-64bit.txt` | 43 pustaka 64-bit saja |
@@ -207,10 +218,16 @@ supaya tidak dipangkas nanti tanpa sadar.
 **Penjaga yang dijalankan dan lolos:**
 
 ```
-entri sumber tetap 323                                    LOLOS
-tujuan 394 = 71x2 + 159 + 43 + 50                         LOLOS
+entri sumber tetap 326                                    LOLOS  (setelah koreksi §1)
+tujuan 397 = 71x2 + 159 + 43 + 53                         LOLOS  (setelah koreksi §1)
 setiap pustaka SET A terklasifikasi (tak dikenal = 0)     LOLOS
 ```
+
+⚠️ Penjaga "jumlah entri tetap" **tidak menangkap kesalahan di §1** — ia hanya
+memeriksa bahwa keluaran konsisten dengan masukan, dan masukannya yang kurang tiga.
+Yang menangkapnya adalah Fase 1, dengan mengadu daftar ini terhadap pohon yang
+sebenarnya. Pelajaran: penjaga aritmetika tidak menggantikan pencocokan terhadap
+kenyataan.
 
 ---
 

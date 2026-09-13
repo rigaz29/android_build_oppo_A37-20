@@ -6,6 +6,8 @@ lib/libmmparser_lite.so
 lib/libvpplibrary.so
 lib/vendor.qti.hardware.iop@1.0.so
 lib/vendor.qti.hardware.iop@2.0.so
+priv-app/qcrilmsgtunnel/qcrilmsgtunnel.apk
+vendor/app/shutdownlistener/shutdownlistener.apk
 vendor/bin/adsprpcd
 vendor/bin/hw/android.hardware.bluetooth@1.0-service-qti
 vendor/bin/hw/vendor.qti.hardware.perf@1.0-service
@@ -46,6 +48,7 @@ vendor/firmware/venus.b03
 vendor/firmware/venus.b04
 vendor/firmware/venus.mbn
 vendor/firmware/venus.mdt
+vendor/framework/imscmlibrary.jar
 vendor/framework/qcnvitems.jar
 vendor/framework/qcrilhook.jar
 vendor/lib/com.qualcomm.qti.bluetooth_audio@1.0.so

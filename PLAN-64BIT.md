@@ -461,7 +461,14 @@ untuk **Android 13**, bukan untuk Android 16.
 (`naik-ke-lib64.txt`, `tetap-32bit.txt`, `hanya-di-18.1.txt`).
 **Penjaga:** jumlah entri akhir = jumlah entri awal + tambahan yang dicatat alasannya.
 
-### Fase 1 — Vendor tree (4–6 jam)
+### Fase 1 — Vendor tree (4–6 jam) — ✅ **SELESAI 13 Sep 2026**
+
+> Hasil dan tujuh penjaganya:
+> [`plan-64bit/fase-1/README.md`](plan-64bit/fase-1/README.md).
+> Cabang `lineage-20-64bit` @ `8dcc8a9`, **delta terhadap cabang 23.2 hanya empat
+> baris** — `Android.bp` ternyata sudah tepat dan tidak disentuh sama sekali.
+> Langkah 3 di bawah (bangkitkan makefile dengan skrip sendiri) **tidak
+> diperlukan**; yang dipakai adalah makefile cabang 23.2 dengan delta empat baris.
 
 1. Buat cabang `lineage-20-64bit` di `rb-vendor_oppo_A37` dari `lineage-23-64bit`
    (`4048adb`).
