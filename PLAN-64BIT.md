@@ -723,17 +723,26 @@ Ditulis supaya tidak ada yang mencoba lagi sambil mengira itu perbaikan.
 
 ---
 
-## 7. Manifest
+## 7. Manifest — ✅ **[`A37-20-64bit.xml`](A37-20-64bit.xml) ditulis 13 Sep 2026**
 
-Menggabungkan `A37-20.xml` dan `A37-20-official.xml` (§4.5), dengan tiga revision
-diganti. Simpan sebagai `A37-20-64bit.xml` **setelah** cabang `lineage-20-64bit` ada di
-kedua repo — manifest yang menunjuk cabang yang belum dibuat akan menggagalkan
-`repo sync` dengan pesan yang menyesatkan.
+Menggabungkan `A37-20.xml` dan `A37-20-official.xml` (§4.5), dengan dua revision
+diganti. Terverifikasi: `repo manifest` merakit **1253 project**, keenam pin
+anti-hanyut aktif, dan kelima project kunci terpasang dengan revision yang benar.
+
+Dua dari tiga revision sudah final; device tree **sengaja masih `lineage-20`**,
+karena cabang `lineage-20-64bit`-nya baru dibuat di Fase 2 — dari cabang yang sama,
+jadi sync sekarang tetap benar. Manifest yang menunjuk cabang yang belum ada akan
+menggagalkan `repo sync` dengan pesan yang menyesatkan.
+
+⚠️ Setelah Fase 2 mem-push cabang device tree, **ganti baris revision-nya**. Sampai
+itu terjadi, jangan `repo sync` ulang sesudah membuat cabang lokal di
+`device/oppo/A37` — sync mengembalikan project ke revisi manifest.
 
 ```xml
 <!-- Yang BERUBAH dari A37-20-official.xml: -->
 <project name="rigaz29/rb_device_oppo_A37"  path="device/oppo/A37"
-         remote="gh" revision="refs/heads/lineage-20-64bit" upstream="lineage-20-64bit" />
+         remote="gh" revision="refs/heads/lineage-20" upstream="lineage-20" />
+         <!-- jadi lineage-20-64bit setelah Fase 2 mem-push cabangnya -->
 <project name="rigaz29/kernel_oppo_msm8939" path="kernel/oppo/msm8939"
          remote="gh" revision="refs/heads/lineage-24"       upstream="lineage-24" />
 <project name="rigaz29/rb-vendor_oppo_A37"  path="vendor/oppo"

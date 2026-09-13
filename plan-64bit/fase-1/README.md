@@ -138,9 +138,10 @@ tidak berubah sama sekali, karena ketiganya bukan pustaka.
 
 ## 6. Yang belum dikerjakan, dan disengaja
 
-**Cabang belum di-push.** Ia ada di `/root/a37-vendor64` sebagai commit `8dcc8a9`
-di atas `origin/lineage-23-64bit`. ROM 32-bit yang sekarang berjalan tidak
-tersentuh sama sekali.
+**Cabang sudah di-push** (13 Sep 2026): `origin/lineage-20-64bit` @ `8dcc8a9`.
+Klon kerjanya di `/root/a37-vendor64`. Keempat cabang lain tidak bergerak satu byte
+pun — `lineage-18.1` yang dipakai ROM 32-bit masih di `a954792`. Kembali ke ROM
+32-bit tetap sekadar `git checkout lineage-18.1` di `vendor/oppo`.
 
 **Pohon vendor belum dipasang ke pohon LOS.** `/root/los20` sendiri sudah tidak
 ada dan harus dibangun ulang (`HANDOFF.md` §4). Pemasangan adalah langkah pertama
@@ -153,7 +154,7 @@ dibentuk ulang dengan:
 ```bash
 git clone --no-single-branch https://github.com/rigaz29/rb-vendor_oppo_A37.git
 git checkout -b lineage-20-64bit origin/lineage-23-64bit
-# lalu terapkan delta empat baris §1, atau ambil commit 8dcc8a9 kalau sudah di-push
+# atau langsung: git checkout lineage-20-64bit   (cabang sudah ada di origin)
 ```
 
 ---
