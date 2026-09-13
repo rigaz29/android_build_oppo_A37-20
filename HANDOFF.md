@@ -45,6 +45,7 @@ perbaikannya jadi modal proyek ini**, bukan diulang dari nol.
 |---|---|---|
 | **`HANDOFF.md`** (ini) | keadaan sekarang, keputusan, jebakan | **selalu, pertama** |
 | **`PLAN-OFFICIAL.md`** | migrasi basis UL → official; delta terukur per commit; fase M0–M6 | pekerjaan basis/patch sekarang |
+| **`PLAN-64BIT.md`** | rencana userspace **64-bit** (13 Sep 2026, belum dikerjakan): kernel `lineage-24`, vendor dual-arch, pemblokir kamera passthrough, + fitur dari proyek LOS 23.2 | sebelum menyentuh arsitektur |
 | `PLAN.md` | 10 fase asli di atas basis UL — **arsip yang masih berlaku** untuk seluruh temuan A37 (10.A–10.F, VINTF, sepolicy, blob) | menelusuri *kenapa* sesuatu begitu |
 
 ⚠️ **Urutan otoritas kalau ada konflik:** `HANDOFF.md` (keadaan) → `PLAN-OFFICIAL.md`
@@ -106,7 +107,9 @@ belum diuji — bukan rusak, dan bukan jalan.
 /root/a37-dl      artefak build (zip kernel, checksum)
 ```
 
-⚠️ **DISK KRITIS: sisa 29 GB (92% terpakai)** per 8 Agustus 2026. `out/` pernah dihapus
+⚠️ ~~**DISK KRITIS: sisa 29 GB (92% terpakai)** per 8 Agustus 2026.~~ **Sudah tidak berlaku:**
+terukur 13 September 2026 `df -h /` → **237 GB bebas dari 348 GB (33% terpakai)**, dan
+`/root/los20` sudah tidak ada (bangun ulang dengan §4). `out/` pernah dihapus
 sekali (76 GB) saat migrasi official; `ccache` 18 GB sengaja dipertahankan.
 **Periksa `df -h /` sebelum rebuild apa pun** — build penuh butuh 45–50 GB.
 
