@@ -46,7 +46,12 @@ if [ -n "$BPS" ]; then
     check_prop external_storage.casefold.enabled 0 "ext4 kernel 3.10 tidak punya casefold"
     check_prop external_storage.sdcardfs.enabled 0 "A13 memakai FUSE"
     check_prop ro.treble.enabled false            "perangkat non-treble"
-    check_prop ro.zygote zygote32                 "userspace 32-bit murni"
+    # BUILD 64-BIT: zygote64_32, bukan zygote32. Diubah 13 Sep 2026 (Fase 2).
+    # zygote 64-bit dengan anak 32-bit -- dipilih, BERBEDA dari proyek LOS 23.2 yang
+    # memakai ZYGOTE_FORCE_64: di Android 13 aplikasi 32-bit-saja masih banyak, dan
+    # zygote64 membuat ro.product.cpu.abilist hanya arm64-v8a sehingga aplikasi
+    # seperti itu tidak bisa dipasang sama sekali.
+    check_prop ro.zygote zygote64_32              "zygote 64-bit dengan anak 32-bit (Fase 2)"
     check_prop ro.vndk.version current            "tanpa snapshot VNDK, sama dengan ROM gt58wifi"
 else
     bad "tidak ada build.prop sama sekali — build belum sampai tahap pengemasan?"
@@ -184,18 +189,26 @@ inf "pustaka vendor yang hanya ada 64-bit: $only64 (wajar; periksa bila ada HAL 
 # dua set pustaka; margin ini yang paling mungkin habis.
 inf "ukuran image"
 LIMIT=2859466752
+# Build ini menghasilkan system.new.dat.br (OTA berbasis blok), BUKAN system.img —
+# jadi yang diukur pohon system/ hasil build. Itu justru ukuran yang benar: ia isi
+# partisi yang sesungguhnya, sedangkan .dat.br sudah terkompresi dan tidak
+# sebanding dengan batas partisi.
 SIMG="$OUT/system.img"
 if [ -f "$SIMG" ]; then
     sz=$(stat -c%s "$SIMG")
+else
+    sz=$(du -sb "$OUT/system" 2>/dev/null | cut -f1)
+fi
+if [ -n "$sz" ] && [ "$sz" -gt 0 ]; then
     sisa=$(( LIMIT - sz ))
     if [ "$sz" -le "$LIMIT" ]; then
-        ok "system.img $((sz/1048576)) MB dari $((LIMIT/1048576)) MB — sisa $((sisa/1048576)) MB"
+        ok "isi system $((sz/1048576)) MB dari $((LIMIT/1048576)) MB — sisa $((sisa/1048576)) MB"
         [ "$sisa" -lt 104857600 ] && inf "margin di bawah 100 MB: pangkas PRODUCT_PACKAGES sebelum menambah apa pun"
     else
-        bad "system.img $((sz/1048576)) MB MELEBIHI partisi $((LIMIT/1048576)) MB — pangkas PRODUCT_PACKAGES, JANGAN ubah tata letak partisi"
+        bad "isi system $((sz/1048576)) MB MELEBIHI partisi $((LIMIT/1048576)) MB — pangkas PRODUCT_PACKAGES, JANGAN ubah tata letak partisi"
     fi
 else
-    inf "system.img tidak ada (wajar bila build memakai sparse/dat saja)"
+    bad "tidak bisa mengukur isi system — periksa $OUT"
 fi
 
 # --------------------------------------------------------------------- zip ---

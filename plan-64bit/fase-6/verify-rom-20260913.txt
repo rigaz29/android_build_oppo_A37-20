@@ -1,0 +1,34 @@
+:: build.prop (dicari di 4 berkas)
+ ok ro.build.version.sdk=33
+ ok ro.kernel.ebpf.supported=false
+ ok ro.config.low_ram=true
+ ok external_storage.casefold.enabled=0
+ ok external_storage.sdcardfs.enabled=0
+ ok ro.treble.enabled=false
+ ok ro.zygote=zygote64_32
+ ok ro.vndk.version=current
+:: blob vendor (A37-vendor.mk)
+ ok 389 blob lengkap di image
+:: lokasi sepolicy
+ ok /sepolicy monolitik di ramdisk (root/sepolicy)
+ ok system/etc/selinux berisi plat_sepolicy.cil + mapping
+ ok vendor/etc/selinux/precompiled_sepolicy ada
+:: adbd legacy FunctionFS (Gerrit 326385)
+ ok adbd memuat jalur legacy FunctionFS (transport_legacy + usb_legacy + pesan usb_init)
+:: boot.img
+ ok pagesize 2048
+ ok kernel_addr 0x80008000 (base 0x80000000)
+ ok dt_size 210944 (referensi 210944)
+:: arsitektur (build 64-bit)
+ ok system/vendor/lib64: 210 pustaka, semuanya ELF 64-bit aarch64
+ ok system/vendor/lib: 320 pustaka, semuanya ELF 32-bit ARM
+ ok rild 32-bit (blob RIL 2016 + libril_shim)
+ ok android.hardware.camera.provider@2.4-service 32-bit (HAL kamera msm8916)
+ ok mm-qcamera-daemon 32-bit (daemon kamera QTI)
+:: pustaka vendor yang hanya ada 64-bit: 45 (wajar; periksa bila ada HAL 32-bit gagal dlopen)
+:: ukuran image
+ ok isi system 1725 MB dari 2727 MB — sisa 1001 MB
+:: paket
+ ok lineage-20.0-20260913_180619-UNOFFICIAL-A37.zip (721M)
+
+SEMUA VERIFIKASI LOLOS — aman dilanjut ke protokol flash §9.1 (recovery dulu).

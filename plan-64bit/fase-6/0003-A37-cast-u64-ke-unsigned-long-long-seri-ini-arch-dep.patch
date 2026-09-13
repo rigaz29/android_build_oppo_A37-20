@@ -1,0 +1,57 @@
+From f3c8ec4831297a92a261370ebcdb626a51be1add Mon Sep 17 00:00:00 2001
+From: rigaz29 <ryanbagas27@gmail.com>
+Date: Sun, 13 Sep 2026 18:05:55 +0000
+Subject: [PATCH 3/3] A37: cast u64 ke unsigned long long -- seri ini
+ arch-dependent dan terbalik di 64-bit
+
+Kedua patch sebelum ini (0001 %lx->%llx, 0002 %lul->%llu) memperbaiki build 32-bit,
+dan justru MENYEBABKAN kegagalan di build 64-bit:
+
+  driver_cmd_nl80211.c:2835:6: error: format specifies type 'unsigned long long'
+    but the argument has type 'u64' (aka 'unsigned long') [-Werror,-Wformat]
+  driver_cmd_nl80211.c:5704:39 dan :50  idem
+
+Sebabnya u64 adalah 'unsigned long long' di ARM 32-bit tetapi 'unsigned long' di
+arm64. Seri ini karena itu tidak netral arsitektur: ia benar untuk satu dan salah
+untuk yang lain, dan m bacon 64-bit gagal di situ.
+
+Perbaikannya cast argumen, bukan mengubah format specifier lagi -- dengan begitu ia
+benar di KEDUA arsitektur dan seri 0001/0002 tidak perlu dibongkar. Tidak ada include
+baru yang dibutuhkan (alternatif PRIu64/PRIx64 menuntut <inttypes.h>).
+
+Cakupan lengkap: grep '%ll[uxd]' pada berkas itu menghasilkan tepat 2 situs, dan
+keduanya ditangani -- sama dengan tiga posisi yang dilaporkan kompilator.
+
+Change-Id: I82623ea6aa7bcca74cbeecac28ff665afe259cd3
+---
+ qcwcn/wpa_supplicant_8_lib/driver_cmd_nl80211.c | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
+
+diff --git a/qcwcn/wpa_supplicant_8_lib/driver_cmd_nl80211.c b/qcwcn/wpa_supplicant_8_lib/driver_cmd_nl80211.c
+index f93e64f..d2e5435 100644
+--- a/qcwcn/wpa_supplicant_8_lib/driver_cmd_nl80211.c
++++ b/qcwcn/wpa_supplicant_8_lib/driver_cmd_nl80211.c
+@@ -2831,8 +2831,11 @@ void print_setup_cmd_values(struct twt_setup_parameters *twt_setup_params)
+ 		   twt_setup_params->min_wake_duration);
+ 	wpa_printf(MSG_DEBUG, "TWT: max wake duration: %d ",
+ 		   twt_setup_params->max_wake_duration);
++	/* A37: u64 adalah 'unsigned long long' di ARM 32-bit tetapi 'unsigned long'
++	 * di arm64, jadi %llx SALAH di build 64-bit. Cast membuatnya benar di
++	 * KEDUA arsitektur tanpa menambah include. */
+ 	wpa_printf(MSG_DEBUG, "TWT: wake tsf: 0x%llx ",
+-		   twt_setup_params->wake_tsf);
++		   (unsigned long long)twt_setup_params->wake_tsf);
+ 	wpa_printf(MSG_DEBUG, "TWT: announce timeout(in us): %u",
+ 		   twt_setup_params->announce_timeout_us);
+ }
+@@ -5701,7 +5704,9 @@ static int wpa_driver_tsf_cmd_resp_handler(struct resp_info *info,
+ 		return NL_SKIP;
+ 	}
+ 	ret = os_snprintf(info->reply_buf, info->reply_buf_len,
+-			  "tsf_value:%llu host_time:%llu", tsf_value, host_time);
++			  "tsf_value:%llu host_time:%llu",
++			  (unsigned long long)tsf_value,
++			  (unsigned long long)host_time);
+ 	if (os_snprintf_error(info->reply_buf_len, ret)) {
+ 		wpa_printf(MSG_ERROR, "%s:Fail to print buffer", __func__);
+ 		return -ENOMEM;
