@@ -204,24 +204,51 @@
        build. Yang berubah, satu-satunya yang lolos uji itu tinggal satu.
        Deteksi hanyut baru kapan saja: tools/check-drift.sh -->
 
-  <!-- packages/services/Telephony @ 288c28358b (merge android-security-13.0.0_r28).
+  <!-- packages/services/Telephony @ 41f8f65f4 (2026-03-25).
 
-       SATU-SATUNYA pin yang masih dibutuhkan, dan diuji ulang 13 Sep 2026:
-       melepasnya ke HEAD (43f185c72, 2026-05-04) menggagalkan m TeleService —
+       SATU-SATUNYA pin yang masih dibutuhkan — tetapi JAUH lebih maju daripada pin
+       lama 288c28358b (2025-04-18), dan itu hasil pengujian ulang 13 Sep 2026.
+
+       Dari 8 commit yang memisahkan pin lama dari HEAD, HANYA YANG TERBARU yang
+       merusak:
+
+         43f185c72  2026-05-04  Restrict USSD requests to the subscription's ...  <- rusak
+         41f8f65f4  2026-03-25  Prevent SDK Sandbox from bypassing isSystemApp check
+         c1b442574  2026-01-27  Disallow shell to change CarrierRestrictionRules
+         caae55d96  2025-09-04  Restricting UserBuild from persistent carrierConfig
+         f2aa3b53e  2025-09-02  Protect shell overriding the carrier config
+         b9264043b  2025-07-30  Remove the contacts picker from the FDN UI
+         94789873e  2025-06-12  remove the contacts picker from CallForward
+         54600bbca  2025-04-29  Remove the contacts picker from VoicemailSettings
+
+       Tujuh commit didapat kembali, lima di antaranya perbaikan keamanan.
+       Diverifikasi: m TeleService "build completed successfully (03:04)".
+
+       KENAPA YANG TERBARU TIDAK BISA, dan kenapa itu bukan salah kita:
 
          PhoneInterfaceManager.java:2932: error: cannot find symbol
            symbol: method checkSubscriptionAssociatedWithUser(PhoneGlobals,int,UserHandle)
 
-       Method itu TIDAK ADA di pohon mana pun, dan tidak ada juga di hulu
-       LineageOS/android_frameworks_opt_telephony lineage-20.0 (diverifikasi: nol
-       kemunculan). Jadi ini ketidakcocokan DI DALAM lineage-20.0 sendiri, bukan
-       akibat patch atau pin kita — Telephony bergerak melewati companion repo-nya.
+       Method itu ada di frameworks/base lineage-21.0 dan lineage-22.1 (4 kemunculan
+       masing-masing) tetapi NOL di lineage-20.0. Jadi LineageOS me-merge commit
+       Telephony ber-API Android 14 ke branch 20.0 tanpa membawa pasangan
+       frameworks/base-nya; branch lineage-20.0 itu sendiri yang tidak konsisten.
 
-       Tinjau ulang kalau frameworks/opt/telephony hulu kelak menyediakannya. -->
+       Cherry-pick API-nya dari lineage-21.0 DITOLAK: ia bagian kerja multi-user
+       telephony Android 14 dan menyeret konsep asosiasi user-subscription yang tidak
+       ada di A13 — terlalu besar demi satu commit pengerasan USSD.
+
+       KOREKSI atas komentar manifest lama: ia menyalahkan c1b442574 karena memakai
+       TelephonyPermissions.isShell(int) "yang tidak ada di tree kita". Method itu ADA
+       sekarang (frameworks/base/telephony/common/.../TelephonyPermissions.java:813),
+       jadi alasan itu sudah kedaluwarsa dan commitnya kini ikut terbawa.
+
+       Tinjau ulang kalau frameworks/base lineage-20.0 kelak menyediakan
+       checkSubscriptionAssociatedWithUser. -->
   <remove-project name="LineageOS/android_packages_services_Telephony" />
   <project name="LineageOS/android_packages_services_Telephony" path="packages/services/Telephony"
            groups="pdk" remote="gh"
-           revision="288c28358b9cd9c2be1dd13c729668b18eb37550"
+           revision="41f8f65f4d55a4922558529a95195cc0df3db7c6"
            upstream="lineage-20.0" />
 
 </manifest>

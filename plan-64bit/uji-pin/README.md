@@ -122,19 +122,62 @@ kemunculan). Jadi ini ketidakcocokan **di dalam `lineage-20.0` sendiri** —
 `packages/services/Telephony` bergerak melewati companion repo-nya — bukan akibat
 patch atau pin kita.
 
-Pin dipertahankan, dan ditinjau ulang kalau `frameworks/opt/telephony` hulu kelak
-menyediakannya.
+### 3.d Susulan: pinnya dimajukan tujuh commit
+
+Uji lanjutan hari yang sama menunjukkan pin itu **terlalu konservatif**. Dari 8
+commit yang memisahkan pin lama (`288c28358b`, 2025-04-18) dari HEAD, **hanya yang
+terbaru** yang merusak:
+
+```
+43f185c72  2026-05-04  Restrict USSD requests to the subscription's associated ...  <- rusak
+41f8f65f4  2026-03-25  Prevent SDK Sandbox from bypassing isSystemApp check
+c1b442574  2026-01-27  Disallow shell to change CarrierRestrictionRules
+caae55d96  2025-09-04  Restricting UserBuild from persistent carrierConfig Override
+f2aa3b53e  2025-09-02  Protect shell overriding the carrier config
+b9264043b  2025-07-30  Remove the contacts picker from the FDN UI
+94789873e  2025-06-12  remove the contacts picker from CallForward
+54600bbca  2025-04-29  Remove the contacts picker from VoicemailSettingsActivity
+```
+
+Pin dimajukan ke **`41f8f65f4d55a4922558529a95195cc0df3db7c6`**, diverifikasi
+`m TeleService` **build completed successfully (03:04)**. **Tujuh commit didapat
+kembali, lima di antaranya perbaikan keamanan.**
+
+Sebabnya yang terbaru tidak bisa juga terjawab: `checkSubscriptionAssociatedWithUser`
+ada di `frameworks/base` **`lineage-21.0` dan `lineage-22.1`** (4 kemunculan
+masing-masing) tetapi **nol** di `lineage-20.0`. LineageOS me-merge commit Telephony
+ber-API Android 14 ke branch 20.0 tanpa pasangan `frameworks/base`-nya.
+
+Cherry-pick API itu dari `lineage-21.0` **ditolak**: ia bagian kerja multi-user
+telephony Android 14 dan menyeret konsep asosiasi user–subscription yang tidak ada
+di A13 — terlalu besar demi satu commit pengerasan USSD.
+
+⚠️ **Koreksi atas komentar manifest lama.** Ia menyalahkan `c1b442574` karena memakai
+`TelephonyPermissions.isShell(int)` "yang tidak ada di tree kita". Method itu **ada**
+sekarang (`frameworks/base/telephony/common/.../TelephonyPermissions.java:813`), jadi
+alasan itu kedaluwarsa dan commitnya kini ikut terbawa. Ini pelajaran yang sama
+dengan §3.a dan §3.b: **alasan sebuah pin bisa kedaluwarsa tanpa pinnya dicabut.**
+
+Tinjau ulang kalau `frameworks/base` `lineage-20.0` kelak menyediakan
+`checkSubscriptionAssociatedWithUser`.
 
 ---
 
 ## 4. Yang diubah
 
 `A37-20-64bit.xml`: **enam `remove-project` + `project` menjadi satu.** Lima
-dibuang, `packages/services/Telephony` tetap. Manifest diverifikasi merakit 1253
-project, dan kelima project yang dilepas kini mengikuti `refs/heads/lineage-20.0`.
+dibuang, `packages/services/Telephony` tetap — tetapi **dimajukan tujuh commit**
+(§3.d). Manifest diverifikasi merakit 1253 project, dan kelima project yang dilepas
+kini mengikuti `refs/heads/lineage-20.0`.
 
-Keuntungan konkret: **Settings mendapat 33 commit / 15 bulan ASB kembali**, dan
-dua kegagalan build yang selama ini tersembunyi hilang.
+Keuntungan konkret:
+
+| komponen | didapat kembali |
+|---|---|
+| Settings | **33 commit / 15 bulan ASB** |
+| Telephony | **7 commit**, lima di antaranya perbaikan keamanan |
+| Mms, Trebuchet | dua kegagalan build yang selama ini tersembunyi, hilang |
+| skia, dng_sdk | tidak lagi membekukan `external/` di era April 2025 |
 
 ---
 
