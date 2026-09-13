@@ -191,6 +191,18 @@ yang sekarang berjalan tidak boleh tersentuh; kembali ke sana = `git checkout li
 
 ### 2.3 Vendor → `lineage-23-64bit` sebagai **sumber**, bukan sebagai isi
 
+> ⚠️ **DIKOREKSI OLEH FASE 0 (13 Sep 2026).** Bagian ini menyimpulkan vendor tree
+> harus dirakit dari **dua** sumber. Itu terlalu keras. Dari 52 berkas yang "hanya
+> ada di 18.1", **43 sebenarnya ADA di cabang 64-bit sebagai `vendor/lib64/`**
+> (pindah arch, bukan hilang) dan **9 sisanya memang tidak pernah dikirim LOS 20**.
+> Berkas SET A yang benar-benar absen dalam arch apa pun: **nol**. `lineage-18.1`
+> hanya diperlukan bila T-A4 (Widevine) dikerjakan. Rinciannya
+> [`plan-64bit/fase-0/README.md`](plan-64bit/fase-0/README.md) §2.
+>
+> Fase 0 juga membantah basis yang disuruh dipakai §5 Fase 0 di bawah:
+> yang benar `A37-vendor.mk` (323 entri), **bukan** `proprietary-files.txt`
+> (453 entri, 39 di antaranya menunjuk berkas yang tidak ada).
+
 Permintaannya memakai `rb-vendor_oppo_A37` cabang `lineage-23-64bit`. Cabang itu
 memang membawa seluruh 114 pustaka `vendor/lib64`, dan itu bagian yang paling mahal.
 Tapi ia **bukan superset** dari yang dipakai LOS 20 sekarang:
@@ -231,9 +243,10 @@ Yang tetap 32-bit dan sudah pasti: **seluruh 14 biner `vendor/bin`** (`qmuxd`,
 64-bit pun membiarkannya 32-bit. Konsekuensinya rantai pustaka 32-bit harus lengkap,
 dan itulah pelajaran termahal fase-5 proyek 23.2 (§3).
 
-Cabang baru: **`lineage-20-64bit`**, dibuat dari `lineage-23-64bit` @ `4048adb`, lalu
-52 berkas di atas ditriase dan dikembalikan dari `lineage-18.1` @ `a954792` sesuai
-putusan Fase 0.
+Cabang baru: **`lineage-20-64bit`**, dibuat dari `lineage-23-64bit` @ `4048adb`.
+Menurut putusan Fase 0 itu **sumber tunggal yang cukup**; `lineage-18.1` @ `a954792`
+disentuh hanya bila T-A4 (Widevine) dikerjakan, untuk pasangan
+`drm@1.0-service.widevine` + `libwvdrmengine.so` yang hanya ada di sana.
 
 ---
 
@@ -414,7 +427,13 @@ Manifest 64-bit di §7 menggabungkan keduanya. Kalau proyek 32-bit dibangun ulan
 Urutannya disusun supaya **setiap fase punya penjaga yang bisa gagal lebih awal**,
 dan supaya §4.1 (kamera) tidak menyandera fase-fase murah di depannya.
 
-### Fase 0 — Penyaringan blob (3–5 jam)
+### Fase 0 — Penyaringan blob (3–5 jam) — ✅ **SELESAI 13 Sep 2026**
+
+> Hasil, keputusan per kelompok, dan penjaganya:
+> [`plan-64bit/fase-0/README.md`](plan-64bit/fase-0/README.md).
+> Dua klaim bagian ini dibantah di sana (basis daftar, dan "butuh dua vendor tree");
+> langkah-langkah di bawah dipertahankan sebagai catatan apa yang direncanakan.
+> Fase 1 turun dari 4–6 jam menjadi **2–3 jam**.
 
 Sasaran: mengubah "400 berkas di cabang 64-bit" menjadi daftar dual-arch yang terukur
 untuk **Android 13**, bukan untuk Android 16.
@@ -782,8 +801,10 @@ tambahan khusus rencana ini, semuanya sudah benar-benar menjebak seseorang:
    `PRODUCT_COPY_FILES`; menambahkannya ke `.mk` tidak berpengaruh dan build tetap
    sukses tanpa peringatan.
 5. **`SOONG_GOMEMLIMIT` wajib**, dan menaikkan swap justru memperburuk.
-6. **Cabang 64-bit vendor bukan superset.** 52 berkas yang dipakai LOS 20 tidak ada di
-   sana (§2.3).
+6. ~~**Cabang 64-bit vendor bukan superset.**~~ **Dikoreksi Fase 0:** untuk set yang
+   benar-benar dikirim LOS 20, cabang itu **cukup** — nol berkas absen dalam arch apa
+   pun. Yang tetap berlaku: jangan membaca `proprietary-files.txt` sebagai daftar
+   kerja; yang dibaca build adalah `A37-vendor.mk` (§2.3, fase-0 §3).
 7. **Dua manifest di repo ini masing-masing tidak lengkap** (§4.5).
 8. **Komentar yang menjadi salah lebih berbahaya daripada tidak ada komentar.** Tiga
    tempat yang akan menyesatkan sesudah rencana ini: blok kamera `device.mk:276-291`,

@@ -74,6 +74,7 @@ itu tidak ada di manifest official. Satu-satunya sisa ketergantungan langsung.
 | **[`PLAN-64BIT.md`](PLAN-64BIT.md)** | **Rencana userspace 64-bit** (13 Sep 2026, belum dikerjakan) — kernel `lineage-24`, vendor dual-arch, satu pemblokir kamera, + fitur yang dipanen dari proyek LOS 23.2 |
 | [`PLAN.md`](PLAN.md) | 10 fase asli di atas basis UL. **Arsip yang masih berlaku** untuk seluruh temuan khas A37 (10.A–10.F, VINTF, sepolicy, blob) |
 | [`A37-20.xml`](A37-20.xml) | Local manifest: 3 repo proyek, 3 pin qcom-caf msm8916, + 6 pin anti-hanyut. ⚠️ `sepolicy-legacy` dan `timekeep` hanya ada di [`A37-20-official.xml`](A37-20-official.xml), yang justru tidak memuat keenam pin — lihat `PLAN-64BIT.md` §4.5 |
+| [`plan-64bit/fase-0/`](plan-64bit/fase-0/) | **Fase 0 selesai** — 323 entri blob terpilah per arsitektur (71 dual, 159×32, 43×64), closure RenderScript terukur, dan dua klaim rencana induk yang dikoreksi |
 | [`patches/official/`](patches/official/) | **135 patch legacy** hasil ekstraksi dari fork UL, per repo |
 | **[`ref/evidence/`](ref/evidence/)** | Hasil bedah ROM LOS 20 msm8916 yang terbukti boot — `build.prop`, VINTF, fstab, `init*.rc`, header boot.img |
 | `tools/apply-official-patches.sh` | **Terapkan 135 patch. WAJIB tiap habis `repo sync`** |

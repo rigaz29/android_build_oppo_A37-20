@@ -1,0 +1,37 @@
+# Rantai RenderScript sisi 32-BIT — keputusan opsional, ditunda ke Fase 6
+#
+# Closure diukur langsung dari blob (readelf -d + string dlopen), bukan disalin
+# dari catatan proyek 23.2:
+#
+#   libRSDriver_adreno.so  DT_NEEDED librs_adreno.so
+#                          string    libbccQTI.so   <- TIDAK ADA di repo vendor
+#                                                      mana pun; jalur itu mati
+#   librs_adreno.so        DT_NEEDED libgsl.so, libCB.so
+#                          string    librs_adreno_sha1.so
+#   libCB.so               DT_NEEDED libgsl.so
+#                          string    libllvm-qcom.so   <- 19,7 MB, lewat dlopen
+#
+# libgsl.so sudah dual-arch di cabang lineage-23-64bit, jadi tidak menambah ongkos.
+# Sisa AOSP (libRS_internal, libRSCpuRef, libbcinfo, libEGL, libGLESv1_CM,
+# libGLESv2, libnativewindow, libcutils, libutils, libui, libz) dibangun dari
+# sumber untuk kedua arch — nol ongkos tambahan.
+#
+# Pengukuran ini MEMBENARKAN angka 23.2 ("ongkos menutup rantai RS 32-bit:
+# libllvm-qcom 19 MB") lewat jalan yang berbeda, dan sekaligus menunjukkan
+# jalurnya: libCB -> dlopen libllvm-qcom, bukan libRSDriver langsung.
+#
+# TOTAL bila ditambahkan: 20.968.648 byte = 20,0 MB
+#
+# BAWAAN RENCANA INI: JANGAN ditambahkan.
+#   - RenderScript sudah usang; di Android 13 ketiadaan driver vendor membuat
+#     RS mundur ke libRSCpuRef (lebih lambat, TIDAK rusak).
+#   - Sisi 64-bit tetap memakai driver perangkat keras — cabang 64-bit sudah
+#     membawa seluruh rantainya di vendor/lib64.
+#   - 20,0 MB adalah butir tunggal terbesar di seluruh Fase 0.
+# Tinjau ulang di Fase 6 setelah sisa ruang system.img yang sebenarnya diketahui.
+
+vendor/lib/libRSDriver_adreno.so      141748
+vendor/lib/librs_adreno.so            288712
+vendor/lib/librs_adreno_sha1.so         6128
+vendor/lib/libCB.so                   773660
+vendor/lib/libllvm-qcom.so          19758400

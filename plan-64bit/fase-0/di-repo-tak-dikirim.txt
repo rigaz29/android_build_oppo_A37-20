@@ -1,0 +1,9 @@
+vendor/app/TimeService/TimeService.apk
+vendor/app/ims/ims.apk
+vendor/bin/hw/android.hardware.drm@1.0-service.widevine
+vendor/bin/imscmservice
+vendor/bin/imsdatadaemon
+vendor/bin/imsqmidaemon
+vendor/etc/init/android.hardware.drm@1.0-service.widevine.rc
+vendor/lib/libTimeService.so
+vendor/lib/mediadrm/libwvdrmengine.so
