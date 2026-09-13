@@ -40,10 +40,9 @@
                                       pohon dual-arch 397 berkas: 230 vendor/lib
                                       + 114 vendor/lib64 + 53 bukan pustaka.
                                       plan-64bit/fase-1/
-  device tree                         MASIH lineage-20. Cabang lineage-20-64bit
-                                      dibuat di Fase 2 dari cabang ini juga, jadi
-                                      sync sekarang tetap benar; ganti baris
-                                      revision-nya setelah cabang itu ada.
+  device tree lineage-20 -> lineage-20-64bit
+                                      TARGET_ARCH arm64 + arch kedua arm.
+                                      plan-64bit/fase-2/
 -->
 <manifest>
 
@@ -59,14 +58,20 @@
        Tree ini MANDIRI: msm8916-common sudah diratakan ke dalamnya sejak 18.1,
        jadi TIDAK ADA device/cyanogen/msm8916-common di manifest ini.
 
-       Fase 2 membuat cabang lineage-20-64bit DARI cabang ini (delta 64-bit cuma
-       6 berkas / 173 baris — PLAN-64BIT.md sec.2.2). Selama cabang itu belum
-       di-push, biarkan baris ini apa adanya dan buat cabang lokalnya di dalam
-       pohon; JANGAN repo sync sesudah itu tanpa mengganti revision di bawah,
-       karena sync mengembalikan project ke revisi manifest. -->
+       Cabang lineage-20-64bit @ 700a8d0, dibuat dari lineage-20 @ caa9882.
+       Deltanya dua berkas / 49 baris: TARGET_ARCH arm64 dengan arsitektur kedua
+       arm, plus inherit core_64_bit.mk (zygote64_32).
+
+       WAJIB BERPASANGAN dengan vendor/oppo cabang lineage-20-64bit. Keduanya
+       tidak bisa hidup terpisah: Android.bp vendor 64-bit mendefinisikan
+       libtime_genoff sebagai arm64-saja, sehingga pada TARGET_ARCH=arm modul itu
+       tidak ada dan enforce-product-packages-exist menggagalkan build sebelum
+       mengompilasi apa pun. Kembali ke 32-bit berarti mengembalikan KEDUANYA.
+
+       Terverifikasi: m nothing "build completed successfully (19:15)". -->
   <project name="rigaz29/rb_device_oppo_A37" path="device/oppo/A37"
-           remote="gh" revision="refs/heads/lineage-20"
-           upstream="lineage-20" />
+           remote="gh" revision="refs/heads/lineage-20-64bit"
+           upstream="lineage-20-64bit" />
 
   <!-- Kernel 3.10.108 ARM64, cabang lineage-24 @ cb52394.
 

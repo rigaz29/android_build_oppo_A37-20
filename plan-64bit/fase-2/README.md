@@ -144,10 +144,14 @@ tidak.
 
 ## 7. Yang belum dikerjakan
 
-**Cabang belum di-push.** Ia lokal di `/root/los20/device/oppo/A37` sebagai
-`700a8d0`. Selama belum di-push, **jangan `repo sync`** — sync mengembalikan
-project ke revisi manifest (`refs/heads/lineage-20`) dan commit ini hilang.
-Setelah di-push, ganti baris `revision` device tree di `A37-20-64bit.xml`.
+~~**Cabang belum di-push.**~~ **Sudah di-push 13 Sep 2026:**
+`origin/lineage-20-64bit` @ `700a8d0`. `A37-20-64bit.xml` sudah menunjuk ke sana,
+dan diverifikasi bahwa HEAD lokal `device/oppo/A37` **identik** dengan revisi
+manifest — jadi `repo sync` tidak lagi membuang commit ini.
+
+Cabang `lineage-20` (`caa9882`) tidak bergerak; kembali ke build 32-bit tetap
+`git checkout lineage-20` di sini **dan** `git checkout lineage-18.1` di
+`vendor/oppo` — keduanya, lihat §3.
 
 **Fase 3 (kamera binderized) belum disentuh** — itu pemblokir §4.1 rencana induk
 dan tetap satu-satunya bagian yang benar-benar berisiko. `m nothing` lolos
