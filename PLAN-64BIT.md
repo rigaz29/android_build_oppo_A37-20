@@ -677,7 +677,15 @@ masih berbentuk `.apex` belum terekstrak — `libnativehelper`, `libstats*`, `li
 Ulangi audit sampai tidak ada kebutuhan baru, lalu **simulasikan** isi `vendor/lib`
 pasca-perubahan dan cocokkan — jangan menunggu build berikutnya untuk tahu.
 
-### Fase 8 — Verifikasi di perangkat dan gerbang batal (4–8 jam)
+### Fase 8 — Verifikasi di perangkat dan gerbang batal (4–8 jam) — ✅ **BOOT BERHASIL 14 Sep 2026**
+
+> Hasil dan buktinya: [`plan-64bit/fase-8/README.md`](plan-64bit/fase-8/README.md).
+> **LineageOS 20 userspace 64-bit boot di OPPO A37.** `arm64-v8a`, `zygote64_32`
+> dengan **dua zygote hidup berdampingan**, kamera 2 perangkat terdeteksi dan dibuka
+> Aperture, RIL LTE dengan IRadio slot1+slot2, `/data` f2fs, nol tombstone, nol
+> restart loop.
+>
+> Tidak satu pun kriteria batal terpicu.
 
 Hanya pemilik A37 yang bisa menjalankan fase ini (batas §8 HANDOFF).
 
@@ -837,12 +845,14 @@ sekarang berjalan.
 
 **Batalkan 64-bit (kembali ke `git checkout lineage-20`) bila salah satu terjadi:**
 
-| Kriteria | Ambang |
-|---|---|
-| Free RAM turun jauh | > 10 % lebih buruk dari ROM 32-bit (32-bit 23.2 = 989 MB; 64-bit = 974 MB, 1,5 %) |
-| lmkd mulai membunuh aplikasi saat pemakaian normal | ada pembunuhan sama sekali saat idle |
-| ~~`system.img` tidak muat~~ **GUGUR 13 Sep 2026** | Terukur di Fase 6: isi system **1.725 MB dari 2.727 MB, sisa 1.001 MB** |
-| Kamera tidak bisa dipulihkan | Fase 4 + rencana cadangan HAL3on1 sama-sama gagal |
+**Hasil 14 Sep 2026: tidak satu pun terpicu.**
+
+| Kriteria | Ambang | Hasil |
+|---|---|---|
+| Free RAM turun jauh | > 10 % lebih buruk dari ROM 32-bit | Free 896 MB, PSI avg10 0,06 % — tekanan rendah |
+| lmkd mulai membunuh aplikasi saat pemakaian normal | ada pembunuhan sama sekali saat idle | 3 pembunuhan, semuanya `oom_score_adj 999` saat boot pertama — bukan idle, bukan pemakaian normal. **Dipantau** |
+| ~~`system.img` tidak muat~~ **GUGUR 13 Sep 2026** | Terukur di Fase 6: isi system **1.725 MB dari 2.727 MB, sisa 1.001 MB** | — |
+| ~~Kamera tidak bisa dipulihkan~~ **GUGUR 14 Sep 2026** | — | 2 kamera terdeteksi, dibuka Aperture, provider di `mediaserver` pid 443. HAL3on1 tidak diperlukan |
 
 **Yang TIDAK boleh dijadikan alasan batal:** satu HAL gagal dimuat. Itu hampir selalu
 blob yang tertinggal saat peralihan dual-arch, dan jawabannya Fase 7, bukan pembatalan.
