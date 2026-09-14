@@ -1,0 +1,308 @@
+From 3b4a37d992c6768cb66ba16296590b4514b31f0b Mon Sep 17 00:00:00 2001
+From: rigaz29 <ryanbagas27@gmail.com>
+Date: Mon, 14 Sep 2026 04:48:44 +0000
+Subject: [PATCH] T-A4: hidupkan Widevine DRM L3 dengan runtime protobuf 3.0.0
+ dari sumber
+
+Blob Widevine sudah lama ada di vendor tree tapi tidak pernah dipasang karena
+libwvhidl.so menuntut runtime protobuf lama. protobuf26/ membangun runtime itu
+dari sumber (protobuf 3.0.0), diambil dari proyek LOS 23.2 lewat cabang
+lineage-23, sudah termasuk perbaikan ABI vtable-nya.
+
+PENGUKURAN ULANG UNTUK ANDROID 13
+
+Rencana menyuruh mengukur dulu, karena pohon ini memakai protobuf 3.9.1
+(GOOGLE_PROTOBUF_VERSION 3009001), bukan 25.8. Harapan "mungkin nol pekerjaan"
+GUGUR, tetapi kerusakannya memang lebih ringan: dari 55 simbol protobuf yang
+dituntut libwvhidl.so, 3.9.1 kehilangan 12 -- di 25.8 hilang 21.
+
+Kedua belas itu mengelompok persis seperti yang diramalkan catatan 23.2:
+empty_string_, empty_string_once_init_, InitEmptyString, GoogleOnceInitImpl
+(dibuang setelah ~3.5); Arena::AddListNode, Arena::AllocateAligned,
+ArenaStringPtr::AssignWithDefault (tanda tangan berubah);
+CodedOutputStream::VarintSize64 dan VarintSize32Fallback;
+LazyStringOutputStream ctor/dtor; serta MessageLite::~MessageLite() yang cuma
+soal visibilitas.
+
+DUA JEBAKAN 23.2 TIDAK BERLAKU, SATU MASALAH BARU MUNCUL
+
+Diperiksa, bukan diasumsikan. Perangkat ini memakai konfigurasi linker
+[legacy]: SATU namespace untuk /system, /vendor, /odm, /data.
+
+  android.hardware.drm@1.1.vendor TIDAK dipasang. Di 23.2 modul itu wajib
+  karena namespace vendor tidak bisa melihat /system/lib. Di sini seluruh 18
+  dependensi DT_NEEDED gabungan -- termasuk libhidltransport.so dan
+  libhwbinder.so yang A13 masih simpan sebagai stub -- terbukti ada, nol hilang.
+
+  install_symlink /vendor/lib/libprotobuf-cpp-lite.so TIDAK dipakai. Justru
+  karena namespace tunggal itu, urutan pencarian menaruh /system/lib paling
+  depan, sehingga symlink akan terbayangi protobuf 3.9.1 yang bernama sama.
+  Sebagai gantinya modul memakai stem polos (aman: tanpa BOARD_VNDK_VERSION
+  tidak ada varian .vendor protobuf yang membentur direktori symbols), dan
+  servisnya diberi setenv LD_LIBRARY_PATH /vendor/lib lewat init .rc.
+
+  Efek samping diukur: dari 18 dependensi itu, tepat SATU ada di /vendor/lib
+  sekaligus /system/lib -- libprotobuf-cpp-lite.so itu sendiri. Mendahulukan
+  /vendor/lib tidak membayangi apa pun yang lain.
+
+HASIL VERIFIKASI BUILD
+
+  55/55 simbol protobuf terpenuhi, nol hilang
+  MessageLite::~MessageLite() kini GLOBAL DEFAULT (berkat -fvisibility=default)
+  vtable MessageLite 72 byte = 16 slot, cocok persis dengan vtable
+    drm_metrics::Attributes milik Widevine (perbaikan ABI 0af1a56 terbawa)
+  ketiga artefak ELF 32-bit ARM
+  protobuf terpasang 191.752 byte, berbeda dari 3.9.1 pohon (351.400 byte)
+
+manifest.xml memakai fqname dalam SATU blok hal drm: 1.0 dan 1.1 punya major
+version sama, dan dua blok bernama sama dengan major sama membuat
+HalManifest::shouldAdd menolak SELURUH manifest dengan -22.
+
+sepolicy/file_contexts diberi label: AOSP A13 hanya melabeli drm@1.0-service,
+drm@1.0-service-lazy dan drm-service.clearkey. Perlu dicatat SELinux perangkat
+ini Permissive, jadi label ini soal kebenaran dan kesiapan enforcing, bukan
+syarat agar servisnya jalan sekarang.
+
+init.qcom.rc membuat /data/vendor/mediadrm 0700 media media. String
+"/data/vendor/mediadrm/IDM", "/L3/", dan pesan "Could not create base
+directories for Level3FileSystem" semuanya diverifikasi ada di libwvhidl.so.
+
+BELUM DIVERIFIKASI DI PERANGKAT: servis ini akan jadi proses /vendor/bin/hw
+PERTAMA di ROM ini -- sejauh ini semua HAL berjalan passthrough.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_014BuvxqsBMX7Bb8CRVeSTBj
+---
+ device.mk                |  30 ++++++++++++
+ manifest.xml             |  21 ++++++--
+ protobuf26/Android.bp    | 101 +++++++++++++++++++++++++++++++++++++++
+ rootdir/etc/init.qcom.rc |   8 ++++
+ sepolicy/file_contexts   |   5 ++
+ 5 files changed, 160 insertions(+), 5 deletions(-)
+ create mode 100644 protobuf26/Android.bp
+
+diff --git a/device.mk b/device.mk
+index 43cad9a..c9ac266 100644
+--- a/device.mk
++++ b/device.mk
+@@ -156,6 +156,36 @@ PRODUCT_PACKAGES += \
+     android.hardware.drm@1.0-service \
+     android.hardware.drm@1.4-service.clearkey
+ 
++# Widevine L3 (T-A4, 14 September 2026)
++#
++# Blob-nya (biner servis, libwvhidl.so, init .rc) sudah lama ada di vendor tree
++# tetapi tidak dipasang karena libwvhidl.so menuntut runtime protobuf lama.
++# Runtime itu kini dibangun dari sumber di protobuf26/ (protobuf 3.0.0);
++# pemilihan versinya, dan mengapa 3.9.1 bawaan pohon ini tidak cukup,
++# didokumentasikan di protobuf26/Android.bp. Blob-nya sendiri datang lewat
++# A37-vendor.mk.
++#
++# DUA JEBAKAN LOS 23.2 TIDAK BERLAKU DI SINI, dan itu diperiksa bukan diasumsikan:
++#
++#   android.hardware.drm@1.1.vendor TIDAK dipasang. Di LOS 23.2 modul itu WAJIB
++#   karena servis berjalan di namespace linker vendor yang tidak bisa melihat
++#   /system/lib. Perangkat ini memakai konfigurasi linker [legacy]: satu
++#   namespace untuk /system, /vendor, /odm, /data. Seluruh 13 dependensi servis
++#   -- termasuk android.hardware.drm@1.0.so, @1.1.so, libhidltransport.so dan
++#   libhwbinder.so yang A13 masih simpan sebagai stub -- terbukti ADA di
++#   /system/lib 32-bit di ROM yang berjalan.
++#
++#   install_symlink di /vendor/lib TIDAK dipakai. Justru karena namespace
++#   tunggal itu, urutan pencarian menaruh /system/lib paling depan, sehingga
++#   symlink /vendor/lib/libprotobuf-cpp-lite.so akan terbayangi protobuf 3.9.1.
++#   Yang dipakai: stem polos pada modul + setenv LD_LIBRARY_PATH /vendor/lib di
++#   init .rc blob.
++#
++# Biner Widevine adalah prebuilt 32-bit, jadi Soong tidak tahu ia menaut apa pun;
++# modul protobuf di bawah ini compile_multilib "32" agar cocok.
++PRODUCT_PACKAGES += \
++    libprotobuf-cpp-lite-26-a37
++
+ PRODUCT_PROPERTY_OVERRIDES += \
+     ro.opengles.version=196608
+ 
+diff --git a/manifest.xml b/manifest.xml
+index 258007a..f9707df 100644
+--- a/manifest.xml
++++ b/manifest.xml
+@@ -283,11 +283,12 @@
+         <name>android.hardware.drm</name>
+         <transport>hwbinder</transport>
+         <version>1.0</version>
+-        <!-- instance "widevine" dibuang bersama blob-nya: kedua
+-             android.hardware.drm@1.x-service.widevine gagal link karena
+-             libwvhidl.so butuh protobuf lama. Lihat catatan di
+-             proprietary-files.txt. Deklarasi tanpa implementasi bikin klien
+-             MediaDrm menunggu getService() sia-sia. -->
++        <!-- Catatan lama di sini berbunyi: instance "widevine" dibuang
++             bersama blob-nya karena libwvhidl.so butuh protobuf lama.
++             GUGUR 14 Sep 2026 (T-A4): runtime protobuf 3.0.0 kini dibangun
++             dari sumber di protobuf26/, dan ketiga blob Widevine dipasang
++             lewat A37-vendor.mk. Instance widevine dideklarasikan lagi di
++             bawah, lewat fqname. -->
+         <interface>
+             <name>ICryptoFactory</name>
+             <instance>clearkey</instance>
+@@ -300,6 +301,16 @@
+         </interface>
+         <fqname>@1.4::ICryptoFactory/clearkey</fqname>
+         <fqname>@1.4::IDrmFactory/clearkey</fqname>
++        <!-- Widevine dihidupkan 14 Sep 2026 (T-A4). Ia mendaftar sebagai @1.1.
++             WAJIB berada di dalam blok hal INI, bukan blok baru: drm 1.0 dan
++             1.1 punya major version yang sama, dan dua blok bernama sama dengan
++             major sama membuat HalManifest::shouldAdd menolak SELURUH manifest
++             perangkat dengan -22. Di proyek LOS 23.2 kekeliruan itulah yang
++             membuat perangkat berhenti di logo OPPO waktu IRadio dinaikkan ke
++             1.4 lewat blok terpisah. fqname memberi versi per-instance tanpa
++             memecah blok. -->
++        <fqname>@1.1::ICryptoFactory/widevine</fqname>
++        <fqname>@1.1::IDrmFactory/widevine</fqname>
+     </hal>
+     <!-- wifi/hostapd/supplicant: dihapus — paket service bawa VINTF fragment.
+          Sumber: msm8916-common lineage-18.1 -->
+diff --git a/protobuf26/Android.bp b/protobuf26/Android.bp
+new file mode 100644
+index 0000000..1d5b6b2
+--- /dev/null
++++ b/protobuf26/Android.bp
+@@ -0,0 +1,101 @@
++// protobuf 3.0.0 runtime "lite", KHUSUS untuk blob Widevine A37.
++//
++// DIUKUR ULANG UNTUK LINEAGEOS 20 (14 September 2026). Pohon Android 13 memakai
++// protobuf 3.9.1 (GOOGLE_PROTOBUF_VERSION 3009001), bukan 25.8 seperti pohon
++// Android 16 asal berkas ini. Harapan bahwa versi yang lebih tua sudah cukup
++// TERBUKTI GUGUR, tetapi kerusakannya memang lebih ringan: dari 55 simbol
++// protobuf yang dituntut libwvhidl.so, 3.9.1 kehilangan 12 (di 25.8: 21).
++//
++// Kedua belas itu mengelompok persis seperti yang diramalkan:
++//   empty_string_, empty_string_once_init_, InitEmptyString, GoogleOnceInitImpl
++//       -- dibuang dari protobuf setelah ~3.5
++//   Arena::AddListNode, Arena::AllocateAligned(type_info const*, uint32)
++//   ArenaStringPtr::AssignWithDefault
++//       -- tanda tangannya berubah
++//   CodedOutputStream::VarintSize64, VarintSize32Fallback
++//   LazyStringOutputStream ctor + dtor
++//   MessageLite::~MessageLite()   -- ini cuma soal visibilitas, lihat cflags
++//
++// Arena baru ada sejak 3.0, sedangkan empty_string_ dan GoogleOnceInit baru
++// dibuang setelah ~3.5, jadi versi yang cocok ada di antaranya. 3.0.0 dipilih
++// karena sezaman dengan HAL drm@1.1 (Android 9), era blob ini.
++//
++// PERBEDAAN MEKANISME DARI LOS 23.2. Di sana modul ini dipasang dengan nama
++// unik lalu ditunjuk install_symlink /vendor/lib/libprotobuf-cpp-lite.so, dan
++// itu cukup karena namespace linker vendor tidak bisa melihat /system/lib.
++// LineageOS 20 di perangkat ini berjalan dengan konfigurasi linker [legacy]:
++// SATU namespace, dan urutan pencariannya
++//     /system/lib -> /system/system_ext/lib -> /system/product/lib
++//     -> /vendor/lib -> /odm/lib
++// menaruh /system/lib PALING DEPAN. Karena protobuf 3.9.1 sudah terpasang di
++// sana dengan nama polos yang sama, symlink di /vendor/lib akan terbayangi dan
++// blob tetap menaut versi yang salah. Karena itu berkas ini memakai stem polos
++// (aman di sini: tanpa BOARD_VNDK_VERSION tidak ada varian .vendor protobuf
++// sama sekali, jadi tidak ada dua aturan yang membentur direktori symbols),
++// dan servisnya diberi setenv LD_LIBRARY_PATH /vendor/lib lewat init .rc supaya
++// /vendor/lib dicari lebih dulu. Diverifikasi tidak ada satu pun dari 260
++// pustaka di /vendor/lib yang membayangi dependensi servis.
++cc_library_shared {
++    name: "libprotobuf-cpp-lite-26-a37",
++    vendor: true,
++    // Blob Widevine seluruhnya 32-bit (biner servis dan libwvhidl.so), jadi
++    // varian 64-bit tidak pernah dipakai dan tidak dibangun.
++    compile_multilib: "32",
++    // Nama berkas polos: itulah yang dicari linker dari DT_NEEDED libwvhidl.so.
++    stem: "libprotobuf-cpp-lite",
++
++    srcs: [
++        "google/protobuf/stubs/bytestream.cc",
++        "google/protobuf/stubs/common.cc",
++        "google/protobuf/stubs/int128.cc",
++        "google/protobuf/stubs/once.cc",
++        "google/protobuf/stubs/status.cc",
++        "google/protobuf/stubs/statusor.cc",
++        "google/protobuf/stubs/stringpiece.cc",
++        "google/protobuf/stubs/stringprintf.cc",
++        "google/protobuf/stubs/structurally_valid.cc",
++        "google/protobuf/stubs/strutil.cc",
++        "google/protobuf/stubs/time.cc",
++        "google/protobuf/arena.cc",
++        "google/protobuf/arenastring.cc",
++        "google/protobuf/extension_set.cc",
++        "google/protobuf/generated_message_util.cc",
++        "google/protobuf/message_lite.cc",
++        "google/protobuf/repeated_field.cc",
++        "google/protobuf/wire_format_lite.cc",
++        "google/protobuf/io/coded_stream.cc",
++        "google/protobuf/io/zero_copy_stream.cc",
++        "google/protobuf/io/zero_copy_stream_impl_lite.cc",
++    ],
++
++    local_include_dirs: ["."],
++    export_include_dirs: ["."],
++
++    cflags: [
++        // config.h tidak di-include oleh common.cc, jadi HAVE_PTHREAD
++        // harus didefinisikan langsung -- autotools menyuntikkannya
++        // lewat flag, bukan lewat header.
++        "-DHAVE_PTHREAD",
++        "-DHAVE_CONFIG_H",
++        "-DGOOGLE_PROTOBUF_NO_RTTI",
++        "-Wno-error",
++        "-Wno-unused-parameter",
++        "-Wno-unused-function",
++        "-Wno-unused-variable",
++        "-Wno-sign-compare",
++        "-Wno-deprecated-declarations",
++        "-Wno-implicit-fallthrough",
++        "-Wno-writable-strings",
++        "-Wno-missing-field-initializers",
++        // MessageLite::~MessageLite() inline di header, dan AOSP membangun
++        // dengan -fvisibility-inlines-hidden sehingga varian D2-nya menjadi
++        // LOCAL HIDDEN -- terbukti ada di offset 0x14947 tapi tidak terekspor.
++        // Blob menuntutnya sebagai simbol dinamis, jadi visibilitas dibuka.
++        "-fvisibility=default",
++        "-fno-visibility-inlines-hidden",
++    ],
++    cpp_std: "gnu++11",
++    rtti: false,
++    shared_libs: ["liblog"],
++    sanitize: { never: true },
++}
+diff --git a/rootdir/etc/init.qcom.rc b/rootdir/etc/init.qcom.rc
+index 4c3a47c..8a81a1c 100644
+--- a/rootdir/etc/init.qcom.rc
++++ b/rootdir/etc/init.qcom.rc
+@@ -58,6 +58,14 @@ on fs
+ 
+ # msm specific files that need to be created on /data
+ on post-fs-data
++    # CDM Widevine L3 (T-A4) menyimpan device certificate dan usage table di
++    # /data/vendor/mediadrm/IDM<uid>/L3/ -- string path itu ada di libwvhidl.so.
++    # Servis berjalan sebagai user media sedangkan /data/vendor milik root, jadi
++    # tanpa baris ini wvcdm gagal dengan "Could not create base directories for
++    # Level3FileSystem: Permission denied" lalu "OEMCrypto_Initialize failed: 28".
++    # Disalin dari acroreiser/ULH a6010 (rootdir/etc/init.qcom.rc:94), mode sama.
++    mkdir /data/vendor/mediadrm 0700 media media
++
+     mkdir /data/fdAlbum 0770 camera camera
+     mkdir /data/misc/camera 0770 camera camera
+ 
+diff --git a/sepolicy/file_contexts b/sepolicy/file_contexts
+index eaf2d26..309e92c 100644
+--- a/sepolicy/file_contexts
++++ b/sepolicy/file_contexts
+@@ -28,6 +28,11 @@
+ # transisi domain, dan servisnya jalan di domain init.
+ /(system/vendor|vendor)/bin/hw/android\.hardware\.drm@1\.3-service\.clearkey    u:object_r:hal_drm_default_exec:s0
+ 
++# Widevine (T-A4). AOSP A13 hanya melabeli drm@1.0-service, drm@1.0-service-lazy
++# dan drm-service.clearkey (system/sepolicy/vendor/file_contexts:34-36), jadi
++# biner @1.1-service.widevine tidak terlabeli tanpa entri ini.
++/(system/vendor|vendor)/bin/hw/android\.hardware\.drm@1\.1-service\.widevine    u:object_r:hal_drm_default_exec:s0
++
+ # TimeKeep
+ /sys/devices/soc\.0/qpnp-rtc-[0-9]/rtc/rtc0(/.*)?                         u:object_r:sysfs_rtc:s0
+ /(system/vendor|vendor)/bin/timekeep                                      u:object_r:timekeep_exec:s0
+-- 
+2.43.0
+

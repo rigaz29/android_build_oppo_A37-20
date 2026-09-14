@@ -1,0 +1,112 @@
+From 3978bf9962f945e5bd3d6e014243fd37972512fe Mon Sep 17 00:00:00 2001
+From: rigaz29 <ryanbagas27@gmail.com>
+Date: Mon, 14 Sep 2026 04:48:22 +0000
+Subject: [PATCH] T-A4: pasang tiga blob Widevine, dengan .rc disunting untuk
+ linker legacy
+
+Ketiganya sudah lama ada di pohon tapi sengaja tidak dipasang karena
+libwvhidl.so menuntut runtime protobuf lama. Runtime itu kini dibangun dari
+sumber di device tree (protobuf26/, protobuf 3.0.0), jadi ketiganya dihidupkan:
+
+  vendor/bin/hw/android.hardware.drm@1.1-service.widevine
+  vendor/etc/init/android.hardware.drm@1.1-service.widevine.rc
+  vendor/lib/libwvhidl.so
+
+Semuanya 32-bit, sesuai build dual-arch ini.
+
+Berkas .rc DISUNTING dari bentuk aslinya: ditambahi
+"setenv LD_LIBRARY_PATH /vendor/lib". Perangkat ini memakai konfigurasi linker
+[legacy] -- satu namespace, urutan pencarian /system/lib sebelum /vendor/lib --
+sedangkan /system/lib sudah punya libprotobuf-cpp-lite.so versi 3.9.1 dengan
+nama yang sama persis, yang kehilangan 12 dari 55 simbol yang dibutuhkan blob.
+linker.cpp:1080 menyatakan LD_LIBRARY_PATH berprioritas tertinggi, dan init A13
+mendukung opsi setenv (service_parser.cpp:607). Servis berjalan sebagai user
+media tanpa setuid, jadi AT_SECURE nol dan variabelnya tidak dibuang
+(linker_main.cpp:349).
+
+Diverifikasi tidak ada efek samping: dari 18 dependensi DT_NEEDED gabungan
+servis, libwvhidl, dan protobuf, tepat SATU yang ada di /vendor/lib sekaligus
+/system/lib -- yaitu libprotobuf-cpp-lite.so itu sendiri. Sisanya hanya ada di
+satu tempat, jadi mendahulukan /vendor/lib tidak membayangi apa pun.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_014BuvxqsBMX7Bb8CRVeSTBj
+---
+ A37/A37-vendor.mk                              | 18 +++++++++++++-----
+ ...ndroid.hardware.drm@1.1-service.widevine.rc |  8 ++++++++
+ 2 files changed, 21 insertions(+), 5 deletions(-)
+
+diff --git a/A37/A37-vendor.mk b/A37/A37-vendor.mk
+index 7f1ab04..a84f087 100644
+--- a/A37/A37-vendor.mk
++++ b/A37/A37-vendor.mk
+@@ -20,14 +20,19 @@
+ # kamera 64-bit untuk msm8916. Karena itu build ini WAJIB dual-arch, dan
+ # seluruh 13 biner vendor/bin tetap 32-bit.
+ #
+-# TIGA BERKAS WIDEVINE SENGAJA ADA DI POHON TAPI TIDAK DIPASANG:
++# TIGA BERKAS WIDEVINE KINI DIPASANG (T-A4, 14 September 2026):
+ #   vendor/bin/hw/android.hardware.drm@1.1-service.widevine
+ #   vendor/etc/init/android.hardware.drm@1.1-service.widevine.rc
+ #   vendor/lib/libwvhidl.so
+-# LOS 20 belum memasang Widevine sama sekali (nol sebutan di device.mk).
+-# Pola yang sama dipakai cabang lineage-18.1, yang juga membawa blob Widevine
+-# tanpa memasangnya. Menghidupkannya adalah pekerjaan T-A4 PLAN-64BIT sec.6,
+-# bukan bagian Fase 1.
++# Sebelumnya sengaja ada di pohon tapi tidak dipasang, karena libwvhidl.so
++# menuntut runtime protobuf lama. Runtime itu kini dibangun dari sumber di
++# device tree (protobuf26/, protobuf 3.0.0). Ketiganya 32-bit, sesuai build
++# dual-arch ini. Rinciannya di device/oppo/A37/device.mk bagian Widevine.
++#
++# Berkas .rc-nya DISUNTING dari bentuk aslinya: ditambahi
++# "setenv LD_LIBRARY_PATH /vendor/lib" supaya linker menemukan protobuf 3.0.0
++# di /vendor/lib sebelum protobuf 3.9.1 di /system/lib. Lihat catatan di
++# protobuf26/Android.bp.
+ #
+ # libloc_api_v02, libloc_ds_api, dan libtime_genoff TIDAK ada di
+ # PRODUCT_COPY_FILES untuk arch yang ditangani Android.bp -- lihat di sana.
+@@ -40,6 +45,7 @@ PRODUCT_SOONG_NAMESPACES += \
+ 
+ PRODUCT_COPY_FILES += \
+     vendor/oppo/A37/proprietary/vendor/lib/libtime_genoff.so:$(TARGET_COPY_OUT_VENDOR)/lib/libtime_genoff.so \
++    vendor/oppo/A37/proprietary/vendor/lib/libwvhidl.so:$(TARGET_COPY_OUT_VENDOR)/lib/libwvhidl.so \
+     vendor/oppo/A37/proprietary/vendor/lib64/libimscamera_jni.so:$(TARGET_COPY_OUT_VENDOR)/lib64/libimscamera_jni.so \
+     vendor/oppo/A37/proprietary/vendor/lib64/libimsmedia_jni.so:$(TARGET_COPY_OUT_VENDOR)/lib64/libimsmedia_jni.so \
+     vendor/oppo/A37/proprietary/vendor/etc/permissions/imscm.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/imscm.xml \
+@@ -207,6 +213,7 @@ PRODUCT_COPY_FILES += \
+     vendor/oppo/A37/proprietary/lib/vendor.qti.hardware.iop@2.0.so:$(TARGET_COPY_OUT_SYSTEM)/lib/vendor.qti.hardware.iop@2.0.so \
+     vendor/oppo/A37/proprietary/vendor/bin/adsprpcd:$(TARGET_COPY_OUT_VENDOR)/bin/adsprpcd \
+     vendor/oppo/A37/proprietary/vendor/bin/hw/android.hardware.bluetooth@1.0-service-qti:$(TARGET_COPY_OUT_VENDOR)/bin/hw/android.hardware.bluetooth@1.0-service-qti \
++    vendor/oppo/A37/proprietary/vendor/bin/hw/android.hardware.drm@1.1-service.widevine:$(TARGET_COPY_OUT_VENDOR)/bin/hw/android.hardware.drm@1.1-service.widevine \
+     vendor/oppo/A37/proprietary/vendor/bin/hw/vendor.qti.hardware.perf@1.0-service:$(TARGET_COPY_OUT_VENDOR)/bin/hw/vendor.qti.hardware.perf@1.0-service \
+     vendor/oppo/A37/proprietary/vendor/bin/irsc_util:$(TARGET_COPY_OUT_VENDOR)/bin/irsc_util \
+     vendor/oppo/A37/proprietary/vendor/bin/mm-pp-daemon:$(TARGET_COPY_OUT_VENDOR)/bin/mm-pp-daemon \
+@@ -220,6 +227,7 @@ PRODUCT_COPY_FILES += \
+     vendor/oppo/A37/proprietary/vendor/etc/data/dsi_config.xml:$(TARGET_COPY_OUT_VENDOR)/etc/data/dsi_config.xml \
+     vendor/oppo/A37/proprietary/vendor/etc/data/netmgr_config.xml:$(TARGET_COPY_OUT_VENDOR)/etc/data/netmgr_config.xml \
+     vendor/oppo/A37/proprietary/vendor/etc/init/android.hardware.bluetooth@1.0-service-qti.rc:$(TARGET_COPY_OUT_VENDOR)/etc/init/android.hardware.bluetooth@1.0-service-qti.rc \
++    vendor/oppo/A37/proprietary/vendor/etc/init/android.hardware.drm@1.1-service.widevine.rc:$(TARGET_COPY_OUT_VENDOR)/etc/init/android.hardware.drm@1.1-service.widevine.rc \
+     vendor/oppo/A37/proprietary/vendor/etc/init/vendor.qti.hardware.perf@1.0-service.rc:$(TARGET_COPY_OUT_VENDOR)/etc/init/vendor.qti.hardware.perf@1.0-service.rc \
+     vendor/oppo/A37/proprietary/vendor/etc/perf/perfboostsconfig.xml:$(TARGET_COPY_OUT_VENDOR)/etc/perf/perfboostsconfig.xml \
+     vendor/oppo/A37/proprietary/vendor/etc/permissions/qcnvitems.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/qcnvitems.xml \
+diff --git a/A37/proprietary/vendor/etc/init/android.hardware.drm@1.1-service.widevine.rc b/A37/proprietary/vendor/etc/init/android.hardware.drm@1.1-service.widevine.rc
+index 9136885..f5f2476 100644
+--- a/A37/proprietary/vendor/etc/init/android.hardware.drm@1.1-service.widevine.rc
++++ b/A37/proprietary/vendor/etc/init/android.hardware.drm@1.1-service.widevine.rc
+@@ -1,5 +1,13 @@
+ service drm-widevine-hal-1-1 /vendor/bin/hw/android.hardware.drm@1.1-service.widevine
+     class hal
++    # A37/LineageOS 20: linker perangkat ini memakai konfigurasi [legacy], satu
++    # namespace, dan mencari /system/lib SEBELUM /vendor/lib. libwvhidl.so
++    # menuntut libprotobuf-cpp-lite.so dengan ABI protobuf 3.0.0, sedangkan
++    # /system/lib punya 3.9.1 dengan nama yang sama persis (12 dari 55 simbol
++    # yang dibutuhkan hilang di sana). Tanpa baris ini blob menaut versi yang
++    # salah. Diperiksa: nol dari 260 pustaka di /vendor/lib membayangi
++    # dependensi servis ini.
++    setenv LD_LIBRARY_PATH /vendor/lib
+     user media
+     group media mediadrm drmrpc
+     ioprio rt 4
+-- 
+2.43.0
+
