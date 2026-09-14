@@ -1,0 +1,172 @@
+# T-A3 — HAL thermal 2.0
+
+Dikerjakan **14 September 2026**, commit device tree `ea262bb`.
+
+---
+
+## 1. Kenapa dikerjakan
+
+A37 tidak punya HAL thermal **sama sekali** — nol sebutan di `device.mk`.
+Akibatnya seluruh API termal framework mati:
+
+- `PowerManager.getCurrentThermalStatus()`
+- listener status termal (`addThermalStatusListener`)
+- thermal headroom (`getThermalHeadroom`)
+
+Terukur di perangkat sebelum perubahan: `dumpsys thermalservice` memuat **enam
+listener terdaftar** yang menunggu data yang tidak pernah datang.
+
+**Yang TIDAK dikerjakan HAL ini: proteksi panas.** Mitigasi tetap sepenuhnya di
+kernel — tiga thread `msm_thermal` (`hot`/`fre`/`the`) yang terlihat di `ps -A`.
+Yang ditambahkan murni **pelaporan status ke framework**.
+
+---
+
+## 2. HIDL 2.0, bukan AIDL — dan di Android 13 itu jalur utama
+
+Di Android 16 (proyek LOS 23.2) HIDL sudah jadi jalur mundur. Di Android 13
+kebalikannya. `ThermalManagerService.java`:
+
+| baris | isi |
+|---|---|
+| 141 | `ThermalHal20Wrapper` — **dicoba pertama** |
+| 146 | `ThermalHal11Wrapper` — mundur |
+| 151 | `ThermalHal10Wrapper` — mundur |
+
+Tidak ada `ThermalHalAidlWrapper` sama sekali di rilis ini; ia baru muncul di
+Android 14. Jadi HIDL 2.0 di sini **lebih kuat** posisinya ketimbang di 23.2.
+
+---
+
+## 3. Sumber berkas
+
+`hidl/thermal/` (15 berkas) diambil dari device tree **a6010** — msm8916, SoC
+sama — lewat cabang `lineage-23` repo ini:
+
+```bash
+git checkout gh/lineage-23 -- hidl/thermal configs/thermal_info_config.json
+```
+
+Pendaftaran lewat **VINTF fragment** di dalam modul
+(`android.hardware.thermal@2.0-service.msm8916.xml`, mendeklarasikan versi 1.0
+dan 2.0), bukan suntingan `manifest.xml`.
+
+`sepolicy/file_contexts` butuh entri sendiri: AOSP hanya melabeli
+`android.hardware.thermal@1.[01]-service` dan `thermal-service.example`
+(`system/sepolicy/vendor/file_contexts:115-116`), jadi biner `@2.0` kita tidak
+terlabeli tanpa itu.
+
+---
+
+## 4. `thermal-engine.conf` sengaja TIDAK disalin
+
+Berkas itu ikut dari a6010, tetapi daemon pembacanya
+`/vendor/bin/thermal-engine` **tidak ada di A37** — bukan di blob vendor
+(`find proprietary -iname "*thermal*"` hanya memberi `libthermalclient.so`),
+bukan pula di ROM yang sedang berjalan. HAL sendiri hanya membaca
+`thermal_info_config.json` lewat properti `vendor.thermal.config`
+(`thermal-helper.cpp:52`), dan tidak menaut `libthermalclient`.
+
+Menyalinnya hanya menambah berkas dengan **nol pembaca**. Ini penerapan aturan
+proyek: *"dibaca" bukan "dipakai"*.
+
+---
+
+## 5. Config sensor diukur ulang, bukan disalin mentah
+
+Inilah bagian terpenting. Config a6010 memuat tebakan yang **salah untuk A37**.
+
+### 5.1 Pengukuran
+
+Beban 4 core, 70 detik, di perangkat sungguhan:
+
+| zona | tipe kernel | idle | 70 s | delta |
+|---|---|---|---|---|
+| zone0–4 | `tsens_tz_sensor0/1/2/4/5` | 37–40 °C | 53–62 °C | **+20** |
+| zone5 | `pm8916_tz` | 35,9 | 46,6 | **+10,7** |
+| zone6 | `battery` | 32,9 | 33,6 | +0,7 |
+| zone7 | `bms` | 42,8 | 43,6 | **+0,8** |
+
+Satuannya memang campur — itu sebabnya `Multiplier` berbeda: tsens derajat
+bulat (`1`), sisanya milli-derajat (`0.001`). `tsens_tz_sensor3` memang tidak
+ada di perangkat ini.
+
+### 5.2 Dua fakta framework yang menentukan segalanya
+
+`ThermalManagerService.java`:
+
+- **`:205`** — dalam `onTemperatureMapChangedLocked()`, **hanya** sensor
+  bertipe `SKIN` yang menaikkan status termal global. Tipe lain tidak ikut
+  sama sekali.
+- **`:269-288`** — `shutdownIfNeeded()`: status `THROTTLING_SHUTDOWN` pada tipe
+  `CPU`/`GPU`/`NPU`/`SKIN` memanggil `powerManager.shutdown(SHUTDOWN_THERMAL_STATE)`,
+  dan `BATTERY` memanggil `shutdown(SHUTDOWN_BATTERY_THERMAL_STATE)`.
+  **`USB_PORT` tidak ada di switch** — dan memang nol pembaca di seluruh
+  `services/core/` dan `core/java/`.
+
+### 5.3 Tiga koreksi
+
+| # | perubahan | alasan terukur |
+|---|---|---|
+| 1 | `bms`: `SKIN` → `UNKNOWN`, semua ambang `NAN` | Naik cuma **0,8 °C** di bawah beban penuh. Sebagai `SKIN` ia akan mengunci status global di `NONE` selamanya — HAL terpasang tetapi tidak melaporkan apa pun. Ia juga **bukan** suhu baterai: baterai sungguhan 32,9 sementara `bms` 42,8, sepuluh derajat lebih panas, karena itu die BMS/PMIC |
+| 2 | `pm8916_tz`: `USB_PORT` → `SKIN`, ambang `[–, –, 55, 62, 70, 80, –]` | Satu-satunya sensor tingkat-papan yang responsif (+10,7 °C), dan tipe lamanya toh nol pembaca |
+| 3 | `SHUTDOWN` dicabut di semua sensor proxy: 4× tsens CPU (dulu **85**) dan `pm8916_tz` (dulu **120**) | Konsisten dengan sifat HAL ini — mitigasi milik kernel. Puncak terukur 62 °C pada tsens berarti beban berkelanjutan di hari panas bisa menyentuh 85 dan **mematikan perangkat tanpa sebab nyata** |
+
+`battery` **mempertahankan** `SHUTDOWN` 70 °C: pembacaan langsung dan akurat
+(cocok persis dengan `/sys/class/power_supply/battery/temp` = `329`), bergerak
+hanya 0,7 °C di bawah beban, dan baterai 70 °C memang peristiwa keselamatan.
+
+Trip kernel sendiri jauh di atas rentang nyata, jadi tidak ada jaring pengaman
+ganda yang hilang: `pm8916_tz` critical 145 °C / hot 125 / hot 105; zona tsens
+tidak punya trip shutdown sama sekali (hanya `configurable_hi/low`).
+
+### 5.4 Hasil akhir config
+
+```
+tsens_tz_sensor0/1/4/5  CPU      ×1      [–, –, 65, 70, 75, 80, –]
+tsens_tz_sensor2        GPU      ×1      [–, –,  –, 62,  –,  –, –]
+pm8916_tz               SKIN     ×0.001  [–, –, 55, 62, 70, 80, –]
+battery                 BATTERY  ×0.001  [–, –,  –,  –,  –, 50, 70]
+bms                     UNKNOWN  ×0.001  [–, –,  –,  –,  –,  –, –]
+```
+
+Urutan `NONE, LIGHT, MODERATE, SEVERE, CRITICAL, EMERGENCY, SHUTDOWN`.
+Parser menolak ambang yang menurun (`config_parser.cpp:128-140`), dan
+monotonisitas keempat baris sudah diuji.
+
+`UNKNOWN` sah: `getTypeFromString()` (`config_parser.cpp:41`) menelusuri
+`hidl_enum_range<TemperatureType>` dan mencocokkan `toString()`, sementara
+`UNKNOWN = -1` ada di `thermal/1.0/types.hal:22`.
+
+---
+
+## 6. Verifikasi build
+
+```
+biner   vendor/bin/hw/android.hardware.thermal@2.0-service.msm8916
+        ELF 64-bit LSB pie executable, ARM aarch64        106.464 byte
+rc      vendor/etc/init/…rc                                  260 byte
+vintf   vendor/etc/vintf/manifest/…xml                       349 byte
+config  vendor/etc/thermal_info_config.json                3.016 byte  (0644)
+```
+
+`rc` menjalankannya sebagai `class hal`, `user system`, mendeklarasikan
+`interface` untuk `@1.0::IThermal` dan `@2.0::IThermal`.
+
+---
+
+## 7. Belum diverifikasi di perangkat
+
+T-A3 **belum masuk ROM mana pun**. Setelah ROM berikutnya di-flash:
+
+```bash
+adb shell getprop | grep thermal
+adb shell lshal | grep -i thermal          # harus binderized, bukan N/A
+adb shell dumpsys thermalservice | head -40
+adb shell cmd thermalservice override-status 3   # uji listener tanpa memanaskan
+adb shell cmd thermalservice reset
+```
+
+Yang harus terlihat: `dumpsys thermalservice` memuat **daftar suhu**, bukan
+hanya daftar listener; `pm8916_tz` muncul sebagai `SKIN`; dan status global
+ikut naik saat perangkat benar-benar panas.
