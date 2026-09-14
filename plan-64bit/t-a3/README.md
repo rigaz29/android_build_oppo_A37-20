@@ -193,6 +193,59 @@ terhubung ke HAL yang hidup.
 
 ---
 
+## 7.6 Ambang SKIN dikoreksi — tebakan saya terbantah
+
+Peringatan termal muncul **tiap kali kamera dibuka**. Sumbernya Aperture:
+`CameraActivity.kt:437-440` menampilkan snackbar mulai
+`THERMAL_STATUS_MODERATE`, lewat `PowerManager.addThermalStatusListener`.
+
+Sebelum T-A3 perangkat ini tidak punya HAL thermal sama sekali, sehingga
+`getCurrentThermalStatus()` selalu `NONE` dan peringatan itu mustahil muncul.
+**Jadi penyebabnya memang perubahan ini.**
+
+Ambang lama `[–, –, 55, 62, 70, 80, –]` adalah **tebakan**, diambil dari
+pengukuran 70 detik saja (§5.1: 35,9 → 46,6 °C). Pengukuran yang lebih panjang
+membantahnya:
+
+| | |
+|---|---|
+| idle, charger tercolok | 35 – 42 °C |
+| beban 4 inti, mendatar | **57 °C** (melewati 55 hanya dalam 60 detik) |
+| trip kernel sensor ini | hot 105 °C, critical **145 °C** |
+
+Framework meneriakkan MODERATE saat perangkat keras belum mendekati batasnya,
+dengan margin hanya **2 °C** di atas dataran beban penuh.
+
+Ambang baru **`[–, –, 65, 72, 80, 90, –]`** memberi ~8 °C di atas dataran
+terukur.
+
+### Sifat sensor yang sebelumnya luput
+
+`pm8916_tz` adalah **die PMIC**, dan PMIC menangani pengisian daya. Terukur saat
+CPU idle dengan charger tercolok, ia duduk ~9 °C di atas suhu baterai, dan kurva
+pendinginannya berhenti di 42 °C — bukan kembali ke 35 °C:
+
+```
+detik    pm8916   battery
+    0     48,3      39,5
+  120     44,0      38,6
+  240     42,1      38,0    <- masih turun pelan
+```
+
+Jadi ia **bukan proxy kulit yang murni**; sebagian panasnya datang dari mengisi
+daya, bukan dari beban. Itu tetap diterima karena ia satu-satunya sensor
+tingkat-papan yang responsif di perangkat ini (§5.1), tetapi sekarang tercatat.
+
+Ambang tsens CPU **sengaja tidak disentuh** walau juga terlewati saat beban
+penuh (65/70 versus puncak 70). Sensor bertipe CPU tidak menentukan status
+termal global — hanya SKIN yang menentukannya
+(`ThermalManagerService.java:205`) — sehingga tidak memicu peringatan apa pun,
+dan slot `SHUTDOWN`-nya sudah `NAN` sejak awal.
+
+Masuk ROM `20260914_164631`. Belum diuji kembali di perangkat.
+
+---
+
 ## 8. Perintah verifikasi ulang
 
 T-A3 **belum masuk ROM mana pun**. Setelah ROM berikutnya di-flash:
