@@ -84,6 +84,7 @@ Repo official LineageOS **tidak bisa** menggantikannya — diukur: kedua cabangn
 | [`PLAN.md`](PLAN.md) | 10 fase asli di atas basis UL. **Arsip yang masih berlaku** untuk seluruh temuan khas A37 (10.A–10.F, VINTF, sepolicy, blob) |
 | [`A37-20.xml`](A37-20.xml) | Local manifest: 3 repo proyek, 3 pin qcom-caf msm8916, + 6 pin anti-hanyut. ⚠️ `sepolicy-legacy` dan `timekeep` hanya ada di [`A37-20-official.xml`](A37-20-official.xml), yang justru tidak memuat keenam pin — lihat `PLAN-64BIT.md` §4.5 |
 | [`A37-20-64bit.xml`](A37-20-64bit.xml) | **Local manifest build 64-bit** — gabungan dua manifest yang masing-masing tidak lengkap, kernel `lineage-24` + vendor `lineage-20-64bit`, 6 pin anti-hanyut. Terverifikasi merakit 1253 project |
+| [`plan-64bit/t-a6/`](plan-64bit/t-a6/) | **T-A6 selesai** — server PSDS; solusi LOS 23.2 tidak bisa disalin karena tiga perbedaan Android 13 |
 | [`plan-64bit/fase-8/`](plan-64bit/fase-8/) | **Fase 8 — ROM 64-bit BOOT di perangkat** (14 Sep 2026): arm64-v8a, dua zygote, kamera 2 perangkat, RIL LTE, `/data` f2fs, nol tombstone |
 | [`plan-64bit/fase-7/`](plan-64bit/fase-7/) | **Fase 7 selesai** — audit closure dua jenis; menemukan premis Fase 4 salah dan mengembalikan kamera ke passthrough |
 | [`plan-64bit/fase-6/`](plan-64bit/fase-6/) | **Fase 6 selesai** — ROM 64-bit pertama terbangun (721 MB), `verify-rom.sh` semua lolos, isi system 1725 MB sisa 1001 MB |

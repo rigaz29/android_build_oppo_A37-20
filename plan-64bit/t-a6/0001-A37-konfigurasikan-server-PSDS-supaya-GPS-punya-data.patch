@@ -1,0 +1,118 @@
+From 5efa89b1996ed5245b35da2e68aaac9d6e919922 Mon Sep 17 00:00:00 2001
+From: rigaz29 <ryanbagas27@gmail.com>
+Date: Mon, 14 Sep 2026 01:40:26 +0000
+Subject: [PATCH] A37: konfigurasikan server PSDS supaya GPS punya data orbit
+ prediktif (T-A6)
+
+Tanpa ini framework tidak pernah mengunduh data orbit prediktif, sehingga cold start
+harus mengurai almanak langsung dari sinyal satelit -- bisa menit-menitan. Diverifikasi
+di perangkat sebelum perubahan: gps provider enabled, HAL hidup, tetapi nol pesan sv
+diproses dan last location=null.
+
+TIGA PERBEDAAN VERSI YANG MENENTUKAN, DIPERIKSA DI SUMBER
+
+Solusi proyek LOS 23.2 (dc76af2) TIDAK BISA disalin apa adanya:
+
+  jalur                          Android 16 (LOS 23.2)      Android 13 (LOS 20)
+  config_gnssParameters overlay  dibaca GnssConfiguration   DIDEKLARASIKAN, NOL PEMBACA
+  /vendor/etc/gps_debug.conf     dibaca (VENDOR_FILE)       konstanta itu TIDAK ADA
+  /etc/gps_debug.conf            dibaca                     SATU-SATUNYA JALAN
+
+Diverifikasi:
+  GnssConfiguration.java:57   DEBUG_PROPERTIES_FILE = "/etc/gps_debug.conf" -- dan
+                              grep DEBUG_PROPERTIES menghasilkan tepat 3 baris,
+                              semuanya merujuk konstanta tunggal itu. Tidak ada
+                              varian vendor di Android 13.
+  config_gnssParameters       nol pembaca di seluruh pohon (grep *.java/*.kt);
+                              bandingkan lineage-23.2 yang memakainya di
+                              GnssConfiguration.
+  Nama propertinya            LONGTERM_PSDS_SERVER_1/2/3 (GnssConfiguration.java:79-81)
+  Pesan galatnya              GnssPsdsDownloader.java:75
+
+Jadi memasang berkas ke vendor/etc/ seperti LOS 23.2 tidak akan berpengaruh sama
+sekali di sini.
+
+HALANGAN YANG TIDAK DIHADAPI LOS 23.2
+
+/etc/gps_debug.conf sudah dimiliki modul Soong AOSP (frameworks/base/services/core/
+Android.bp:204, prebuilt_etc) yang memasang template berisi komentar saja, 1871 byte.
+Itu alasan sesungguhnya LOS 23.2 memakai vendor/etc -- bukan sekadar karena A16
+mendukungnya.
+
+Diuji empiris, bukan diasumsikan: PRODUCT_COPY_FILES ke tujuan yang sama TIDAK
+bentrok dan justru MENANG.
+  m nothing                                          build completed (18:21)
+  m out/.../system/etc/gps_debug.conf                 build completed (02:13)
+  hasilnya 1955 byte dengan ketiga LONGTERM_PSDS_SERVER, bukan template 1871 byte
+Karena itu tidak perlu menambal framework.
+
+Server: XTRA generasi 2 Qualcomm (xtrapath1/2/3.izatcloud.net/xtra2.bin), sesuai umur
+blob GPS msm8916 (2016). Nilai yang sama dipakai proyek LOS 23.2.
+
+YANG BELUM TERBUKTI: bahwa PSDS benar-benar terunduh. Itu menuntut reboot (properti
+dibaca saat init GnssLocationProvider) DAN klien yang meminta lokasi -- dan ROM ini
+tidak memuat aplikasi peta/GPS. Yang terbukti: berkasnya mendarat di jalur yang dibaca
+Android 13, dengan isi yang benar.
+---
+ device.mk          |  1 +
+ gps/gps_debug.conf | 39 +++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 40 insertions(+)
+ create mode 100644 gps/gps_debug.conf
+
+diff --git a/device.mk b/device.mk
+index 3950600..cf7555d 100644
+--- a/device.mk
++++ b/device.mk
+@@ -341,6 +341,7 @@ PRODUCT_PACKAGES += \
+ PRODUCT_COPY_FILES += \
+     $(LOCAL_PATH)/gps/flp.conf:system/etc/flp.conf \
+     $(LOCAL_PATH)/gps/gps.conf:system/etc/gps.conf \
++    $(LOCAL_PATH)/gps/gps_debug.conf:system/etc/gps_debug.conf \
+     $(LOCAL_PATH)/gps/izat.conf:system/etc/izat.conf \
+     $(LOCAL_PATH)/gps/sap.conf:system/etc/sap.conf \
+     $(LOCAL_PATH)/gps/quipc.conf:system/etc/quipc.conf
+diff --git a/gps/gps_debug.conf b/gps/gps_debug.conf
+new file mode 100644
+index 0000000..aeb0805
+--- /dev/null
++++ b/gps/gps_debug.conf
+@@ -0,0 +1,39 @@
++# Server PSDS (Predicted Satellite Data Service) untuk A37.
++#
++# Dibaca framework lewat GnssConfiguration.reloadGpsProperties() ->
++# loadPropertiesFromGpsDebugConfig(), tanpa syarat build type -- kata "debug"
++# hanya nama warisan berkasnya, bukan gerbang.
++#
++# KENAPA BUKAN gps.conf
++#
++# gps.conf memuat XTRA_SERVER_1/2/3 yang dikomentari, dan itu memang harus tetap
++# dikomentari: berkas itu dibaca BLOB VENDOR, bukan framework. Kode GNSS Android 13
++# NOL menyebut XTRA_SERVER -- diperiksa di seluruh
++# frameworks/base/services/core/java/com/android/server/location/gnss.
++# Yang dibacanya LONGTERM_PSDS_SERVER_1/2/3 (GnssConfiguration.java:79-81).
++#
++# Sumbernya cuma dua: string-array config_gnssParameters (kosong di AOSP) dan
++# berkas ini. Tanpa entri di bawah, framework mencatat tiap kali PSDS diminta:
++#
++#   E GnssPsdsDownloader: No Long-Term PSDS servers were specified in the
++#                         GnssConfiguration          (GnssPsdsDownloader.java:75)
++#
++# dan perangkat tidak pernah mengunduh data orbit prediktif, sehingga cold start
++# harus mengurai almanak langsung dari sinyal satelit -- bisa menit-menitan.
++#
++# JALUR PEMASANGAN BERBEDA DARI LOS 23.2
++#
++# Proyek LOS 23.2 memasang berkas ini ke vendor/etc/gps_debug.conf, karena
++# Android 14+ menambahkan DEBUG_PROPERTIES_VENDOR_FILE. Android 13 TIDAK punya
++# varian itu -- GnssConfiguration.java:57 hanya mendefinisikan
++#
++#   DEBUG_PROPERTIES_FILE = "/etc/gps_debug.conf"
++#
++# Diverifikasi: grep DEBUG_PROPERTIES pada berkas itu menghasilkan tepat tiga
++# baris, semuanya merujuk konstanta tunggal tersebut. Karena itu di sini berkasnya
++# dipasang ke system/etc/, dan menyalinnya ke vendor/etc/ TIDAK akan berpengaruh.
++#
++# Server: XTRA generasi 2 milik Qualcomm, sesuai umur blob GPS msm8916 (2016).
++LONGTERM_PSDS_SERVER_1=http://xtrapath1.izatcloud.net/xtra2.bin
++LONGTERM_PSDS_SERVER_2=http://xtrapath2.izatcloud.net/xtra2.bin
++LONGTERM_PSDS_SERVER_3=http://xtrapath3.izatcloud.net/xtra2.bin
