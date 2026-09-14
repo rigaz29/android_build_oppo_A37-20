@@ -326,24 +326,145 @@ detik.
 
 ---
 
-## 7. Belum diverifikasi di perangkat
+## 7. Hasil di perangkat (14 September 2026)
 
-Semua perubahan di atas **belum masuk ROM mana pun** kecuali `wg`, yang diuji
-lewat push manual. Setelah ROM berikutnya di-flash:
+ROM `20260914_125924` di-flash dan diperiksa. **Nol tombstone, nol crash, nol
+servis restart-loop.**
 
-```bash
-# T-B3 — hint hanya bereaksi saat battery saver / sustained mode aktif
-adb shell cmd power set-mode 1          # battery saver
-adb shell cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq   # harus 800000
-adb shell cmd power set-mode 0
-adb shell cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq   # harus pulih
+| item | hasil |
+|---|---|
+| **T-B4** `wg` | `/system/bin/wg`, `wireguard-tools va998407` — kini dikirim di ROM |
+| **T-B6d** GPU | `default_pwrlevel = 2` **dan `gpuclk = 200000000`** — GPU benar-benar beristirahat di 200 MHz |
+| **T-B7c** hung task | `hung_task_timeout_secs = 90`, `panic = 0` seperti dirancang |
+| **T-B7a** pinner | total `153.747.456` B (146,6 MB), `Mlocked` 150.144 kB |
+| **T-B6a** speaker | **96 saat speaker aktif**, kembali 86 saat dilepas — lihat di bawah |
+| **T-B3** power hint | **800000 saat battery saver ON**, pulih ke 1209600 saat OFF — lihat di bawah |
 
-adb shell which wg && wg --version                    # T-B4
-adb shell tinymix | grep "RX1 Digital Volume"         # T-B6a, harus 96
-adb shell cat /sys/class/kgsl/kgsl-3d0/default_pwrlevel   # T-B6d, harus 2
-adb shell dumpsys pinner | tail -3                    # T-B7a, total dan isi
-adb shell cat /proc/sys/kernel/hung_task_timeout_secs # T-B7c, harus 90
+### 7.1 T-B6a: pembacaan idle sempat terlihat seperti kegagalan
+
+`tinymix` saat perangkat menganggur melaporkan **86**, bukan 96. Itu **bukan**
+kegagalan, dan mengejarnya memberi pelajaran soal cara `audio_route` bekerja.
+
+Berkas di perangkat memang memuat `value="96"` di baris 530, di dalam
+`<path name="speaker">`. Tetapi `audio_route` menerapkan ctl sebuah path hanya
+**selama path itu aktif**, dan mengembalikan nilai awal begitu dilepas. Saat
+menganggur, yang berlaku adalah default global baris 25, yaitu 86.
+
+Percobaan pertama memicu bunyi lewat tombol volume dan hasilnya tetap 86 di 24
+cuplikan — tetapi logcat menunjukkan **tidak ada `Apply path: speaker` baru sama
+sekali**, jadi uji itu tidak konklusif, bukan negatif. Dengan pemicu yang
+benar-benar mengeluarkan audio (timer DeskClock 5 detik):
+
+```
+Apply path: speaker           20:26:09
+cuplikan  8..23  ->  96       (16 cuplikan berturut-turut, ~8 detik)
+setelah path dilepas ->  86
 ```
 
-Yang paling perlu diperhatikan setelah pemakaian sehari-hari: **total pinner**
-(§5.1) dan apakah GPU 200 MHz terasa pada animasi.
+### 7.2 T-B7a: ongkos RAM terukur, dan tidak menimbulkan tekanan
+
+Prediksi sebelum flash: sekitar 150 MB. Terukur: **153.747.456 byte = 146,6 MB**,
+dan `Mlocked` 150.144 kB mengkonfirmasinya dari sisi kernel.
+
+```
+/system/framework/oat/arm64/services.odex              20.713.472
+/system/system_ext/priv-app/SystemUI/SystemUI.apk      34.693.120
+/system/system_ext/priv-app/SystemUI/oat/arm64/…odex   29.175.808
+/system/system_ext/priv-app/SystemUI/oat/arm64/…vdex      315.392
+```
+
+> Koreksi terhadap catatan §5.1: dua ukuran tertukar di sana. `services.odex`
+> sebenarnya 19,8 MB dan `SystemUI.apk` 33,1 MB, bukan sebaliknya. Totalnya
+> kebetulan sama (81 MB tambahan), jadi kesimpulannya tidak berubah.
+
+Yang penting: **tekanan memori tidak naik.** PSI `some avg10=0.00`,
+`avg300=0.12`, `Cached` masih 990 MB, zram baru terpakai 83 MB dari 767 MB.
+Jadi tambahan 81 MB terkunci itu terserap tanpa gejala — sejauh ini.
+
+### 7.3 sepolicy Widevine: terbukti menutup celahnya
+
+Ini pemeriksaan paling memuaskan, karena menguji bagian yang hampir terlewat.
+
+```
+/data/vendor/mediadrm   u:object_r:mediadrm_vendor_data_file:s0
+```
+
+Direktori itu **sudah ada** dari ROM sebelumnya dengan label `vendor_data_file`.
+`restorecon_recursive` yang ditambahkan di `init.qcom.rc` melabelinya ulang —
+tanpa baris itu, label lama akan bertahan dan seluruh aturan `allow` baru tidak
+akan mengenai apa pun.
+
+CDM lalu dipicu ulang dan membuat berkasnya dari nol. Semuanya mewarisi label
+yang benar:
+
+```
+IDM1013/               mediadrm_vendor_data_file
+IDM1013/L3/            mediadrm_vendor_data_file
+IDM1013/L3/ay64.dat    mediadrm_vendor_data_file
+```
+
+**Denial `hal_drm_default`: 19 sebelum perbaikan, NOL sesudahnya** — di `dmesg`
+maupun `logcat`.
+
+### 7.4 Nol regresi Tier A
+
+Kamera 2 device, keempat sensor fisik terdaftar, `ThermalHAL 2.0 connected: yes`,
+Widevine `running` dan tetap memuat protobuf dari `/system/vendor/lib`, lmkd
+memegang 3 fd ke `/proc/pressure`, `/data` f2fs `discard`.
+
+---
+
+### 7.5 T-B3: butuh baterai yang disimulasikan tercabut
+
+Percobaan pertama gagal menggerakkan apa pun: `cmd power set-mode 1` tidak
+menyalakan apa-apa (`settings get global low_power` tetap 0). Percobaan kedua
+menyalakan settingnya (`mSettingBatterySaverEnabled=true`) tetapi HAL tetap
+diam.
+
+Sebabnya bukan di HAL. Perangkat sedang **mengisi daya dan penuh**
+(`USB powered: true`, `status: 5`, `level: 100`), dan Android menolak
+mengaktifkan battery saver dalam keadaan itu — jadi
+`BatterySaverController.java:455` tidak pernah memanggil
+`setPowerMode(Mode.LOW_POWER, …)`.
+
+Rantainya sendiri sudah dipastikan ada di A13:
+`PowerHalWrapper.cpp:123-124` memetakan `Mode::LOW_POWER` ke
+`V1_0::PowerHint::LOW_POWER` lalu `powerHint()`.
+
+Dengan `dumpsys battery unplug` + `set level 15` (reversibel lewat
+`dumpsys battery reset`), seluruh mekanisme terbukti:
+
+```
+battery saver ON
+  PowerHAL: apply_freq_cap_locked: batas frekuensi 800000 kHz (low_power=1 sustained=0)
+  cpu0 max 800000   cpu3 max 800000   cur_freq 800000
+
+battery saver OFF
+  PowerHAL: apply_freq_cap_locked: batas dilepas, dipulihkan ke 1209600 kHz
+  cpu0 max 1209600
+```
+
+`cpu0` dan `cpu3` bergerak bersama, mengkonfirmasi klaim satu domain frekuensi
+(`related_cpus = 0 1 2 3`) yang mendasari keputusan menulis ke `cpu0` saja. Dan
+jalur **pemulihan** ikut terbukti, bukan hanya jalur pembatasan.
+
+Keadaan baterai dikembalikan setelah uji.
+
+---
+
+## 8. Yang masih belum pernah diuji
+
+Seluruh sembilan sub-item Tier B kini terverifikasi di perangkat. Yang tersisa
+berada di luar Tier B:
+
+- **Panggilan suara.** Belum pernah diuji sama sekali. Ini juga yang menentukan
+  nasib `9270131` (§4.4) — kalau panggilan bisu dua arah, itu kandidat
+  perbaikan pertama.
+- **Bluetooth, hasil foto/video, GPS fix, daya tahan baterai.**
+- **`SUSTAINED_PERFORMANCE`** (separuh T-B3 yang lain) belum dipicu: ia butuh
+  aplikasi yang memanggil `Window.setSustainedPerformanceMode()`, dan nilainya
+  toh sama dengan puncak sehingga tidak akan mengubah apa pun yang terlihat.
+
+Dua hal untuk dipantau setelah pemakaian sehari-hari, keduanya pertukaran sadar:
+**total pinner** (§7.2, kini 146,6 MB) dan apakah **GPU 200 MHz** terasa pada
+animasi saat layar baru disentuh setelah diam.
