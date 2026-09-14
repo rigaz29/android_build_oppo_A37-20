@@ -719,13 +719,13 @@ pemeriksaan `device.mk`/`fstab.qcom` cabang `lineage-20`, bukan dugaan.
 
 | # | Fitur | Sumber | Keadaan LOS 20 | Prasyarat | Perkiraan |
 |---|---|---|---|---|---|
-| **T-A1** | **lmkd pindah ke PSI** | `b3ad23d` | `ro.lmk.use_psi=false` (`device.mk:598`) | `CONFIG_PSI=y` — **datang bersama kernel `lineage-24`** | 15 menit |
-| **T-A2** | **zram 256 → 768 MB, swappiness 60 → 100, scheduler deadline** | `4776f85` | `fstab.qcom:33` `zramsize=268435456`; tidak ada setelan swappiness | tidak ada | 30 menit |
+| **T-A1** | **lmkd pindah ke PSI** — ✅ **SELESAI 14 Sep 2026** (`64c815a`) | `b3ad23d` | — | Komentar lama yang mematikannya **gugur**: premisnya dari kernel `lineage-19.1`. PSI terbukti hidup di perangkat | 15 menit |
+| **T-A2** | **zram 256 → 768 MB, swappiness 60 → 100** — ✅ **SELESAI** (`64c815a`) | `4776f85` | — | scheduler **sudah** `deadline`; bagian itu dari commit 23.2 tidak diperlukan | 30 menit |
 | **T-A3** | **Thermal HAL 2.0** | `5646c17` | **tidak ada HAL thermal sama sekali** (0 sebutan di `device.mk`) | tidak ada | 1–2 jam |
 | **T-A4** | **Widevine DRM L3** | `8f4a42d`, `0af1a56` | 0 sebutan di `device.mk`, padahal **blobnya sudah ada** di vendor: `libwvhidl.so`, `drm@1.0-service.widevine`, `drm@1.1-service.widevine` | runtime protobuf yang cocok — **ukur dulu**, lihat catatan di bawah | 2–8 jam |
-| **T-A5** | **TRIM/discard di `/data`** | `2048679` | opsi mount `/data` tanpa `discard` (`fstab.qcom:6`) | tidak ada | 15 menit |
+| **T-A5** | **TRIM/discard di `/data`** — ✅ **SELESAI** (`64c815a`) | `2048679` | — | eMMC diverifikasi di perangkat: `discard_max_bytes` ~2 TB | 15 menit |
 | **T-A6** | **Server PSDS untuk GPS** — ✅ **SELESAI 14 Sep 2026** (`5efa89b`) | `dc76af2` | 0 sebutan PSDS | ⚠️ Solusi LOS 23.2 **tidak bisa disalin**: di A13 `config_gnssParameters` nol pembaca dan `DEBUG_PROPERTIES_VENDOR_FILE` tidak ada, jadi satu-satunya jalur `/etc/gps_debug.conf` — yang sudah dimiliki modul Soong AOSP. `PRODUCT_COPY_FILES` diuji dan **menang** tanpa bentrok | 30 menit → **~2 jam** |
-| **T-A7** | **Buang FMRadio + libfmjni** | `842b0c6` | **LOS 20 memaketkan keduanya** (`device.mk:440-441`) | tidak ada | 10 menit |
+| **T-A7** | **Buang FMRadio + libfmjni** — ✅ **SELESAI** (`64c815a`) | `842b0c6` | — | `CONFIG_RADIO_IRIS` + `BOARD_HAVE_QCOM_FM` **dipertahankan** | 10 menit |
 | **T-A8** | **`CameraWrapper`: perbaiki `module_api_version` salah bentuk** | `0add9f8` | `camera/CameraWrapper.cpp` ada di LOS 20 dan berasal dari sumber yang sama | baca patch, pastikan baris yang sama | 30 menit |
 | **T-A9** | **sensors: off-by-one `strlcpy` di `getSensorListInner`** | `6de8c07` | `sensors/` ada di LOS 20, sumber yang sama | idem | 30 menit |
 

@@ -1,0 +1,187 @@
+From 64c815ad2c347d0004de3452e6f12afe9a6899c7 Mon Sep 17 00:00:00 2001
+From: rigaz29 <ryanbagas27@gmail.com>
+Date: Mon, 14 Sep 2026 02:41:00 +0000
+Subject: [PATCH] A37: empat item Tier A -- lmkd ke PSI, zram 768 MB, TRIM,
+ buang FMRadio
+
+T-A1  ro.lmk.use_psi  false -> TRUE
+
+Komentar lama mematikannya dengan alasan "kernel 3.10 tidak punya PSI (baru ada di
+4.20+)", berbukti dari .config kernel branch lineage-19.1. Premis itu BENAR saat
+ditulis dan GUGUR sejak Fase 3: kernel lineage-20-64bit membawa backport PSI tanpa
+cgroup (367e1f5c7d0), CONFIG_PSI=y, dan /proc/pressure/memory terbukti hidup di
+perangkat -- terukur 14 Sep 2026: some avg10=0,06 full avg10=0,03.
+
+Sisi framework diverifikasi juga, supaya tidak mengulang kekeliruan T-A6:
+  lmkd.cpp:3330  use_psi_monitors = GET_LMK_PROPERTY(bool,"use_psi",true)
+                                    && init_psi_monitors();
+Defaultnya memang true; baris false-lah yang selama ini mematikannya. Dan bila
+init_psi_monitors() gagal, lmkd JATUH SENDIRI ke vmpressure (lmkd.cpp:3333) -- jadi
+menyalakannya tidak menghilangkan pelindung.
+
+ro.lmk.use_new_strategy TETAP false: properti terpisah, belum diukur.
+
+T-A2  zram 256 -> 768 MB, swappiness 60 -> 100
+
+Diukur di perangkat 14 Sep 2026: zram 256 MB sudah terpakai 122 MB (48%) hanya 4
+menit sesudah boot, dan lmkd sudah membunuh tiga proses. Dengan LZ4 rasio ~2,5:1,
+768 MB menampung ~1,9 GB efektif; 768 MB = 40% dari 1,84 GB, batas atas rentang
+lazim 25-50%.
+
+swappiness 60 adalah default untuk swap ke DISK; di sini swap-nya ke RAM terkompresi,
+jauh lebih murah daripada membunuh aplikasi lalu memuatnya ulang dari eMMC.
+
+CATATAN: scheduler ternyata SUDAH deadline di pohon ini, jadi bagian itu dari commit
+23.2 tidak diperlukan.
+
+T-A5  /data f2fs + discard (TRIM)
+
+eMMC perangkat ini mendukungnya, diverifikasi langsung bukan diwarisi:
+  discard_max_bytes    2199023255040 (~2 TB)
+  discard_granularity  524288 (512 KB)
+Tanpa TRIM, blok yang sudah dihapus tetap dianggap terpakai controller eMMC sehingga
+write amplification naik seiring umur pemakaian.
+
+T-A7  buang FMRadio + libfmjni
+
+Aplikasi FMRadio di pohon LineageOS adalah varian MEDIATEK yang meng-hardcode /dev/fm
+(jni/fmr/fm.h:78), sedangkan Qualcomm memakai /dev/radio0 lewat V4L2 -- ia tidak akan
+pernah bekerja di perangkat ini. Penggantinya tidak ada di hulu: android_hardware_qcom_fm
+berhenti di lineage-17.0.
+
+DIPERTAHANKAN: CONFIG_RADIO_IRIS di defconfig kernel (ongkos 36 KB, prasyarat solusi FM
+apa pun nanti) dan BOARD_HAVE_QCOM_FM yang dibaca android_soong_config_vars.mk untuk
+namespace soong qcom_bluetooth -- bukan untuk aplikasi FM.
+
+PENJAGA
+  m nothing                                   build completed successfully (02:19)
+  PRODUCT_PACKAGES memuat FMRadio/libfmjni    0
+
+Dua cacat suntingan sendiri sempat lolos dan diperbaiki sebelum commit: blok
+"PRODUCT_PACKAGES += \" menjadi kosong setelah FM dibuang (di Make, backslash diikuti
+baris komentar menelan seluruh assignment), dan komentar lama yang masih menyebut
+swappiness 60 tepat di atas baris yang kini 100.
+---
+ device.mk                  | 51 ++++++++++++++++++++++++++++++--------
+ rootdir/etc/fstab.qcom     | 15 +++++++++--
+ rootdir/etc/init.target.rc |  7 +++---
+ 3 files changed, 58 insertions(+), 15 deletions(-)
+
+diff --git a/device.mk b/device.mk
+index cf7555d..576be33 100644
+--- a/device.mk
++++ b/device.mk
+@@ -448,10 +448,25 @@ PRODUCT_PACKAGES += \
+     InProcessNetworkStack \
+     com.android.tethering.inprocess
+ 
+-# FM
+-PRODUCT_PACKAGES += \
+-    FMRadio \
+-    libfmjni
++# FM — TIDAK ADA PAKET YANG DIPASANG.
++#
++# FMRadio dan libfmjni DIBUANG 14 September 2026 (T-A7).
++#
++# Aplikasi FMRadio di pohon LineageOS adalah varian MEDIATEK dan tidak akan
++# pernah bekerja di perangkat keras Qualcomm ini: packages/apps/FMRadio
++# meng-hardcode /dev/fm (jni/fmr/fm.h:78, jni/fmr/fmr.h:66), sedangkan
++# Qualcomm memakai /dev/radio0 lewat V4L2.
++#
++# Penggantinya tidak ada di hulu: LineageOS/android_hardware_qcom_fm berhenti
++# di lineage-17.0 dan LineageOS membuang dukungan FM Qualcomm setelah
++# Android 10. acroreiser sampai kesimpulan yang sama di msm8916 mereka —
++# mereka sempat mengimpor RevampedFMRadio lalu membuangnya lagi.
++#
++# YANG TETAP DIPERTAHANKAN: CONFIG_RADIO_IRIS di defconfig kernel (datang
++# bersama lineage-24) dan BOARD_HAVE_QCOM_FM di BoardConfig. Yang pertama
++# membentuk /dev/radio0 dengan ongkos 36 KB dan menjadi prasyarat solusi FM
++# apa pun nanti; yang kedua dibaca android_soong_config_vars.mk dan diteruskan
++# ke namespace soong qcom_bluetooth — bukan ke aplikasi FM.
+ 
+ # Google Assistant
+ PRODUCT_PROPERTY_OVERRIDES += \
+@@ -618,13 +633,29 @@ PRODUCT_PROPERTY_OVERRIDES += \
+ PRODUCT_PROPERTY_OVERRIDES += \
+     ro.config.low_ram=true
+ 
+-# lmkd: kernel 3.10 tidak punya PSI (baru ada di 4.20+). Tanpa ini lmkd mencoba
+-# PSI dulu di init_monitors() lalu baru jatuh ke vmpressure; menyetelnya eksplisit
+-# memangkas percobaan yang pasti gagal. Nilai sama dengan ROM referensi.
+-# Sumber tekanan memorinya CONFIG_MEMCG=y + in-kernel LMK mati — terverifikasi di
+-# .config kernel branch lineage-19.1 (Fase 1.4).
++# lmkd: PSI DINYALAKAN 14 September 2026 (T-A6 sec.6 -> T-A1).
++#
++# ⚠️ KOREKSI. Komentar lama di sini berbunyi "kernel 3.10 tidak punya PSI (baru ada
++# di 4.20+)" dan menyetelnya false, dengan bukti dari ".config kernel branch
++# lineage-19.1". Premis itu BENAR untuk kernel itu, dan sudah KEDALUWARSA sejak
++# Fase 3: kernel lineage-20-64bit membawa backport PSI tanpa cgroup
++# (367e1f5c7d0), CONFIG_PSI=y, dan /proc/pressure/memory terbukti hidup di
++# perangkat — terukur 14 Sep 2026: some avg10=0,06 full avg10=0,03.
++#
++# lmkd Android 13 membacanya di lmkd.cpp:3330
++#   use_psi_monitors = GET_LMK_PROPERTY(bool, "use_psi", true) && init_psi_monitors();
++# Defaultnya memang true; baris false-lah yang selama ini mematikannya. Kalau
++# init_psi_monitors() gagal, lmkd JATUH SENDIRI ke vmpressure (lmkd.cpp:3333),
++# jadi menyalakannya tidak berisiko menghilangkan pelindung.
++#
++# Kenapa ini layak: vmpressure bekerja pada granularitas reclaim, PSI mengukur
++# waktu yang benar-benar hilang karena menunggu memori. Di perangkat 1,84 GB yang
++# lmkd-nya sudah membunuh tiga proses saat boot pertama, sinyal yang lebih tajam
++# berarti keputusan membunuh yang lebih tepat waktu.
++#
++# ro.lmk.use_new_strategy TETAP false — ia properti terpisah dan belum diukur.
+ PRODUCT_PROPERTY_OVERRIDES += \
+-    ro.lmk.use_psi=false \
++    ro.lmk.use_psi=true \
+     ro.lmk.use_new_strategy=false
+ 
+ # Properti baru 18.1 (Sumber: msm8916-common lineage-18.1 + a6000 ref)
+diff --git a/rootdir/etc/fstab.qcom b/rootdir/etc/fstab.qcom
+index 9842eb8..574daa9 100644
+--- a/rootdir/etc/fstab.qcom
++++ b/rootdir/etc/fstab.qcom
+@@ -3,7 +3,13 @@
+ # specify MF_CHECK, and must come before any filesystems that do specify MF_CHECK
+ 
+ /dev/block/bootdevice/by-name/system         /system      ext4    ro,barrier=1                                                wait,recoveryonly
+-/dev/block/bootdevice/by-name/userdata       /data        f2fs    nosuid,nodev,noatime,inline_xattr                           wait,check,formattable
++# discard (TRIM) DINYALAKAN 14 September 2026 (T-A5). eMMC perangkat ini
++# mendukungnya — diverifikasi langsung, bukan diwarisi:
++#   /sys/block/mmcblk0/queue/discard_max_bytes    2199023255040 (~2 TB)
++#   /sys/block/mmcblk0/queue/discard_granularity  524288 (512 KB)
++# Tanpa TRIM, blok yang sudah dihapus tetap dianggap terpakai oleh controller
++# eMMC sehingga write amplification naik seiring umur pemakaian.
++/dev/block/bootdevice/by-name/userdata       /data        f2fs    nosuid,nodev,noatime,inline_xattr,discard                   wait,check,formattable
+ /dev/block/bootdevice/by-name/userdata       /data        ext4    noatime,nosuid,nodev,barrier=1,noauto_da_alloc              wait,check,formattable
+ /dev/block/bootdevice/by-name/cache          /cache       f2fs    nosuid,nodev,noatime,inline_xattr                           wait,check,formattable
+ /dev/block/bootdevice/by-name/cache          /cache       ext4    noatime,nosuid,nodev,barrier=1,noauto_da_alloc              wait,check,formattable
+@@ -30,4 +36,9 @@
+ # lihat ref/evidence/ramdisk-fstab.qcom.
+ /devices/soc.0/7864900.sdhci/mmc_host*       auto         auto    defaults                                                    voldmanaged=sdcard1:auto
+ /devices/platform/msm_hsusb*                 auto         auto    defaults                                                    voldmanaged=usb:auto
+-/dev/block/zram0                             none         swap    defaults zramsize=268435456
++# zram 256 -> 768 MB, 14 September 2026 (T-A2).
++# Dengan LZ4 rasio ~2,5:1, 768 MB menampung ~1,9 GB data efektif; ongkosnya hanya
++# RAM yang benar-benar terisi. 768 MB = 40% dari 1,84 GB, batas atas rentang lazim
++# 25-50%. Diukur di perangkat 14 Sep 2026: zram 256 MB sudah terpakai 122 MB
++# (48%) hanya 4 menit sesudah boot -- ruangnya memang kurang.
++/dev/block/zram0                             none         swap    defaults zramsize=805306368
+diff --git a/rootdir/etc/init.target.rc b/rootdir/etc/init.target.rc
+index 61274d6..ca84fab 100644
+--- a/rootdir/etc/init.target.rc
++++ b/rootdir/etc/init.target.rc
+@@ -80,9 +80,10 @@ on post-fs
+     chmod 0222 /sys/kernel/debug/tracing/trace_marker
+     swapon_all /vendor/etc/fstab.qcom
+     write /proc/sys/vm/page-cluster 0
+-    # swappiness 60: dengan LZ4 zram, swap murah — manfaatkan untuk
+-    # menjaga lebih banyak app di background.
+-    write /proc/sys/vm/swappiness 60
++    # swappiness 60 -> 100, 14 September 2026 (T-A2). Nilai 60 adalah default
++    # untuk swap ke DISK. Di sini swap-nya ke RAM terkompresi (zram LZ4), jauh
++    # lebih murah daripada membunuh aplikasi lalu memuatnya ulang dari eMMC.
++    write /proc/sys/vm/swappiness 100
+     write /proc/sys/vm/dirty_background_ratio 10
+     write /proc/sys/vm/dirty_expire_centisecs 200
+     write /proc/sys/vm/dirty_ratio 30
