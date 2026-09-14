@@ -138,6 +138,40 @@ nol baris di buffer crash.
 
 ---
 
+## 7b. Sensor — keempatnya berfungsi
+
+Diukur 14 Sep 2026, 07:28. **Empat sensor perangkat keras, empat-empatnya hidup.**
+
+| Sensor | Chip | Bukti |
+|---|---|---|
+| Accelerometer | `lis3dh-accel` STMicroelectronics | **live** — `0.11, 0.34, 9.81` (gravitasi penuh di sumbu Z, ponsel terbaring datar). 8 baris event mentah dalam 3 detik |
+| Magnetometer | `mmc3416x-mag` MEMSIC | **live** — 8 baris event mentah dalam 3 detik dari `/dev/input/event3` |
+| Cahaya | `apds9921-light` avago | **live** — 50 event, 21 → 130 lux, berubah mengikuti pencahayaan |
+| Proximity | `apds9921-proximity` avago | driver menjawab saat boot (`5.00` = jauh, `max_range 5`). Sensor **on-change**: nol event saat tidak ada yang mendekat — perilaku benar, bukan kerusakan |
+
+Tambahan: **GeoMag Rotation Vector** (AOSP, sensor fusi) terdaftar — ia hanya bisa
+ada kalau accel **dan** mag dua-duanya berfungsi.
+
+Dan bukti rantai penuh sampai aplikasi: `OrientationEventListener` dari uid 10129
+pid 6545 — **Aperture** — berlangganan accelerometer saat pengukuran.
+
+```
+/sys/class/sensors/   apds9921-light  apds9921-proximity  lis3dh-accel  mmc3416x-mag
+/proc/bus/input       compass=event3  lis3dh-accel=event4  light=event5  proximity=event6
+lshal                 android.hardware.sensors@1.0::ISensors/default  pid 1678 (system_server)
+```
+
+HAL sensor berjalan **passthrough di dalam `system_server`** yang 64-bit — modulnya
+dibangun dari sumber sehingga tersedia arm64, berbeda dari blob kamera.
+
+⚠️ **Tidak ada giroskop, dan itu perangkat kerasnya.** `/sys/class/sensors/` dan
+`/proc/bus/input/devices` sama-sama hanya memuat empat sensor. Bukan kekurangan ROM.
+
+Catatan metode: magnetometer sempat dinyalakan lewat `sysfs` untuk pengujian dan
+**sudah dikembalikan** ke `enable=0`.
+
+---
+
 ## 8. Yang BELUM diuji
 
 Batas §8 `HANDOFF.md` tetap berlaku — daftar ini jujur, bukan diremehkan:
@@ -150,15 +184,19 @@ Batas §8 `HANDOFF.md` tetap berlaku — daftar ini jujur, bukan diremehkan:
 | Telepon & SMS nyata | jaringan LTE terdaftar, panggilan belum dicoba |
 | Aplikasi 32-bit-saja | `abilist` mendukungnya, tetapi belum ada yang dipasang untuk membuktikan |
 | Pemakaian harian | 4 menit uptime tidak mengukur apa pun soal stabilitas |
-| Sensor, GPS, senter | belum |
+| ~~Sensor~~ | **selesai — lihat §7b, keempatnya berfungsi** |
+| Proximity di pemakaian nyata | driver menjawab saat boot, tetapi belum diuji dengan menutup sensor / saat panggilan |
+| GPS, senter | belum |
 
 ---
 
 ## 9. Berkas
 
 ```
-getprop-20260914.txt    865 baris
-lshal-20260914.txt      124 baris
-meminfo-20260914.txt    500 baris
-camera-20260914.txt     353 baris
+getprop-20260914.txt          865 baris
+lshal-20260914.txt            124 baris
+meminfo-20260914.txt          500 baris
+camera-20260914.txt           353 baris
+sensorservice-20260914.txt    166 baris
+input-devices-20260914.txt    113 baris
 ```

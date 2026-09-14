@@ -1,0 +1,166 @@
+Captured at: 07:30:49.560
+Sensor Device:
+Total 4 h/w sensors, 4 running 1 disabled clients:
+0x00000001) active-count = 2; sampling_period(ms) = {200.0(disabled), 200.0}, selected = 200.00 ms; batching_period(ms) = {0.0(disabled), 2000.0}, selected = 2000.00 ms
+0x00000003) active-count = 1; sampling_period(ms) = {250.0}, selected = 250.00 ms; batching_period(ms) = {0.0}, selected = 0.00 ms
+Sensor List:
+0x00000001) lis3dh-accel              | STMicroelectronics | ver: 1 | type: android.sensor.accelerometer(1) | perm: n/a | flags: 0x00000000
+	continuous | minRate=0.16Hz | maxRate=100.00Hz | no batching | non-wakeUp | 
+0x00000002) mmc3416x-mag              | MEMSIC, Inc     | ver: 1 | type: android.sensor.magnetic_field(2) | perm: n/a | flags: 0x00000000
+	continuous | minRate=0.10Hz | maxRate=100.00Hz | no batching | non-wakeUp | 
+0x00000003) apds9921-light            | avago           | ver: 1 | type: android.sensor.light(5) | perm: n/a | flags: 0x00000002
+	on-change | minRate=0.10Hz | minDelay=0us | no batching | non-wakeUp | 
+0x00000004) apds9921-proximity        | avago           | ver: 1 | type: android.sensor.proximity(8) | perm: n/a | flags: 0x00000003
+	on-change | minRate=0.10Hz | minDelay=0us | no batching | wakeUp | 
+0x5f67656f) GeoMag Rotation Vector Sensor | AOSP            | ver: 3 | type: android.sensor.geomagnetic_rotation_vector(20) | perm: n/a | flags: 0x00000000
+	continuous | maxDelay=0us | maxRate=100.00Hz | no batching | non-wakeUp | 
+Fusion States:
+9-axis fusion disabled (0 clients), gyro-rate= 200.00Hz, q=< 0, 0, 0, 0 > (0), b=< 0, 0, 0 >
+game fusion(no mag) disabled (0 clients), gyro-rate= 200.00Hz, q=< 0, 0, 0, 0 > (0), b=< 0, 0, 0 >
+geomag fusion (no gyro) disabled (0 clients), gyro-rate= 200.00Hz, q=< 0, 0, 0, 0 > (0), b=< 0, 0, 0 >
+Recent Sensor events:
+apds9921-proximity: last 1 events
+	 1 (ts=223.880869393, wall=07:17:01.971) 5.00, 0.00, 0.00, 
+apds9921-light: last 50 events
+	 1 (ts=1038.856155632, wall=07:30:36.945) 129.00, 0.00, 0.00, 
+	 2 (ts=1039.106751820, wall=07:30:37.195) 129.00, 0.00, 0.00, 
+	 3 (ts=1039.359743561, wall=07:30:37.449) 129.00, 0.00, 0.00, 
+	 4 (ts=1039.610150186, wall=07:30:37.699) 129.00, 0.00, 0.00, 
+	 5 (ts=1039.863475555, wall=07:30:37.952) 129.00, 0.00, 0.00, 
+	 6 (ts=1040.116060198, wall=07:30:38.205) 129.00, 0.00, 0.00, 
+	 7 (ts=1040.366307122, wall=07:30:38.455) 129.00, 0.00, 0.00, 
+	 8 (ts=1040.616631760, wall=07:30:38.705) 129.00, 0.00, 0.00, 
+	 9 (ts=1040.870203189, wall=07:30:38.959) 129.00, 0.00, 0.00, 
+	10 (ts=1041.123715686, wall=07:30:39.212) 129.00, 0.00, 0.00, 
+	11 (ts=1041.375914841, wall=07:30:39.464) 129.00, 0.00, 0.00, 
+	12 (ts=1041.626679864, wall=07:30:39.715) 130.00, 0.00, 0.00, 
+	13 (ts=1041.879497548, wall=07:30:39.968) 129.00, 0.00, 0.00, 
+	14 (ts=1042.130151412, wall=07:30:40.219) 129.00, 0.00, 0.00, 
+	15 (ts=1042.384173711, wall=07:30:40.473) 129.00, 0.00, 0.00, 
+	16 (ts=1042.637594848, wall=07:30:40.726) 129.00, 0.00, 0.00, 
+	17 (ts=1042.889621324, wall=07:30:40.978) 129.00, 0.00, 0.00, 
+	18 (ts=1043.140653321, wall=07:30:41.229) 129.00, 0.00, 0.00, 
+	19 (ts=1043.394094578, wall=07:30:41.483) 129.00, 0.00, 0.00, 
+	20 (ts=1043.647429379, wall=07:30:41.736) 129.00, 0.00, 0.00, 
+	21 (ts=1043.903659539, wall=07:30:41.992) 129.00, 0.00, 0.00, 
+	22 (ts=1044.156541984, wall=07:30:42.245) 129.00, 0.00, 0.00, 
+	23 (ts=1044.408878945, wall=07:30:42.497) 129.00, 0.00, 0.00, 
+	24 (ts=1044.660397147, wall=07:30:42.749) 129.00, 0.00, 0.00, 
+	25 (ts=1044.912579939, wall=07:30:43.001) 129.00, 0.00, 0.00, 
+	26 (ts=1045.163204273, wall=07:30:43.252) 129.00, 0.00, 0.00, 
+	27 (ts=1045.416163198, wall=07:30:43.505) 129.00, 0.00, 0.00, 
+	28 (ts=1045.666928968, wall=07:30:43.756) 129.00, 0.00, 0.00, 
+	29 (ts=1045.920171027, wall=07:30:44.009) 129.00, 0.00, 0.00, 
+	30 (ts=1046.173701810, wall=07:30:44.262) 129.00, 0.00, 0.00, 
+	31 (ts=1046.426664630, wall=07:30:44.515) 129.00, 0.00, 0.00, 
+	32 (ts=1046.680723905, wall=07:30:44.769) 129.00, 0.00, 0.00, 
+	33 (ts=1046.932695344, wall=07:30:45.021) 129.00, 0.00, 0.00, 
+	34 (ts=1047.183526944, wall=07:30:45.272) 129.00, 0.00, 0.00, 
+	35 (ts=1047.436256445, wall=07:30:45.525) 129.00, 0.00, 0.00, 
+	36 (ts=1047.687049694, wall=07:30:45.776) 129.00, 0.00, 0.00, 
+	37 (ts=1047.939738201, wall=07:30:46.028) 129.00, 0.00, 0.00, 
+	38 (ts=1048.190115421, wall=07:30:46.279) 129.00, 0.00, 0.00, 
+	39 (ts=1048.443877479, wall=07:30:46.533) 129.00, 0.00, 0.00, 
+	40 (ts=1048.696822806, wall=07:30:46.785) 129.00, 0.00, 0.00, 
+	41 (ts=1048.952257812, wall=07:30:47.041) 129.00, 0.00, 0.00, 
+	42 (ts=1049.207450500, wall=07:30:47.296) 129.00, 0.00, 0.00, 
+	43 (ts=1049.459448198, wall=07:30:47.548) 129.00, 0.00, 0.00, 
+	44 (ts=1049.710628118, wall=07:30:47.799) 129.00, 0.00, 0.00, 
+	45 (ts=1049.964530186, wall=07:30:48.053) 129.00, 0.00, 0.00, 
+	46 (ts=1050.218540984, wall=07:30:48.307) 129.00, 0.00, 0.00, 
+	47 (ts=1050.471701376, wall=07:30:48.560) 129.00, 0.00, 0.00, 
+	48 (ts=1050.723624892, wall=07:30:48.812) 129.00, 0.00, 0.00, 
+	49 (ts=1050.976276896, wall=07:30:49.065) 129.00, 0.00, 0.00, 
+	50 (ts=1051.228348146, wall=07:30:49.317) 129.00, 0.00, 0.00, 
+lis3dh-accel: last 50 events
+	 1 (ts=1041.600459921, wall=07:30:39.690) 0.08, 0.35, 9.87, 
+	 2 (ts=1041.800453781, wall=07:30:39.890) 0.11, 0.29, 9.90, 
+	 3 (ts=1042.000499605, wall=07:30:40.090) 0.12, 0.30, 9.89, 
+	 4 (ts=1042.200461127, wall=07:30:40.290) 0.13, 0.33, 9.90, 
+	 5 (ts=1042.400467167, wall=07:30:40.490) 0.11, 0.32, 9.90, 
+	 6 (ts=1042.600454956, wall=07:30:40.690) 0.11, 0.34, 9.88, 
+	 7 (ts=1042.800432663, wall=07:30:40.890) 0.13, 0.34, 9.87, 
+	 8 (ts=1043.000489761, wall=07:30:41.091) 0.09, 0.33, 9.84, 
+	 9 (ts=1043.200430500, wall=07:30:41.290) 0.08, 0.30, 9.88, 
+	10 (ts=1043.400423850, wall=07:30:41.490) 0.10, 0.33, 9.83, 
+	11 (ts=1043.600414019, wall=07:30:41.690) 0.10, 0.38, 9.84, 
+	12 (ts=1043.800199749, wall=07:30:41.890) 0.11, 0.33, 9.84, 
+	13 (ts=1044.000636373, wall=07:30:42.092) 0.08, 0.34, 9.81, 
+	14 (ts=1044.200466071, wall=07:30:42.290) 0.09, 0.39, 9.82, 
+	15 (ts=1044.400193059, wall=07:30:42.490) 0.10, 0.39, 9.81, 
+	16 (ts=1044.600313567, wall=07:30:42.690) 0.11, 0.36, 9.84, 
+	17 (ts=1044.800454421, wall=07:30:42.890) 0.10, 0.35, 9.81, 
+	18 (ts=1045.000442400, wall=07:30:43.090) 0.11, 0.34, 9.81, 
+	19 (ts=1045.200464882, wall=07:30:43.290) 0.11, 0.36, 9.84, 
+	20 (ts=1045.399994389, wall=07:30:43.489) 0.10, 0.34, 9.90, 
+	21 (ts=1045.600458717, wall=07:30:43.690) 0.09, 0.37, 9.85, 
+	22 (ts=1045.800418250, wall=07:30:43.890) 0.07, 0.36, 9.83, 
+	23 (ts=1046.000465081, wall=07:30:44.090) 0.12, 0.38, 9.82, 
+	24 (ts=1046.200441058, wall=07:30:44.290) 0.10, 0.34, 9.88, 
+	25 (ts=1046.400454232, wall=07:30:44.490) 0.11, 0.30, 9.89, 
+	26 (ts=1046.600453545, wall=07:30:44.690) 0.11, 0.32, 9.85, 
+	27 (ts=1046.800250537, wall=07:30:44.890) 0.11, 0.34, 9.83, 
+	28 (ts=1047.000426660, wall=07:30:45.090) 0.11, 0.34, 9.86, 
+	29 (ts=1047.200594551, wall=07:30:45.291) 0.11, 0.35, 9.82, 
+	30 (ts=1047.400136132, wall=07:30:45.490) 0.11, 0.39, 9.85, 
+	31 (ts=1047.600456057, wall=07:30:45.690) 0.11, 0.35, 9.81, 
+	32 (ts=1047.800547798, wall=07:30:45.891) 0.08, 0.34, 9.83, 
+	33 (ts=1048.000473771, wall=07:30:46.090) 0.06, 0.34, 9.87, 
+	34 (ts=1048.200422992, wall=07:30:46.290) 0.09, 0.33, 9.86, 
+	35 (ts=1048.402241369, wall=07:30:46.494) 0.11, 0.37, 9.87, 
+	36 (ts=1048.603679760, wall=07:30:46.695) 0.07, 0.37, 9.84, 
+	37 (ts=1048.807886054, wall=07:30:46.900) 0.10, 0.39, 9.82, 
+	38 (ts=1049.011271501, wall=07:30:47.103) 0.10, 0.35, 9.82, 
+	39 (ts=1049.214419951, wall=07:30:47.306) 0.11, 0.34, 9.84, 
+	40 (ts=1049.416618923, wall=07:30:47.507) 0.10, 0.34, 9.84, 
+	41 (ts=1049.618481859, wall=07:30:47.710) 0.11, 0.33, 9.82, 
+	42 (ts=1049.821933180, wall=07:30:47.914) 0.11, 0.36, 9.84, 
+	43 (ts=1050.023699504, wall=07:30:48.115) 0.09, 0.34, 9.84, 
+	44 (ts=1050.226791712, wall=07:30:48.319) 0.09, 0.34, 9.87, 
+	45 (ts=1050.432077697, wall=07:30:48.524) 0.10, 0.31, 9.85, 
+	46 (ts=1050.635396022, wall=07:30:48.727) 0.11, 0.36, 9.86, 
+	47 (ts=1050.838817353, wall=07:30:48.931) 0.10, 0.32, 9.84, 
+	48 (ts=1051.042295347, wall=07:30:49.134) 0.11, 0.35, 9.85, 
+	49 (ts=1051.245159048, wall=07:30:49.335) 0.14, 0.34, 9.85, 
+	50 (ts=1051.446663552, wall=07:30:49.536) 0.13, 0.34, 9.84, 
+Active sensors:
+lis3dh-accel (handle=0x00000001, connections=2)
+apds9921-light (handle=0x00000003, connections=1)
+Socket Buffer size = 39 events
+WakeLock Status: not held 
+Mode : NORMAL
+Sensor Privacy: disabled
+3 active connections
+Connection Number: 0 
+	Operating Mode: NORMAL
+	 android.view.OrientationEventListener | WakeLockRefCount 0 | uid 10129 | cache size 0 | max cache size 984
+	 lis3dh-accel 0x00000001 | status: active | pending flush events 0 
+Connection Number: 1 
+	Operating Mode: NORMAL
+	 com.android.server.display.AutomaticBrightnessController | WakeLockRefCount 0 | uid 1000 | cache size 0 | max cache size 0
+	 apds9921-light 0x00000003 | status: active | pending flush events 0 
+Connection Number: 2 
+	Operating Mode: NORMAL
+	 com.android.server.power.FaceDownDetector | WakeLockRefCount 0 | uid 1000 | cache size 0 | max cache size 0
+	 lis3dh-accel 0x00000001 | status: active | pending flush events 0 
+0 direct connections
+Previous Registrations:
+07:27:39 - 0x00000001 pid=  664 uid= 1006 package=unknown_package_pid_664
+07:27:38 + 0x00000001 pid=  664 uid= 1006 package=unknown_package_pid_664 samplingPeriod=200000us batchingPeriod=0us
+07:27:37 - 0x00000001 pid=  664 uid= 1006 package=unknown_package_pid_664
+07:27:37 + 0x00000001 pid=  664 uid= 1006 package=unknown_package_pid_664 samplingPeriod=200000us batchingPeriod=0us
+07:20:25 - 0x00000001 pid= 6545 uid=10129 package=android.view.OrientationEventListener
+07:20:22 - 0x00000001 pid=  664 uid= 1006 package=unknown_package_pid_664
+07:20:21 + 0x00000001 pid= 6545 uid=10129 package=android.view.OrientationEventListener samplingPeriod=200000us batchingPeriod=0us
+07:20:20 - 0x00000001 pid= 6545 uid=10129 package=android.view.OrientationEventListener
+07:20:18 + 0x00000001 pid=  664 uid= 1006 package=unknown_package_pid_664 samplingPeriod=200000us batchingPeriod=0us
+07:20:16 + 0x00000001 pid= 6545 uid=10129 package=android.view.OrientationEventListener samplingPeriod=200000us batchingPeriod=0us
+07:20:16 + 0x00000001 pid= 6545 uid=10129 package=android.view.OrientationEventListener samplingPeriod=200000us batchingPeriod=0us
+07:17:02 - 0x00000004 pid= 2867 uid=10147 package=com.android.systemui.util.sensors.ThresholdSensorImpl
+07:17:01 + 0x00000004 pid= 2867 uid=10147 package=com.android.systemui.util.sensors.ThresholdSensorImpl samplingPeriod=20000us batchingPeriod=0us
+07:17:01 + 0x00000001 pid= 1678 uid= 1000 package=com.android.server.power.FaceDownDetector samplingPeriod=200000us batchingPeriod=2000000us
+07:17:01 + 0x00000003 pid= 1678 uid= 1000 package=com.android.server.display.AutomaticBrightnessController samplingPeriod=250000us batchingPeriod=0us
+07:16:32 - 0x00000001 pid= 1678 uid= 1000 package=com.android.server.power.FaceDownDetector
+07:16:32 - 0x00000003 pid= 1678 uid= 1000 package=com.android.server.display.AutomaticBrightnessController
+01:06:46 + 0x00000003 pid= 1678 uid= 1000 package=com.android.server.display.AutomaticBrightnessController samplingPeriod=250000us batchingPeriod=0us
+01:06:31 + 0x00000001 pid= 1678 uid= 1000 package=com.android.server.power.FaceDownDetector samplingPeriod=200000us batchingPeriod=2000000us
