@@ -180,24 +180,36 @@ Android 13 masih mengirimnya. Di perangkat: **37 codec terdaftar**, termasuk
 `amrnb/amrwb`, `g711`, `gsm`. Alasan perubahan itu tidak ada di sini, dan
 mengubah jalur codec tanpa gejala hanya menambah risiko regresi pemutaran.
 
-### 4.4 MULTI_VOICE_SESSIONS — **ditunda, bukan ditolak**
+### 4.4 MULTI_VOICE_SESSIONS — **terbukti tidak diperlukan**
 
 Akar masalah 23.2 sangat spesifik: `/vendor/lib/libmedia.so` di sana adalah
 **stub buatan mereka sendiri** (`libshims/stub/libmedia_stub.cpp`), yang ada
 karena blob RIL 2016 menuntut simbol yang sudah dicabut dari libmedia modern.
 Stub itu menelan parameter `vsid` + `call_state` dari RIL, sehingga
-`voice_extn_start_call()` tidak pernah melihat `state.new == CALL_ACTIVE`.
+`voice_extn_start_call()` tidak pernah melihat `state.new == CALL_ACTIVE` dan
+panggilan tersambung tetapi bisu dua arah.
 
-Di LineageOS 20 stub itu **tidak ada**: `libshims/stub/` tidak ada di device
-tree, dan `/vendor/lib/libmedia.so` tidak ada di perangkat. `BoardConfig.mk:377`
-masih menyalakan `AUDIO_FEATURE_ENABLED_MULTI_VOICE_SESSIONS`, sama seperti
-titik awal 23.2 — tetapi mekanisme yang merusaknya di sana belum tentu ada di
-sini.
+Di LineageOS 20 stub itu tidak ada: `libshims/stub/` tidak ada di device tree
+dan `/vendor/lib/libmedia.so` tidak ada di perangkat. Karena itu perubahan
+`9270131` tidak diterapkan, dan `BoardConfig.mk:377` dibiarkan tetap menyalakan
+`AUDIO_FEATURE_ENABLED_MULTI_VOICE_SESSIONS`.
 
-**Panggilan suara belum pernah diuji di ROM ini.** Mengubah konfigurasi sesi
-suara sekarang berarti menebak, dan kalau panggilan ternyata sudah berbunyi,
-perubahan itu justru bisa merusaknya. Uji panggilan dulu; kalau bisu dua arah,
-terapkan `9270131`.
+**Dikonfirmasi 14 September 2026.** Pemilik perangkat menguji panggilan suara:
+**speaker dan mic keduanya berfungsi**. Jejaknya ada di log audio HAL, dan
+justru pada mekanisme yang persis rusak di 23.2 — parameter `vsid` **sampai**:
+
+```
+voice_extn: update_calls: cur_state=1 new_state=1 vsid=10c01000
+voice_extn: update_calls: cur_state=1 new_state=1 vsid=10dc1000
+voice_extn: update_calls: cur_state=1 new_state=1 vsid=10c02000
+   … tujuh vsid seluruhnya …
+voice_extn: voice_extn_stop_call: end all calls
+audio_hw_primary: adev_set_mode: mode 0
+```
+
+Jadi keputusan menunda itu benar, dan kini bisa dinaikkan statusnya: menerapkan
+`9270131` di sini **akan merusak** panggilan yang sudah berfungsi, bukan
+memperbaikinya. Jangan di-port.
 
 ---
 
@@ -457,9 +469,8 @@ Keadaan baterai dikembalikan setelah uji.
 Seluruh sembilan sub-item Tier B kini terverifikasi di perangkat. Yang tersisa
 berada di luar Tier B:
 
-- **Panggilan suara.** Belum pernah diuji sama sekali. Ini juga yang menentukan
-  nasib `9270131` (§4.4) — kalau panggilan bisu dua arah, itu kandidat
-  perbaikan pertama.
+- ~~Panggilan suara~~ — **diuji 14 Sep 2026, speaker dan mic berfungsi.** Itu
+  sekaligus menutup pertanyaan `9270131` (§4.4).
 - **Bluetooth, hasil foto/video, GPS fix, daya tahan baterai.**
 - **`SUSTAINED_PERFORMANCE`** (separuh T-B3 yang lain) belum dipicu: ia butuh
   aplikasi yang memanggil `Window.setSustainedPerformanceMode()`, dan nilainya
