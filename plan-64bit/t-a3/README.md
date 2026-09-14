@@ -147,7 +147,7 @@ biner   vendor/bin/hw/android.hardware.thermal@2.0-service.msm8916
         ELF 64-bit LSB pie executable, ARM aarch64        106.464 byte
 rc      vendor/etc/init/…rc                                  260 byte
 vintf   vendor/etc/vintf/manifest/…xml                       349 byte
-config  vendor/etc/thermal_info_config.json                3.016 byte  (0644)
+config  vendor/etc/thermal_info_config.json                3.067 byte  (0644)
 ```
 
 `rc` menjalankannya sebagai `class hal`, `user system`, mendeklarasikan
@@ -155,7 +155,45 @@ config  vendor/etc/thermal_info_config.json                3.016 byte  (0644)
 
 ---
 
-## 7. Belum diverifikasi di perangkat
+## 7. Hasil di perangkat (14 September 2026)
+
+Diverifikasi setelah flash. **Berfungsi penuh.**
+
+```
+HAL Ready: true
+ThermalHAL 2.0 connected: yes
+```
+
+Delapan suhu mengalir ke framework, dengan tipe persis seperti yang ditetapkan
+dari pengukuran:
+
+```
+Temperature{mValue=36.7,  mType=2,  mName=battery}       BATTERY
+Temperature{mValue=46.7,  mType=-1, mName=bms}           UNKNOWN   <- bukan lagi SKIN
+Temperature{mValue=42.28, mType=3,  mName=pm8916_tz}     SKIN      <- penggantinya
+Temperature{mValue=47.0,  mType=0,  mName=tsens_tz_sensor0}  CPU
+...
+Thermal Status: 0
+```
+
+Ambang yang dilaporkan HAL juga persis seperti keputusan §5.3 — slot ketujuh
+(`SHUTDOWN`) `NaN` di seluruh sensor proxy, dan hanya `battery` yang memilikinya:
+
+```
+{.type = BATTERY, .name = battery,   .hotThrottlingThresholds = [NaN,NaN,NaN,NaN,NaN,50.0,70.0]}
+{.type = UNKNOWN, .name = bms,       .hotThrottlingThresholds = [NaN,NaN,NaN,NaN,NaN,NaN,NaN]}
+{.type = SKIN,    .name = pm8916_tz, .hotThrottlingThresholds = [NaN,NaN,55.0,62.0,70.0,80.0,NaN]}
+{.type = CPU,     .name = tsens_*,   .hotThrottlingThresholds = [NaN,NaN,65.0,70.0,75.0,80.0,NaN]}
+```
+
+Dan yang paling penting: **listener kini menerima data**. Sebelum T-A3,
+`dumpsys thermalservice` memuat enam listener terdaftar menunggu data yang tidak
+pernah datang. Sekarang 2 `ThermalEventListeners` + 2 `ThermalStatusListeners`
+terhubung ke HAL yang hidup.
+
+---
+
+## 8. Perintah verifikasi ulang
 
 T-A3 **belum masuk ROM mana pun**. Setelah ROM berikutnya di-flash:
 

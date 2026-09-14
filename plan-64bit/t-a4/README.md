@@ -193,7 +193,108 @@ label sepolicy ada di vendor_file_contexts
 
 ---
 
-## 7. Belum diverifikasi di perangkat
+## 7. Hasil di perangkat (14 September 2026)
+
+### 7.1 Seluruh rekayasa T-A4 terbukti bekerja
+
+```
+DrmHalHidl : found instance=widevine version=android.hardware.drm@1.1::IDrmFactory
+WVCdm      : Instantiating CDM.
+WVCdm      : [(0):] Level3 Library 4445 Apr 20 2018 14:53:46
+WVCdm      : [oemcrypto_adapter_dynamic.cpp(575)] L3 Initialized. Trying L1.
+WVCdm      : Could not load liboemcrypto.so. Falling back to L3.   <- wajar, tak ada TEE
+cr_MediaDrmBridge : Version: 14.0.0
+```
+
+| yang diuji | hasil |
+|---|---|
+| `init.svc.drm-widevine-hal-1-1` | `running`, pid 345 |
+| `lshal` | `@1.0::IDrmFactory/widevine` **dan** `@1.1::IDrmFactory/widevine` terdaftar |
+| **protobuf yang benar-benar dimuat** | `/system/vendor/lib/libprotobuf-cpp-lite.so` — **bukan** `/system/lib/` |
+| `LD_LIBRARY_PATH` proses | `/vendor/lib` |
+| pustaka vendor yang dimuat | hanya `libprotobuf-cpp-lite.so` dan `libwvhidl.so` — nol pembayangan |
+| galat linker | **nol** (`CANNOT LINK`, `cannot locate symbol`: tidak ada) |
+| tombstone / crash | **nol** |
+
+Dan bukti terkuatnya: CDM menulis berkasnya sendiri.
+
+```
+/data/vendor/mediadrm/IDM1013/L3/
+  ay64.dat   128 B     ay64.dat5  16 B
+  ay64.dat6   16 B     usgtable.bin 495 B
+```
+
+`IDM1013` = uid 1013 = `media`, jadi `mkdir` di `init.qcom.rc` mengenai
+sasarannya. Lebih penting lagi: jalur kode yang menulis berkas-berkas itu
+melewati `metrics::AttributeHandler::GetSerializedAttributes` →
+`MessageLite::AppendPartialToString` — **persis jalur yang SIGSEGV di proyek LOS
+23.2** sebelum perbaikan ABI vtable. Di sini tidak ada crash sama sekali. Itu
+membuktikan runtime protobuf 3.0.0 dan vtable 16-slot bekerja di bawah beban
+nyata, bukan cuma lolos build.
+
+### 7.2 Yang TIDAK bekerja: EME di browser
+
+`requestMediaKeySystemAccess('com.widevine.alpha', …)` di WebView **gagal untuk
+setiap konfigurasi** — dengan/tanpa `videoCapabilities`, dengan robustness
+kosong, `SW_SECURE_CRYPTO`, `SW_SECURE_DECODE`, dan audio saja. Semuanya
+`NotSupportedError`.
+
+**Eksperimen kontrol** memisahkan sebabnya. Dengan konfigurasi yang sama persis:
+
+```
+OK    org.w3.clearkey (mp4)
+GAGAL com.widevine.alpha (mp4) -> NotSupportedError
+```
+
+Jadi plumbing EME WebView sehat; penolakannya khusus Widevine.
+
+Sebabnya ada di `frameworks/av/drm/libmediadrm/DrmHalHidl.cpp:529-531`. Begitu
+sebuah **security level** diminta bersama mimeType — dan Chromium memang
+melakukannya, lognya berbunyi `Create MediaDrmBridge with level 1` — framework
+mewajibkan factory dapat di-cast ke `IDrmFactory@1.2`:
+
+```cpp
+sp<drm::V1_2::IDrmFactory> factoryV1_2 = drm::V1_2::IDrmFactory::castFrom(factory);
+if (factoryV1_2 == NULL) {
+    return ERROR_UNSUPPORTED;
+}
+```
+
+ClearKey adalah `@1.4` sehingga lolos cast. Blob Widevine ini `@1.1`, dari 2018,
+sehingga tidak. **Ini batas blob, bukan cacat integrasi** — tidak ada
+konfigurasi, patch sepolicy, atau manifest yang bisa memperbaikinya; yang
+diperlukan adalah blob Widevine yang mengimplementasikan `IDrmFactory@1.2`.
+
+Gejala kedua yang sejalan: `getPropertyString("oemCryptoBuildInformation")`
+mengembalikan `ERROR_DRM_CANNOT_HANDLE` — properti itu baru ada di CDM yang
+lebih baru dari 14.0.0.
+
+Jalur tanpa security level (`DrmHalHidl.cpp:512-524`) tidak lewat syarat itu,
+jadi aplikasi yang memanggil `MediaDrm.isCryptoSchemeSupported(uuid)` biasa
+semestinya tetap dilayani — tetapi itu **belum dibuktikan**, karena tidak ada
+aplikasi berbasis MediaDrm yang terpasang di perangkat ini.
+
+### 7.3 Celah SELinux yang tertangkap
+
+SELinux perangkat **Permissive**, dan itu menyelamatkan Widevine:
+
+```
+avc: denied { write } for name="mediadrm" scontext=u:r:hal_drm_default:s0
+     tcontext=u:object_r:vendor_data_file:s0 tclass=dir permissive=1
+avc: denied { read write open } for path=".../L3/ay64.dat6"
+     scontext=u:r:hal_drm_default:s0 tcontext=u:object_r:vendor_data_file:s0
+```
+
+Label yang ditambahkan §5 menempatkan biner di domain `hal_drm_default` dengan
+benar, tetapi domain itu tidak punya aturan untuk `/data/vendor/mediadrm`
+(bertipe `vendor_data_file`). **Kalau perangkat ini dipindah ke Enforcing,
+Widevine akan gagal menulis device certificate.** Perbaikannya: beri direktori
+itu tipe sendiri di `file_contexts` lalu `allow` domain `hal_drm_default`
+membaca/menulisnya.
+
+---
+
+## 8. Perintah verifikasi ulang
 
 T-A4 belum masuk ROM mana pun. Servis ini akan menjadi **proses
 `/vendor/bin/hw` pertama** di ROM ini, jadi verifikasinya lebih penting dari
