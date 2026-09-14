@@ -202,3 +202,27 @@ tetap berlaku (nilainya kebetulan sama). Ia bertahan melintasi flash ROM selama
 `/data` tidak dihapus. Kalau suatu saat ingin memakai default ROM, hapus
 entrinya — cadangan aslinya ada di
 `/data/property/persistent_properties.bak-a37`.
+
+
+---
+
+## 7. Terbukti di perangkat (ROM 20260914_164631)
+
+Pemilik perangkat melakukan **factory reset** lalu flash ROM baru dan memasang
+ulang NikGApps (`ro.boot.bootreason: reboot,factory_reset`, `/data/bootfail` dan
+DCIM kosong, properti persist ter-reset).
+
+Itu justru menjadikannya uji yang bersih: properti
+`persist.a37.bootwatchdog.timeout=300` yang dipakai sebagai pertolongan pertama
+**ikut terhapus**, sehingga yang berlaku adalah default ROM.
+
+```
+init: Service 'bootwatchdog' (pid 247) exited with status 0
+      oneshot service took 137.490005 seconds in background
+```
+
+**Keluar dengan status 0 setelah 137,5 detik** — `sys.boot_completed` muncul dan
+watchdog berhenti sendiri tanpa mengeluh. Nol baris keluhan di `dmesg`.
+
+Angka itu sekaligus membuktikan perbaikannya perlu: **137 detik melewati batas
+lama 120 detik**, jadi ROM sebelumnya akan menjatuhkan boot ini juga.

@@ -242,7 +242,26 @@ termal global — hanya SKIN yang menentukannya
 (`ThermalManagerService.java:205`) — sehingga tidak memicu peringatan apa pun,
 dan slot `SHUTDOWN`-nya sudah `NAN` sejak awal.
 
-Masuk ROM `20260914_164631`. Belum diuji kembali di perangkat.
+Masuk ROM `20260914_164631`, dan **terbukti di perangkat** 14 September 2026.
+
+Kamera dibuka 60 detik pada perangkat yang sedang hangat:
+
+```
+detik    pm8916(SKIN)   tsens0   Thermal Status
+    0       57,1 C        65        0
+   30       59,0 C        68        0
+   45       60,1 C        70        0     <- puncak
+   60       59,6 C        69        0
+```
+
+Nol pemanggilan snackbar termal di logcat. Dengan ambang lama 55 C, **seluruh
+rentang itu** akan berstatus MODERATE — persis gejala yang dilaporkan.
+
+⚠️ Marginnya memang tidak lebar: puncak 60,1 C versus ambang 65 C, jadi sekitar
+5 C. Perangkat saat pengukuran itu sedang hangat (baru factory reset, dexopt
+GApps, dan beberapa uji beban). Di ruangan panas dengan perekaman panjang ia
+masih bisa menyentuh 65 — tetapi itu memang kondisi yang pantas diperingatkan,
+bukan pemakaian biasa.
 
 ---
 
