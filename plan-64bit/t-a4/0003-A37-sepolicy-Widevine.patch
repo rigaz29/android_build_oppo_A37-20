@@ -1,0 +1,150 @@
+From fcfafa185918fe92ae65c37ce79a8190bd4bf916 Mon Sep 17 00:00:00 2001
+From: rigaz29 <ryanbagas27@gmail.com>
+Date: Mon, 14 Sep 2026 11:12:48 +0000
+Subject: [PATCH] T-A4: tutup celah sepolicy Widevine, dengan restorecon untuk
+ perangkat lama
+
+Verifikasi di perangkat menemukan 19 denial unik saat CDM menulis device
+certificate, semuanya scontext=u:r:hal_drm_default:s0 menuju
+tcontext=u:object_r:vendor_data_file:s0. Perangkat ini Permissive sehingga
+Widevine tetap jalan, tetapi di Enforcing CDM akan gagal menulis dan
+OEMCrypto_Initialize berhenti.
+
+Denial yang benar-benar terukur, bukan ditebak:
+  dir   { write add_name create read open }   pada mediadrm/ dan L3/
+  file  { create read write open getattr }    pada ay64.dat6 dsb.
+
+Diperbaiki dengan tipe sendiri, bukan dengan membuka vendor_data_file polos --
+itu akan memberi HAL DRM akses ke SELURUH /data/vendor. Pola ini disalin apa
+adanya dari dua device tree referensi AOSP yang ada di pohon yang sama,
+device/generic/goldfish/sepolicy/common/ dan
+device/google/cuttlefish/shared/sepolicy/vendor/:
+
+  file.te               type mediadrm_vendor_data_file, file_type, data_file_type;
+  file_contexts         /data/vendor/mediadrm(/.*)? -> tipe itu
+  hal_drm_default.te    create_dir_perms + create_file_perms
+
+create_dir_perms/create_file_perms dipakai alih-alih daftar persis di atas:
+sesi yang terukur berhenti sebelum provisioning selesai, jadi rename/unlink/
+setattr belum sempat muncul padahal CDM jelas memakainya saat memperbarui usage
+table. Kedua makro itu pula yang dipakai kedua device tree referensi.
+
+RESTORECON WAJIB, dan ini yang hampir terlewat. init membuat direktori baru
+dengan label dari file_contexts, tetapi make_dir_with_options()
+(system/core/init/builtins.cpp:400-434) hanya lstat lalu chown/chmod bila
+direktori SUDAH ADA -- ia tidak pernah restorecon. Perangkat yang sudah
+menjalankan ROM sebelumnya sudah memiliki /data/vendor/mediadrm berlabel
+vendor_data_file, sehingga aturan allow baru tidak akan mengenai apa pun.
+restorecon_recursive ditambahkan tepat setelah mkdir.
+
+Kewenangan init diperiksa: relabelfrom pada vendor_data_file diizinkan
+(public/init.te:228) dan relabelto pada tipe baru diizinkan (:303) -- keduanya
+file_type dan tidak termasuk pengecualian.
+
+Diverifikasi di policy terkompilasi, bukan di sumber:
+  vendor_sepolicy.cil:1782  (type mediadrm_vendor_data_file)
+  vendor_sepolicy.cil:8555  allow hal_drm_default ... (dir (... create ... add_name
+                            remove_name reparent search rmdir))
+  vendor_sepolicy.cil:8556  allow hal_drm_default ... (file (... create ... unlink
+                            rename open))
+  vendor_file_contexts:614  label terpasang
+Uji vendor_file_contexts_test lolos.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_014BuvxqsBMX7Bb8CRVeSTBj
+---
+ rootdir/etc/init.qcom.rc    |  8 ++++++++
+ sepolicy/file.te            | 17 +++++++++++++++++
+ sepolicy/file_contexts      |  5 +++++
+ sepolicy/hal_drm_default.te | 21 +++++++++++++++++++++
+ 4 files changed, 51 insertions(+)
+ create mode 100644 sepolicy/hal_drm_default.te
+
+diff --git a/rootdir/etc/init.qcom.rc b/rootdir/etc/init.qcom.rc
+index 8a81a1c..f3a473d 100644
+--- a/rootdir/etc/init.qcom.rc
++++ b/rootdir/etc/init.qcom.rc
+@@ -65,6 +65,14 @@ on post-fs-data
+     # Level3FileSystem: Permission denied" lalu "OEMCrypto_Initialize failed: 28".
+     # Disalin dari acroreiser/ULH a6010 (rootdir/etc/init.qcom.rc:94), mode sama.
+     mkdir /data/vendor/mediadrm 0700 media media
++    # WAJIB menyusul mkdir, bukan opsional. init membuat direktori baru dengan
++    # label dari file_contexts, tetapi make_dir_with_options()
++    # (system/core/init/builtins.cpp:400-434) hanya chown/chmod bila direktori
++    # SUDAH ADA -- ia tidak pernah restorecon. Perangkat yang sempat menjalankan
++    # ROM sebelum label mediadrm_vendor_data_file diperkenalkan akan menyimpan
++    # vendor_data_file selamanya, sehingga aturan allow di
++    # sepolicy/hal_drm_default.te tidak pernah mengenai apa pun.
++    restorecon_recursive /data/vendor/mediadrm
+ 
+     mkdir /data/fdAlbum 0770 camera camera
+     mkdir /data/misc/camera 0770 camera camera
+diff --git a/sepolicy/file.te b/sepolicy/file.te
+index 8fa386e..47fc9ed 100644
+--- a/sepolicy/file.te
++++ b/sepolicy/file.te
+@@ -1 +1,18 @@
+ type proc_touchpanel, fs_type, proc_type;
++
++# Tipe untuk /data/vendor/mediadrm, tempat CDM Widevine L3 menyimpan device
++# certificate dan usage table (T-A4, 14 September 2026).
++#
++# Tanpa ini direktori itu mewarisi vendor_data_file dari /data/vendor, dan
++# domain hal_drm_default tidak punya aturan untuknya. Terukur di perangkat:
++# 19 denial unik saat CDM menulis berkasnya, semuanya lolos HANYA karena
++# perangkat ini Permissive. Di Enforcing, Widevine akan gagal menulis device
++# certificate dan OEMCrypto_Initialize berhenti.
++#
++# Memberi akses ke vendor_data_file polos akan terlalu luas -- itu membuka
++# SELURUH /data/vendor bagi HAL DRM. Tipe sendiri membatasinya ke satu pohon.
++#
++# Pola ini disalin apa adanya dari dua device tree referensi AOSP di pohon
++# yang sama: device/generic/goldfish/sepolicy/common/ dan
++# device/google/cuttlefish/shared/sepolicy/vendor/.
++type mediadrm_vendor_data_file, file_type, data_file_type;
+diff --git a/sepolicy/file_contexts b/sepolicy/file_contexts
+index 309e92c..f383026 100644
+--- a/sepolicy/file_contexts
++++ b/sepolicy/file_contexts
+@@ -33,6 +33,11 @@
+ # biner @1.1-service.widevine tidak terlabeli tanpa entri ini.
+ /(system/vendor|vendor)/bin/hw/android\.hardware\.drm@1\.1-service\.widevine    u:object_r:hal_drm_default_exec:s0
+ 
++# Direktori kerja CDM Widevine L3. init.qcom.rc membuat /data/vendor/mediadrm
++# di post-fs-data; CDM lalu membuat IDM<uid>/L3/ di bawahnya. Pola (/.*)? ikut
++# melabeli seluruh isinya.
++/data/vendor/mediadrm(/.*)?    u:object_r:mediadrm_vendor_data_file:s0
++
+ # TimeKeep
+ /sys/devices/soc\.0/qpnp-rtc-[0-9]/rtc/rtc0(/.*)?                         u:object_r:sysfs_rtc:s0
+ /(system/vendor|vendor)/bin/timekeep                                      u:object_r:timekeep_exec:s0
+diff --git a/sepolicy/hal_drm_default.te b/sepolicy/hal_drm_default.te
+new file mode 100644
+index 0000000..75f0027
+--- /dev/null
++++ b/sepolicy/hal_drm_default.te
+@@ -0,0 +1,21 @@
++# Widevine DRM L3 (T-A4, 14 September 2026).
++#
++# Biner /vendor/bin/hw/android.hardware.drm@1.1-service.widevine dilabeli
++# hal_drm_default_exec di file_contexts, sehingga berjalan di domain ini --
++# dikonfirmasi di perangkat, seluruh denial berbunyi
++# scontext=u:r:hal_drm_default:s0.
++#
++# CDM menulis device certificate dan usage table ke
++# /data/vendor/mediadrm/IDM<uid>/L3/. Denial yang benar-benar terukur di
++# perangkat (19 unik, semuanya permissive=1):
++#
++#   dir   { write add_name create read open }   pada mediadrm/ dan L3/
++#   file  { create read write open getattr }    pada ay64.dat6 dsb.
++#
++# create_dir_perms dan create_file_perms sengaja dipakai alih-alih daftar
++# persis di atas: sesi yang terukur itu berhenti sebelum provisioning selesai,
++# jadi rename/unlink/setattr belum sempat muncul padahal CDM jelas akan
++# memakainya saat memperbarui usage table. Kedua makro itu pula yang dipakai
++# goldfish dan cuttlefish untuk pasangan tipe/domain yang sama persis.
++allow hal_drm_default mediadrm_vendor_data_file:dir create_dir_perms;
++allow hal_drm_default mediadrm_vendor_data_file:file create_file_perms;
+-- 
+2.43.0
+

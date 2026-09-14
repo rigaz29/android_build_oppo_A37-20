@@ -274,23 +274,67 @@ jadi aplikasi yang memanggil `MediaDrm.isCryptoSchemeSupported(uuid)` biasa
 semestinya tetap dilayani — tetapi itu **belum dibuktikan**, karena tidak ada
 aplikasi berbasis MediaDrm yang terpasang di perangkat ini.
 
-### 7.3 Celah SELinux yang tertangkap
+### 7.3 Celah SELinux yang tertangkap — dan ditutup
 
-SELinux perangkat **Permissive**, dan itu menyelamatkan Widevine:
+SELinux perangkat **Permissive**, dan itulah yang menyelamatkan Widevine. 19
+denial unik terukur saat CDM menulis device certificate:
 
 ```
-avc: denied { write } for name="mediadrm" scontext=u:r:hal_drm_default:s0
-     tcontext=u:object_r:vendor_data_file:s0 tclass=dir permissive=1
-avc: denied { read write open } for path=".../L3/ay64.dat6"
-     scontext=u:r:hal_drm_default:s0 tcontext=u:object_r:vendor_data_file:s0
+avc: denied { write }            name="mediadrm"     tclass=dir   permissive=1
+avc: denied { add_name create }  name="IDM1013"      tclass=dir   permissive=1
+avc: denied { read open }        path=".../L3"       tclass=dir   permissive=1
+avc: denied { create read write open getattr }  path=".../ay64.dat6"  tclass=file
+  scontext=u:r:hal_drm_default:s0  tcontext=u:object_r:vendor_data_file:s0
 ```
 
-Label yang ditambahkan §5 menempatkan biner di domain `hal_drm_default` dengan
-benar, tetapi domain itu tidak punya aturan untuk `/data/vendor/mediadrm`
-(bertipe `vendor_data_file`). **Kalau perangkat ini dipindah ke Enforcing,
-Widevine akan gagal menulis device certificate.** Perbaikannya: beri direktori
-itu tipe sendiri di `file_contexts` lalu `allow` domain `hal_drm_default`
-membaca/menulisnya.
+Label §5 menempatkan biner di domain `hal_drm_default` dengan benar — itu
+justru terkonfirmasi oleh `scontext` di atas — tetapi domain itu tidak punya
+aturan untuk `/data/vendor/mediadrm`, yang mewarisi `vendor_data_file` dari
+`/data/vendor`. **Di Enforcing, CDM gagal menulis dan `OEMCrypto_Initialize`
+berhenti.**
+
+Ditutup 14 September 2026 (device tree `fcfafa1`), dengan **tipe sendiri**
+alih-alih membuka `vendor_data_file` polos — membuka tipe polos akan memberi
+HAL DRM akses ke seluruh `/data/vendor`. Polanya disalin apa adanya dari dua
+device tree referensi AOSP yang ada di pohon yang sama
+(`device/generic/goldfish/sepolicy/common/` dan
+`device/google/cuttlefish/shared/sepolicy/vendor/`):
+
+| berkas | isi |
+|---|---|
+| `sepolicy/file.te` | `type mediadrm_vendor_data_file, file_type, data_file_type;` |
+| `sepolicy/file_contexts` | `/data/vendor/mediadrm(/.*)?` → tipe itu |
+| `sepolicy/hal_drm_default.te` | `create_dir_perms` + `create_file_perms` |
+
+Makro dipakai alih-alih daftar izin persis di atas karena sesi yang terukur
+berhenti sebelum provisioning selesai — `rename`/`unlink`/`setattr` belum
+sempat muncul padahal CDM jelas memakainya saat memperbarui usage table.
+
+**`restorecon_recursive` wajib menyusul, dan ini yang hampir terlewat.** init
+melabeli direktori **baru** dari `file_contexts`, tetapi
+`make_dir_with_options()` (`system/core/init/builtins.cpp:400-434`) hanya
+`lstat` lalu chown/chmod bila direktorinya **sudah ada** — ia tidak pernah
+`restorecon`. Perangkat yang sudah menjalankan ROM sebelumnya sudah memiliki
+`/data/vendor/mediadrm` berlabel `vendor_data_file`, sehingga aturan baru tidak
+akan mengenai apa pun. Kewenangan init diperiksa: `relabelfrom` pada
+`vendor_data_file` (`public/init.te:228`) dan `relabelto` pada tipe baru
+(`:303`) sama-sama diizinkan.
+
+Diverifikasi di **policy terkompilasi**, bukan di sumber:
+
+```
+vendor_sepolicy.cil:1782  (type mediadrm_vendor_data_file)
+vendor_sepolicy.cil:8555  (allow hal_drm_default mediadrm_vendor_data_file
+                           (dir (... create getattr setattr rename open
+                                 add_name remove_name reparent search rmdir)))
+vendor_sepolicy.cil:8556  (allow hal_drm_default mediadrm_vendor_data_file
+                           (file (... create ... unlink rename open)))
+vendor_file_contexts:614  /data/vendor/mediadrm(/.*)? u:object_r:mediadrm_vendor_data_file:s0
+```
+
+Uji `vendor_file_contexts_test` lolos. **Belum diuji di perangkat** — butuh ROM
+baru; dan karena perangkat Permissive, perbedaannya baru terlihat lewat
+hilangnya denial di `dmesg`, bukan lewat perubahan perilaku.
 
 ---
 
