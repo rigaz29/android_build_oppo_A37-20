@@ -150,6 +150,55 @@ berjalan dan menemukan proses `dex2oat` yang sedang hidup — sekaligus bukti
 langsung bahwa dexopt memang aktif pada periode ini. Pola `case` diuji terhadap
 `dex2oat`, `dex2oat32`, `dex2oat64` dan `zygote64` (yang harus ditolak).
 
-Belum masuk ROM mana pun. Properti `persist.` di perangkat tetap berlaku dan
-akan tetap menjadi jaring pengaman kedua, karena ia bertahan melintasi flash ROM
-selama `/data` tidak dihapus.
+### 5.1 Batas default dinaikkan 120 → 300 detik
+
+Device tree `9b539cf`, atas permintaan pemilik perangkat.
+
+Argumen lama untuk 120 detik ditulis di skripnya sendiri: false positive dinilai
+**murah** (perangkat masuk recovery, adb hidup, semuanya bisa dibereskan lewat
+properti), sedangkan menunggu dinilai **mahal**. Asimetrinya berpihak pada batas
+pendek.
+
+Kenyataan membantahnya **dua kali**, dan keduanya tercatat di berkas yang sama:
+
+| kejadian | penyebab lambat | akibat |
+|---|---|---|
+| `report/bootfail3` | `odrefresh` kompilasi penuh, 81,5 detik | boot sehat dijatuhkan di detik 120 |
+| 14 Sep 2026 (ini) | dexopt GApps, 78 detik | boot sehat dijatuhkan di detik 135 |
+
+Yang tidak diperhitungkan argumen lama: **false positive tidak murah kalau
+pemiliknya tidak tahu penyebabnya.** Ia terlihat persis seperti ROM rusak, dan
+ongkos sebenarnya adalah waktu mendiagnosisnya.
+
+300 detik tetap memadai untuk hang sungguhan — boot sehat di sini ~40 detik
+tanpa GApps, 186 detik dengan GApps.
+
+**Rasio terhadap pagu mutlak dicatat sebagai keputusan sadar:** dengan `BATAS`
+300 dan pagu tetap 600, rasionya turun dari 5× ke 2×, lebih ketat daripada 4×
+yang tersirat di baris auto-koreksi. Itu disengaja — pagu mengukur waktu dinding
+**total termasuk kompilasi**, dan 10 menit sudah lebih dari cukup untuk boot
+terburuk yang pernah terukur di perangkat ini.
+
+Logika resolusinya diuji di mksh perangkat atas enam kasus, termasuk yang
+menjebak:
+
+```
+tanpa properti   -> BATAS=300  PAGU=600
+properti 0       -> BATAS=300     (bukan 0; untuk mematikan ada persist.a37.bootwatchdog=0)
+properti "abc"   -> BATAS=300
+properti 900     -> BATAS=900  PAGU=3600   (pagu naik otomatis 4x)
+```
+
+---
+
+## 6. Keadaan saat ini
+
+Belum masuk ROM mana pun — perangkat masih menjalankan ROM dengan default 120.
+Yang membuatnya boot sekarang adalah **properti** `persist.a37.bootwatchdog.timeout=300`
+yang disetel langsung ke `/data/property/persistent_properties`.
+
+Properti itu **menang atas default**, jadi setelah ROM baru di-flash pun ia
+tetap berlaku (nilainya kebetulan sama). Ia bertahan melintasi flash ROM selama
+`/data` tidak dihapus. Kalau suatu saat ingin memakai default ROM, hapus
+entrinya — cadangan aslinya ada di
+`/data/property/persistent_properties.bak-a37`.
