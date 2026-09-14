@@ -1,0 +1,114 @@
+From 5f422f4544ac8dab3d581829cdd53afbdebc6a3f Mon Sep 17 00:00:00 2001
+From: rigaz29 <ryanbagas27@gmail.com>
+Date: Mon, 14 Sep 2026 04:11:50 +0000
+Subject: [PATCH] T-A8 + T-A9: dua perbaikan laten dari LOS 23.2
+
+Keduanya nyata salah di sumber, keduanya TIDAK menimbulkan gejala di Android 13.
+Itu diverifikasi lebih dulu, bukan diasumsikan -- kamera dan keempat sensor
+memang terbukti jalan di ROM 64-bit yang sedang terpasang.
+
+T-A8 (camera/CameraWrapper.cpp, referensi 23.2 0add9f8)
+
+  hardware.h:112 mendefinisikan version_major SEBAGAI module_api_version, dan
+  :130 version_minor sebagai hal_api_version. Jadi ".version_major = 1" menyetel
+  module_api_version = 1, padahal CAMERA_MODULE_API_VERSION_1_0 = (1<<8)|0 = 256.
+
+  Android 13 tidak peduli, dan alasannya sudah ditelusuri: seluruh pembacaan
+  nilai itu berupa >= atau < terhadap CAMERA_MODULE_API_VERSION_2_0 (512) ke
+  atas, sehingga 1 dan 256 jatuh di sisi yang sama. Satu-satunya perbandingan ==
+  di pohon kamera adalah terhadap 2_5 (LegacyCameraProviderImpl_2_4.cpp:246),
+  dan getHalApiVersion() nol pemanggil.
+
+  Di Android 16 nilai yang sama menentukan segalanya: adapter HAL3on1 memilih
+  == 1_0 (256) -> open(), >= 2_3 (515) -> open_legacy(), selain itu -EINVAL.
+  Dengan 1 keduanya meleset dan nol kamera terdeteksi.
+
+  Diverifikasi di biner hasil build, bukan cuma di sumber. HMI di .data:
+  tag 0x48574d54 (HWMT), module_api_version 256 (dulu 1), hal_api_version 256
+  (dulu 0).
+
+T-A9 (sensors/NativeSensorManager.cpp, referensi 23.2 6de8c07)
+
+  Ruang nyata di nodename adalah PATH_MAX - 19 - strlen(d_name) - 1, karena '/'
+  di baris 859 memakan satu byte. Batas yang diberikan baris 862 tidak
+  menghitungnya. Baris 857 sendiri sudah pas (4096 - 19 = 4077).
+
+  Tidak pernah meluap sungguhan karena semua entri node_map pendek; yang keliru
+  adalah batasnya. FORTIFY Android 16 memakai __builtin_dynamic_object_size
+  sehingga sanggup menghitung offset runtime ini dan membunuh system_server 16
+  kali dalam 300 detik untuk nama sensor 12 karakter -- dan perangkat ini punya
+  dua: lis3dh-accel dan mmc3416x-mag. FORTIFY Android 13 tidak menangkapnya.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_014BuvxqsBMX7Bb8CRVeSTBj
+---
+ camera/CameraWrapper.cpp        | 25 +++++++++++++++++++++++--
+ sensors/NativeSensorManager.cpp | 16 +++++++++++++++-
+ 2 files changed, 38 insertions(+), 3 deletions(-)
+
+diff --git a/camera/CameraWrapper.cpp b/camera/CameraWrapper.cpp
+index b983c85..2fee759 100644
+--- a/camera/CameraWrapper.cpp
++++ b/camera/CameraWrapper.cpp
+@@ -65,8 +65,29 @@ static struct hw_module_methods_t camera_module_methods = {
+ camera_module_t HAL_MODULE_INFO_SYM = {
+     .common = {
+         .tag = HARDWARE_MODULE_TAG,
+-        .version_major = 1,
+-        .version_minor = 0,
++        // A37 (T-A8): pakai konstanta terkemas, bukan angka mentah.
++        // hardware.h:112 mendefinisikan version_major SEBAGAI module_api_version,
++        // sehingga ".version_major = 1" menyetel module_api_version = 1 -- padahal
++        // CAMERA_MODULE_API_VERSION_1_0 bernilai (1<<8)|0 = 256. Begitu pula
++        // version_minor, yang hardware.h:130 definisikan sebagai hal_api_version.
++        //
++        // Di Android 13 kesalahan ini TIDAK menimbulkan gejala apa pun, dan itu
++        // sudah diverifikasi: seluruh pembacaan nilai ini berupa >= atau <
++        // terhadap CAMERA_MODULE_API_VERSION_2_0 (512) ke atas, jadi 1 dan 256
++        // jatuh di sisi yang sama. Satu-satunya perbandingan == di pohon kamera
++        // adalah terhadap 2_5 (LegacyCameraProviderImpl_2_4.cpp:246), dan
++        // getHalApiVersion() nol pemanggil. Kamera memang terbukti jalan dengan
++        // nilai lama: dua device, Aperture membuka keduanya.
++        //
++        // Yang diperbaiki di sini adalah ranjau laten. Di Android 16 adapter
++        // HAL3on1 memilih cara membuka device dari nilai yang sama persis:
++        //   == CAMERA_MODULE_API_VERSION_1_0 (256) -> methods->open()
++        //   >= CAMERA_MODULE_API_VERSION_2_3 (515) -> open_legacy()
++        //   selain itu                              -> -EINVAL
++        // dan dengan nilai 1 keduanya meleset, sehingga provider legacy/0 tidak
++        // pernah naik dan nol kamera terdeteksi (proyek LOS 23.2, commit 0add9f8).
++        .module_api_version = CAMERA_MODULE_API_VERSION_1_0,
++        .hal_api_version = HARDWARE_HAL_API_VERSION,
+         .id = CAMERA_HARDWARE_MODULE_ID,
+         .name = "msm8916 Camera Wrapper",
+         .author = "The CyanogenMod Project",
+diff --git a/sensors/NativeSensorManager.cpp b/sensors/NativeSensorManager.cpp
+index 3b1198d..5bc2920 100644
+--- a/sensors/NativeSensorManager.cpp
++++ b/sensors/NativeSensorManager.cpp
+@@ -859,7 +859,21 @@ int NativeSensorManager::getSensorListInner()
+ 		*nodename++ = '/';
+ 
+ 		for (i = 0; i < ARRAY_SIZE(node_map); i++) {
+-			strlcpy(nodename, node_map[i].node, PATH_MAX - strlen(SYSFS_CLASS) - strlen(de->d_name));
++			/* A37 (T-A9): -1 untuk '/' yang ditulis tepat sebelum nodename di
++			 * atas. Ruang nyata di nodename adalah
++			 * PATH_MAX - 19 - strlen(d_name) - 1; batas lama satu byte lebih
++			 * besar dari itu. Baris 857 sendiri sudah pas (4096 - 19 = 4077).
++			 *
++			 * Di Android 13 kesalahan ini tidak menggigit -- keempat sensor
++			 * terbukti jalan tanpa tombstone -- dan tidak pernah meluap sungguhan
++			 * karena semua entri node_map pendek. Yang keliru adalah batasnya.
++			 * FORTIFY Android 16 memakai __builtin_dynamic_object_size sehingga
++			 * sanggup menghitung offset runtime ini dan membunuh prosesnya:
++			 * 'FORTIFY: strlcpy: prevented 4065-byte write into 4064-byte buffer'
++			 * untuk nama sensor 12 karakter -- dan perangkat ini punya dua:
++			 * lis3dh-accel dan mmc3416x-mag (LOS 23.2, commit 6de8c07). */
++			strlcpy(nodename, node_map[i].node,
++				PATH_MAX - strlen(SYSFS_CLASS) - strlen(de->d_name) - 1);
+ 			err = getNode((char*)(list->sensor), devname, &node_map[i]);
+ 			if (err) {
+ 				ALOGE("Get node for %s failed.\n", devname);
+-- 
+2.43.0
+
