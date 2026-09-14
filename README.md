@@ -89,6 +89,7 @@ Repo official LineageOS **tidak bisa** menggantikannya — diukur: kedua cabangn
 | [`plan-64bit/t-a3/`](plan-64bit/t-a3/) | **T-A3 selesai** — HAL thermal 2.0; config sensor diukur ulang di A37 dan tiga tebakan a6010 dikoreksi |
 | [`plan-64bit/t-a8-a9/`](plan-64bit/t-a8-a9/) | **T-A8 + T-A9 selesai** — dua perbaikan laten: fatal di Android 16, tanpa gejala di Android 13 |
 | [`plan-64bit/t-a4/`](plan-64bit/t-a4/) | **T-A4 selesai** — Widevine L3; linker `[legacy]` satu-namespace membatalkan dua keputusan desain LOS 23.2 |
+| [`plan-64bit/tier-b/`](plan-64bit/tier-b/) | **Tier B: T-B3 s/d T-B7** — 5 sub-item dikerjakan, 3 gugur karena gejalanya tidak ada di A13, 1 terhalang |
 | [`plan-64bit/fase-8/`](plan-64bit/fase-8/) | **Fase 8 — ROM 64-bit BOOT di perangkat** (14 Sep 2026): arm64-v8a, dua zygote, kamera 2 perangkat, RIL LTE, `/data` f2fs, nol tombstone |
 | [`plan-64bit/fase-7/`](plan-64bit/fase-7/) | **Fase 7 selesai** — audit closure dua jenis; menemukan premis Fase 4 salah dan mengembalikan kamera ke passthrough |
 | [`plan-64bit/fase-6/`](plan-64bit/fase-6/) | **Fase 6 selesai** — ROM 64-bit pertama terbangun (721 MB), `verify-rom.sh` semua lolos, isi system 1725 MB sisa 1001 MB |
