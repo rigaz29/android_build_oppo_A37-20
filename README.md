@@ -92,6 +92,7 @@ Repo official LineageOS **tidak bisa** menggantikannya — diukur: kedua cabangn
 | [`plan-64bit/tier-b/`](plan-64bit/tier-b/) | **Tier B: T-B3 s/d T-B7** — 5 sub-item dikerjakan, 3 gugur karena gejalanya tidak ada di A13, 1 terhalang |
 | [`plan-64bit/temuan-video/`](plan-64bit/temuan-video/) | **Diagnosis: rekaman terkunci 720p** — `LegacyMetadataMapper` membuang 1920x1080 karena foto terbesar 4:3. Diperbaiki lewat patch `0030`, belum diuji |
 | [`plan-64bit/temuan-gapps/`](plan-64bit/temuan-gapps/) | **Diagnosis: MindTheGapps ditolak** — TWRP 32-bit, dan `/tmp` berbasis RAM terlalu kecil untuk paket 950 MB |
+| [`plan-64bit/temuan-bootwatchdog/`](plan-64bit/temuan-bootwatchdog/) | **Watchdog menjatuhkan boot sehat setelah GApps** — `odsign` bukan sinyal kompilasi yang cukup; diperbaiki dengan deteksi `dex2oat` |
 | [`plan-64bit/fase-8/`](plan-64bit/fase-8/) | **Fase 8 — ROM 64-bit BOOT di perangkat** (14 Sep 2026): arm64-v8a, dua zygote, kamera 2 perangkat, RIL LTE, `/data` f2fs, nol tombstone |
 | [`plan-64bit/fase-7/`](plan-64bit/fase-7/) | **Fase 7 selesai** — audit closure dua jenis; menemukan premis Fase 4 salah dan mengembalikan kamera ke passthrough |
 | [`plan-64bit/fase-6/`](plan-64bit/fase-6/) | **Fase 6 selesai** — ROM 64-bit pertama terbangun (721 MB), `verify-rom.sh` semua lolos, isi system 1725 MB sisa 1001 MB |
