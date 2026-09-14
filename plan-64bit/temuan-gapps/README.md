@@ -4,7 +4,7 @@ Diperiksa **14 September 2026** atas laporan pemilik perangkat. Paket:
 `MindTheGapps-13.0.0-arm64-20231025_200931.zip` (385 MB), ROM
 `20260914_140455`.
 
-**Belum diperbaiki.** Dokumen ini diagnosis.
+**Penghalang 1 ditutup 14 Sep 2026** lewat TWRP 64-bit (lihat §4). **Penghalang 2 masih ada** dan tidak tersentuh.
 
 ---
 
@@ -114,3 +114,49 @@ dipasang ulang.
 
 Apa pun yang dipilih, cadangkan `/system` lewat TWRP lebih dulu — memasang
 GApps mengubah partisi itu, dan mem-flash ulang ROM akan menghapusnya lagi.
+
+
+---
+
+## 4. Penghalang 1 ditutup: TWRP 64-bit
+
+Dikerjakan 14 September 2026 atas permintaan pemilik perangkat (opsi **A**).
+Repo: [`android_build_oppo_A37-twrp`](https://github.com/rigaz29/android_build_oppo_A37-twrp),
+pohon perangkat cabang baru
+[`twrp-12.1-64bit`](https://github.com/rigaz29/android_device_oppo_A37f/tree/twrp-12.1-64bit).
+
+Perubahan intinya satu baris — `TARGET_ARCH := arm` menjadi `arm64` — karena
+`build/make/core/main.mk` menyetel `ro.bionic.arch=$(TARGET_ARCH)`. Tetapi
+konsekuensinya merambat:
+
+| | |
+|---|---|
+| `TARGET_SUPPORTS_64_BIT_APPS := false` | wajib; `board_config.mk:244-249` menolak build tanpanya |
+| arch kedua | **tidak dipakai** — ramdisk recovery hanya memuat pustaka arch utama |
+| keymaster + gatekeeper | dibangun ulang sebagai arm64; keduanya implementasi **software AOSP**, bukan blob vendor |
+| `vm_bms`, `qseecomd`, QSEECom | dibuang — blob vendor 32-bit, mustahil dieksekusi |
+
+Verifikasi build: `ro.bionic.arch=arm64`, **223 ELF seluruhnya 64-bit** (nol
+32-bit), penutupan pustaka jalur kripto lengkap lewat audit rekursif, dan header
+boot dengan QCDT 210.944 byte yang sama persis dengan `boot.img` LineageOS 20.
+
+> Sempat salah baca: ukuran DT terbaca `0` karena saya mengambil offset 1600.
+> Pada image QCDT field itu ada di **offset 40**, menggantikan `header_version`
+> (`mkbootimg.py:213-219`). Dibaca di tempat yang benar, nilainya 210.944.
+
+### 4.1 Ini belum membuat GApps bisa dipasang
+
+Perlu ditegaskan karena mudah disalahpahami: **penghalang 2 tidak tersentuh.**
+Installer tetap mengekstrak 950 MB ke `/tmp` yang berbasis RAM. Dua APK saja
+sudah 605 MB:
+
+```
+system/product/priv-app/VelvetTitan/VelvetTitan.apk   378.922.072
+system/product/priv-app/Velvet/Velvet.apk             256.257.637
+```
+
+Recovery 64-bit justru sedikit memperburuknya — biner 64-bit memakai memori
+lebih banyak daripada padanan 32-bitnya.
+
+Yang masih bisa menutupnya: opsi **B** (paket lebih kecil) atau **C**
+(menjalankan installer dengan `TMP` diarahkan ke `/data`).
