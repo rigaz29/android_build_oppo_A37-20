@@ -36,7 +36,7 @@ diambil langsung dari fork UL yang checkout-nya terbukti menjalankan ROM A37
 | T1 | `packages_modules_Wifi` | 1 | mWifiLinkLayerStatsSupported |
 | T1 | `packages_modules_Bluetooth` | 1 | toleransi le_set_event_mask. ⚠️ Dua patch device kita (opcode vendor OCF-only + standard inquiry scan) **tidak termasuk di sini** — dipasang terpisah oleh skrip apply |
 | T2 | `frameworks_av` | **44** | 45 diekstrak, **1 dibuang** (lihat di bawah) |
-| T2 | `frameworks_base` | 29 | termasuk 5 patch kosmetik (lihat di bawah) |
+| T2 | `frameworks_base` | 30 | 29 dari ekstraksi UL + **`0030` milik proyek ini** (lihat di bawah); termasuk 5 patch kosmetik |
 | T3 | `bionic` | 7 | kondisional — ⚠️ `0002`/`d51393f91` (per-process target SDK override) diverifikasi dulu terhadap `TARGET_PROCESS_SDK_VERSION_OVERRIDE` kita |
 | T3 | `external_jemalloc_new` | 3 | hanya bila bionic switch jemalloc diambil |
 | T3 | `hardware_qcom-caf_wlan` | 2 | hanya bila build wcnss/wpa gagal |
@@ -92,6 +92,14 @@ regresi hijau** (run verifikasi terakhir).
 
 `frameworks_base/`: `0016` hapus dialog target SDK · `0017` kurva brightness slider ·
 `0022` stretch effect · `0023` ripple PATTERNED · `0029` batterysaver night mode.
+
+**`0030` BUKAN dari ekstraksi UL** — ditulis untuk proyek ini 14 September 2026.
+`LegacyMetadataMapper` mengembalikan ukuran yang sanggup direkam, yang terbuang
+oleh work-around b/17589233. Tanpa itu perekaman A37 terkunci di 720p walau
+perangkatnya sanggup 1080p. Diagnosis lengkap di
+[`plan-64bit/temuan-video/`](../../plan-64bit/temuan-video/). Kalau suatu saat
+patch UL di-ekstraksi ulang, patch ini harus DIPERTAHANKAN dan dinomori ulang ke
+akhir seri.
 
 ## Yang sengaja tidak diekstrak
 

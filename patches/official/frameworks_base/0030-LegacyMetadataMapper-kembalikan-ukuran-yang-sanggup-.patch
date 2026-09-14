@@ -1,0 +1,116 @@
+From 4ca0229134130e51b1bc6d24a99c5544bc3e1667 Mon Sep 17 00:00:00 2001
+From: rigaz29 <ryanbagas27@gmail.com>
+Date: Mon, 14 Sep 2026 14:04:14 +0000
+Subject: [PATCH] LegacyMetadataMapper: kembalikan ukuran yang sanggup direkam
+
+Work-around b/17589233 membuang ukuran preview terbesar satu per satu sampai
+rasio aspeknya cocok dengan JPEG terbesar, demi menjaga akurasi fokus dan
+metering. Efek sampingnya tidak disadari di sana: untuk perangkat HAL1, daftar
+preview itu SATU SATUNYA sumber ukuran perekam di availableStreamConfigs, jadi
+ukuran yang dibuang ikut hilang dari kemampuan rekam.
+
+Terukur di OPPO A37. Foto terbesarnya 3264x2448 (rasio 4:3), toleransi 0.01f:
+
+  1920x1080  AR 1,7778  -> dibuang
+  1800x1080  AR 1,6667  -> dibuang
+  1440x1080  AR 1,3333  -> cocok, loop berhenti
+
+1920x1080 adalah satu satunya entri 1080p, sehingga camera2 tidak pernah melihat
+FHD. CameraX melaporkan supportedQualities = [HD, SD] dan perekaman terkunci di
+720p, padahal HAL1 mengiklankan video-size-values yang memuat 1920x1080 dan
+media_profiles mendeklarasikan profil 1080p 30 fps.
+
+Pemulihan ini dibatasi pada irisan (preview asli n getSupportedVideoSizes()):
+hanya ukuran yang tadinya ada di daftar preview DAN diakui sebagai ukuran video
+yang dikembalikan. Tidak ada ukuran baru yang diiklankan. Di A37 artinya
+1920x1080 kembali sementara 1800x1080 tetap terbuang karena bukan ukuran video.
+
+Pertukarannya diterima secara sadar: HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED
+dipakai permukaan preview MAUPUN perekam, sehingga ukuran yang dikembalikan juga
+bisa dipilih sebagai preview -- persis yang ingin dicegah work-around itu.
+Kehilangan seluruh kemampuan rekam 1080p dinilai lebih merugikan daripada
+kemungkinan metering meleset saat aplikasi memilih preview 16:9.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_014BuvxqsBMX7Bb8CRVeSTBj
+Change-Id: If6f57ba4e7cef5b23ba028d991446cd9f7ae1b5f
+---
+ .../camera2/legacy/LegacyMetadataMapper.java  | 62 +++++++++++++++++++
+ 1 file changed, 62 insertions(+)
+
+diff --git a/core/java/android/hardware/camera2/legacy/LegacyMetadataMapper.java b/core/java/android/hardware/camera2/legacy/LegacyMetadataMapper.java
+index 362ddfae67bf..2fc1739d01a9 100644
+--- a/core/java/android/hardware/camera2/legacy/LegacyMetadataMapper.java
++++ b/core/java/android/hardware/camera2/legacy/LegacyMetadataMapper.java
+@@ -331,6 +331,68 @@ public class LegacyMetadataMapper {
+             Collections.sort(previewSizes, Collections.reverseOrder(areaComparator));
+         }
+ 
++        /*
++         * A37: kembalikan ukuran yang SANGGUP DIREKAM dan terbuang oleh
++         * work-around b/17589233 di atas.
++         *
++         * Work-around itu membuang ukuran preview terbesar satu per satu sampai
++         * rasio aspeknya cocok dengan JPEG terbesar, demi menjaga akurasi fokus
++         * dan metering. Efek sampingnya tidak disadari di sana: ukuran yang
++         * dibuang juga hilang dari availableStreamConfigs, dan itulah satu
++         * satunya sumber ukuran perekam untuk perangkat HAL1.
++         *
++         * Terukur di OPPO A37 (14 September 2026). Foto terbesarnya 3264x2448,
++         * rasio 4:3, sedangkan toleransinya 0.01f:
++         *
++         *   1920x1080  AR 1,7778  -> dibuang
++         *   1800x1080  AR 1,6667  -> dibuang
++         *   1440x1080  AR 1,3333  -> cocok, loop berhenti
++         *
++         * 1920x1080 adalah satu satunya entri 1080p, sehingga camera2 tidak
++         * pernah melihat FHD. CameraX melaporkan supportedQualities = [HD, SD]
++         * dan perekaman terkunci di 720p, padahal HAL1 mengiklankan
++         * video-size-values yang memuat 1920x1080.
++         *
++         * Pemulihan ini SENGAJA dibatasi pada irisan (preview asli n video):
++         * hanya ukuran yang tadinya memang ada di daftar preview DAN diakui
++         * getSupportedVideoSizes() yang dikembalikan. Jadi tidak ada ukuran
++         * baru yang diiklankan, hanya yang dibuang work-around tadi. Di
++         * perangkat ini artinya 1920x1080 kembali sementara 1800x1080 tetap
++         * terbuang, karena yang kedua bukan ukuran video.
++         *
++         * Pertukarannya diterima secara sadar: HAL_PIXEL_FORMAT_IMPLEMENTATION_
++         * DEFINED dipakai permukaan preview MAUPUN perekam, sehingga ukuran yang
++         * dikembalikan juga bisa dipilih sebagai preview -- persis yang ingin
++         * dicegah work-around itu. Kehilangan seluruh kemampuan rekam 1080p
++         * dinilai lebih merugikan daripada kemungkinan metering yang meleset
++         * ketika aplikasi memilih preview 16:9.
++         */
++        {
++            List<Camera.Size> videoSizes = p.getSupportedVideoSizes();
++            if (videoSizes != null && !videoSizes.isEmpty()) {
++                boolean restored = false;
++                for (Camera.Size original : p.getSupportedPreviewSizes()) {
++                    if (previewSizes.contains(original)) {
++                        continue;   // tidak pernah dibuang
++                    }
++                    if (!videoSizes.contains(original)) {
++                        continue;   // dibuang, tetapi memang bukan ukuran rekam
++                    }
++                    previewSizes.add(original);
++                    restored = true;
++                    if (DEBUG) {
++                        Log.v(TAG, String.format(
++                                "mapScalerStreamConfigs - restored recordable size %dx%d",
++                                original.width, original.height));
++                    }
++                }
++                if (restored) {
++                    Collections.sort(previewSizes,
++                            Collections.reverseOrder(new SizeAreaComparator()));
++                }
++            }
++        }
++
+         appendStreamConfig(availableStreamConfigs,
+                 HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED, previewSizes);
+         appendStreamConfig(availableStreamConfigs,
+-- 
+2.43.0
+
