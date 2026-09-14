@@ -224,9 +224,93 @@ else
     bad "tidak bisa mengukur isi system — periksa $OUT"
 fi
 
+# ------------------------------------------------------------------ Tier A ---
+inf "Tier A (T-A3, T-A4, T-A6, T-A8)"
+
+# T-A3 thermal HAL 2.0
+TH=$OUT/system/vendor/bin/hw/android.hardware.thermal@2.0-service.msm8916
+if [ -f "$TH" ] && [ -f "$OUT/system/vendor/etc/thermal_info_config.json" ]; then
+    ok "T-A3 HAL thermal 2.0 + config terpasang"
+    # pm8916_tz harus SKIN (bms datar, tak layak jadi SKIN), dan tak boleh ada
+    # SHUTDOWN pada sensor proxy -- itu memanggil PowerManager.shutdown() sungguhan
+    if python3 - "$OUT/system/vendor/etc/thermal_info_config.json" <<'PYEOF'
+import json,sys
+d=json.load(open(sys.argv[1]))
+s={x["Name"]:x for x in d["Sensors"]}
+assert s["pm8916_tz"]["Type"]=="SKIN", "pm8916_tz bukan SKIN"
+assert s["bms"]["Type"]=="UNKNOWN", "bms bukan UNKNOWN"
+for n,x in s.items():
+    if n!="battery":
+        assert x["HotThreshold"][6]=="NAN", f"{n} masih punya ambang SHUTDOWN"
+PYEOF
+    then ok "T-A3 config: SKIN=pm8916_tz, bms=UNKNOWN, SHUTDOWN hanya di battery"
+    else bad "T-A3 config sensor tidak sesuai keputusan terukur"; fi
+else
+    bad "T-A3 HAL thermal tidak terpasang"
+fi
+
+# T-A4 Widevine: empat berkas, dan protobuf WAJIB versi 3.0.0 kita
+WV=$OUT/system/vendor
+n=0
+for f in bin/hw/android.hardware.drm@1.1-service.widevine \
+         etc/init/android.hardware.drm@1.1-service.widevine.rc \
+         lib/libwvhidl.so lib/libprotobuf-cpp-lite.so; do
+    [ -f "$WV/$f" ] && n=$((n+1))
+done
+if [ "$n" = 4 ]; then
+    ok "T-A4 empat artefak Widevine terpasang"
+else
+    bad "T-A4 hanya $n dari 4 artefak Widevine terpasang"
+fi
+PV=$WV/lib/libprotobuf-cpp-lite.so
+PS=$OUT/system/lib/libprotobuf-cpp-lite.so
+if [ -f "$PV" ] && [ -f "$PS" ] && [ "$(stat -c%s "$PV")" != "$(stat -c%s "$PS")" ]; then
+    ok "T-A4 protobuf vendor ($(stat -c%s "$PV") B) berbeda dari protobuf pohon ($(stat -c%s "$PS") B)"
+else
+    bad "T-A4 protobuf vendor tidak ada atau identik dengan versi pohon"
+fi
+if grep -q "setenv LD_LIBRARY_PATH /vendor/lib" "$WV/etc/init/android.hardware.drm@1.1-service.widevine.rc" 2>/dev/null; then
+    ok "T-A4 setenv LD_LIBRARY_PATH ada (tanpa ini blob menaut protobuf 3.9.1)"
+else
+    bad "T-A4 setenv LD_LIBRARY_PATH hilang dari .rc terpasang"
+fi
+
+# T-A6 server PSDS
+if grep -q "XTRA_SERVER_1\|PSDS" "$OUT/system/etc/gps_debug.conf" 2>/dev/null; then
+    ok "T-A6 gps_debug.conf memuat server bantuan"
+else
+    bad "T-A6 gps_debug.conf tidak memuat server bantuan"
+fi
+
+# T-A8 module_api_version di HMI, dibaca langsung dari biner
+CW=$OUT/system/lib/hw/camera.msm8916.so
+if [ -f "$CW" ] && python3 - "$CW" <<'PYEOF'
+import subprocess,struct,sys
+so=sys.argv[1]; addr=None
+for l in subprocess.run(['readelf','-sW',so],capture_output=True,text=True).stdout.splitlines():
+    p=l.split()
+    if len(p)>=8 and p[7]=='HMI': addr=int(p[1],16); break
+if addr is None: sys.exit(1)
+off=None
+for l in subprocess.run(['readelf','-SW',so],capture_output=True,text=True).stdout.splitlines():
+    if ']' not in l: continue
+    p=l.split(']',1)[1].split()
+    if len(p)<5: continue
+    try: a,o,sz=int(p[2],16),int(p[3],16),int(p[4],16)
+    except ValueError: continue
+    if a and a<=addr<a+sz: off=o+(addr-a); break
+tag,mav,hav=struct.unpack('<IHH', open(so,'rb').read()[off:off+8])
+sys.exit(0 if (tag==0x48574d54 and mav==256 and hav==256) else 1)
+PYEOF
+then ok "T-A8 HMI: module_api_version 256, hal_api_version 256"
+else bad "T-A8 module_api_version masih salah bentuk (atau HMI tak terbaca)"; fi
+
 # --------------------------------------------------------------------- zip ---
 inf "paket"
-ZIP=$(ls -t "$OUT"/lineage-20.0-*.zip 2>/dev/null | head -1)
+# Beberapa nama zip adalah hardlink ke satu inode, sehingga mtime-nya seri dan
+# "ls -t" memecah seri itu dengan urutan nama -- memilih yang TERTUA. Nama zip
+# memuat stempel waktu build, jadi urut nama adalah pemilihan yang benar.
+ZIP=$(ls -1 "$OUT"/lineage-20.0-*.zip 2>/dev/null | sort | tail -1)
 if [ -n "$ZIP" ]; then
     ok "$(basename "$ZIP") ($(du -h "$ZIP" | cut -f1))"
     case "$(basename "$ZIP")" in
