@@ -3,7 +3,7 @@
 Diperiksa **14 September 2026** atas laporan pemilik perangkat bahwa resolusi
 hasil video "sepertinya tidak pas". ROM `20260914_125924`.
 
-**Diperbaiki 14 Sep 2026** lewat `patches/official/frameworks_base/0030`, masuk ROM `20260914_140455`. Hasilnya **belum diuji di perangkat** — lihat §6.
+**Diperbaiki 14 Sep 2026** lewat `patches/official/frameworks_base/0030`, masuk ROM `20260914_140455`, dan **diuji di perangkat** — lihat §7. Ringkasnya: 1080p kini tersedia, tetapi harganya sekitar separuh frame rate.
 
 ---
 
@@ -223,3 +223,68 @@ membuat perubahan ini justru merugikan:
 
 Uji yang diminta: rekam di cahaya terang dan di ruangan, lalu coba tap-to-focus
 beberapa kali.
+
+
+---
+
+## 7. Hasil di perangkat (14 September 2026)
+
+Pemilik perangkat merekam ulang setelah flash.
+
+### 7.1 Patch bekerja
+
+```
+resolusi  1080x1920   (sebelumnya 1280x720)
+bitrate   18,8 Mbps   (profil 1080p 20 Mbps; sebelumnya 14,4 = profil 720p)
+rotasi    tidak ada side-data — 1080x1920 memang sudah tegak secara native
+```
+
+Dan yang lebih penting, aplikasi kini melihat **ketiga** kualitas:
+
+```
+sebelum : supportedQualities = [HD, SD]
+sesudah : supportedQualities = [FHD, HD, SD]
+```
+
+Jadi patch ini **menambah pilihan**, bukan memaksa 1080p. Aperture memilih yang
+tertinggi secara default, tetapi 720p tetap bisa dipilih dari aplikasi tanpa
+flash ulang.
+
+### 7.2 Harganya: sekitar separuh frame rate
+
+|  | 720p (sebelum) | 1080p (sesudah) |
+|---|---|---|
+| fps efektif | **19,79** | **11,26** |
+| interval rata-rata | 50,5 ms | 88,8 ms |
+| interval min–maks | 47,4–55,9 ms | 49,6–174,4 ms |
+| keseragaman | 37 dari 38 di ~50 ms | tersebar lebar |
+| ISO / shutter | 805 / 1/33 s | 850 / 1/17 s |
+
+**Sebaran intervalnya yang menentukan.** Pada 720p intervalnya nyaris seragam,
+yang berarti frame rate dikunci auto-exposure. Pada 1080p ia tersebar dari 49,6
+sampai 174,4 ms — itu pola pipeline yang **kepayahan**, bukan AE.
+
+Aritmetikanya memisahkan keduanya. Shutter 1/17 s = 58,8 ms, jadi AE sendiri
+membatasi di ~17 fps. Interval rata-rata yang terukur 88,8 ms, jadi ada
+**~30 ms per frame** ongkos tambahan di luar pencahayaan — itulah biaya
+encoding 1080p pada SoC ini.
+
+Angkanya sejalan dengan peringatan yang dicatat sebelum patch dibuat: proyek
+LOS 23.2 mengukur **13,4 fps pada 1080p** di perangkat yang sama.
+
+**Perkiraan untuk cahaya terang** (belum diuji): kalau AE bisa turun ke 1/100 s,
+targetnya 30 fps (33 ms), tetapi ongkos pipeline ~30 ms tetap ada, sehingga
+hasilnya kira-kira **16 fps** — bukan 30.
+
+### 7.3 Keputusannya kini milik pemilik perangkat
+
+Patch **dipertahankan**. Alasannya: ia mengembalikan kemampuan yang memang
+dimiliki perangkat dan menyerahkan pertukarannya ke pemakai, alih-alih
+memutuskan diam-diam di tingkat framework.
+
+- **720p** ≈ 20 fps, gerakan mulus — lebih baik untuk merekam orang dan gerak.
+- **1080p** ≈ 11 fps, detail lebih tinggi — untuk objek diam.
+
+Keduanya sekarang bisa dipilih dari aplikasi kamera. Kalau suatu saat 1080p
+dinilai tidak berguna sama sekali, mencabut patch `0030` mengembalikan keadaan
+lama, dan itu satu build.
