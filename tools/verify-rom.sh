@@ -305,6 +305,63 @@ PYEOF
 then ok "T-A8 HMI: module_api_version 256, hal_api_version 256"
 else bad "T-A8 module_api_version masih salah bentuk (atau HMI tak terbaca)"; fi
 
+# ------------------------------------------------------------------ Tier B ---
+inf "Tier B (T-B3, T-B4, T-B6, T-B7)"
+
+# T-B3 power HAL. Diperiksa pada varian lib64: servis power berjalan 64-bit,
+# jadi itulah berkas yang benar-benar dimuat perangkat.
+PW=$OUT/system/vendor/lib64/hw/power.msm8916.so
+if [ -f "$PW" ]; then
+    if strings "$PW" | grep -qx 800000 && strings "$PW" | grep -qx 1209600; then
+        ok "T-B3 batas frekuensi 800000 dan 1209600 ada di power HAL lib64"
+    else
+        bad "T-B3 konstanta batas frekuensi tidak ada di power HAL lib64"
+    fi
+else
+    bad "T-B3 power.msm8916.so lib64 tidak terpasang"
+fi
+
+# T-B4 wireguard-tools
+if [ -f "$OUT/system/bin/wg" ] && file -b "$OUT/system/bin/wg" | grep -q "ELF 64-bit"; then
+    ok "T-B4 wg terpasang, 64-bit ($(stat -c%s "$OUT/system/bin/wg") byte)"
+else
+    bad "T-B4 /system/bin/wg tidak terpasang atau salah arch"
+fi
+
+# T-B6a volume speaker. WAJIB di mixer_paths_mtp.xml: sound card perangkat
+# bernama msm8x16-snd-card-mtp dan platform.c:838 memetakannya ke berkas itu,
+# jadi menyuntingnya di mixer_paths.xml akan menjadi no-op.
+if grep -q 'RX1 Digital Volume" value="96"' "$OUT/system/vendor/etc/mixer_paths_mtp.xml" 2>/dev/null; then
+    ok "T-B6 volume digital speaker 96 ada di mixer_paths_mtp.xml"
+else
+    bad "T-B6 volume digital speaker tidak disetel di mixer_paths_mtp.xml"
+fi
+
+# T-B6d + T-B7c
+RC=$OUT/system/vendor/etc/init/hw/init.target.rc
+grep -q "default_pwrlevel 2" "$RC" 2>/dev/null \
+    && ok "T-B6 GPU default_pwrlevel 2 (level istirahat 200 MHz)" \
+    || bad "T-B6 default_pwrlevel tidak disetel"
+grep -q "hung_task_timeout_secs 90" "$RC" 2>/dev/null \
+    && ok "T-B7 hung_task_timeout_secs 90 (init.rc AOSP menyetel 0)" \
+    || bad "T-B7 hung_task_timeout_secs tidak disetel"
+
+# T-B7a PinnerService. Dibaca dari APK RRO hasil build, bukan dari sumber
+# overlay -- itu membuktikan overlay benar-benar terkompilasi dan terpasang.
+RRO=$(find "$OUT" -name "framework-res__auto_generated_rro_vendor.apk" 2>/dev/null | head -1)
+AAPT="${OUT%/target/product/*}/host/linux-x86/bin/aapt2"
+if [ -n "$RRO" ] && [ -x "$AAPT" ]; then
+    daftar=$("$AAPT" dump resources "$RRO" 2>/dev/null | grep -A9 "config_defaultPinnerServiceFiles")
+    pin=$(printf '%s\n' "$daftar" | grep -oE '"/(system|data)[^"]*"' | wc -l)
+    if printf '%s\n' "$daftar" | grep -q "oat/arm64/services.odex"; then
+        ok "T-B7 daftar pinner di RRO: $pin entri, services.odex sudah arm64"
+    else
+        bad "T-B7 daftar pinner di RRO masih menunjuk jalur lama"
+    fi
+else
+    inf "  (RRO atau aapt2 tidak ditemukan, lewati pemeriksaan pinner)"
+fi
+
 # --------------------------------------------------------------------- zip ---
 inf "paket"
 # Beberapa nama zip adalah hardlink ke satu inode, sehingga mtime-nya seri dan

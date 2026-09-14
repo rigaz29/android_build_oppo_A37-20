@@ -276,7 +276,57 @@ dirawat.
 
 ---
 
-## 6. Belum diverifikasi di perangkat
+## 6. Masuk ROM 20260914_125924
+
+Dibangun dan diverifikasi 14 September 2026. `verify-rom.sh` diberi bagian
+**Tier B** dan lolos seluruhnya:
+
+```
+T-B3 batas frekuensi 800000 dan 1209600 ada di power HAL lib64
+T-B4 wg terpasang, 64-bit (83640 byte)
+T-B6 volume digital speaker 96 ada di mixer_paths_mtp.xml
+T-B6 GPU default_pwrlevel 2 (level istirahat 200 MHz)
+T-B7 hung_task_timeout_secs 90 (init.rc AOSP menyetel 0)
+T-B7 daftar pinner di RRO: 6 entri, services.odex sudah arm64
+```
+
+Entri pinner dibaca dengan `aapt2 dump resources` dari
+`framework-res__auto_generated_rro_vendor.apk` **hasil build**, bukan dari
+sumber overlay — itu membuktikan overlaynya benar-benar terkompilasi dan
+terpasang, bukan sekadar tertulis.
+
+### 6.1 Dua kegagalan build, keduanya milik saya sendiri
+
+**Tanda hubung ganda XML, untuk ketiga dan keempat kalinya.** Setelah
+`mixer_paths_mtp.xml` ditangkap `xmllint`, overlay `config.xml` gagal lagi di
+`aapt2` dengan `xml parser error: not well-formed`. Penyebabnya tiga `--` lagi
+di komentar yang baru ditulis; pemeriksaan pertama saya hanya melaporkan
+kemunculan **pertama per komentar** sehingga dua sisanya lolos. Kini
+dibersihkan menyeluruh dengan verifikasi mandiri, dan **seluruh 39 berkas XML**
+device tree dilewatkan `xmllint`.
+
+**`bacon-retry.sh` salah menyebut galat itu OOM, delapan kali.** Ini lebih
+serius daripada XML-nya. Pola galat "nyata" di skrip hanya mengenali
+`berkas:baris:kolom: error:`, sedangkan `aapt2` menulis `berkas:0: error:`
+tanpa kolom. Kegagalan itu lalu jatuh ke cabang "FAILED tanpa galat kompilator"
+dan dibaca sebagai kehabisan memori — skrip mengulang delapan kali dan bahkan
+**menurunkan ke `-j6`** sesuai aturan pengguna, untuk kegagalan yang sama
+sekali tidak berhubungan dengan memori.
+
+Diperbaiki dua lapis:
+
+| perbaikan | isi |
+|---|---|
+| pola diperluas | `berkas:baris: error:`, `berkas: error:`, `error: file failed to compile`, `ninja: error:`, `FAILED: *.xml` |
+| plafon mutlak | `MAKS_PERCOBAAN=8`, lalu berhenti dan menyuruh dibaca manusia |
+
+Pola baru diuji terhadap log yang gagal itu dan mengenalinya. Setelah kedua
+perbaikan, build lolos **percobaan pertama dengan `-j10`** dalam 6 menit 18
+detik.
+
+---
+
+## 7. Belum diverifikasi di perangkat
 
 Semua perubahan di atas **belum masuk ROM mana pun** kecuali `wg`, yang diuji
 lewat push manual. Setelah ROM berikutnya di-flash:
