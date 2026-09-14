@@ -14,7 +14,7 @@ Bahan: 4.398 baris logcat + 4.458 baris dmesg dari satu boot.
 |---|---|---|---|
 | 1 | `ada_dex2oat()` 35× terlalu mahal, membanjiri audit log | **saya** | ✅ diperbaiki |
 | 2 | daftar cooling device kosong dianggap gagal | **saya** | ✅ diperbaiki |
-| 3 | `CONFIG_UID_CPUTIME` gugur diam-diam → statistik CPU per-aplikasi mati | kernel | ⚠️ **belum**, perlu rebuild kernel |
+| 3 | `CONFIG_UID_CPUTIME` gugur diam-diam → statistik CPU per-aplikasi mati | kernel | ✅ diperbaiki (`9266716`) |
 | 4–8 | galat lain | — | wajar, didokumentasikan |
 
 ---
@@ -110,9 +110,29 @@ pernah ada — diverifikasi di perangkat, yang ada hanya `/proc/uid_stat`.
 **Akibatnya:** layar penggunaan baterai tidak bisa mengatribusikan waktu CPU ke
 aplikasi. Baterai tetap terukur; yang hilang adalah rinciannya per aplikasi.
 
-**Perbaikannya** menyalakan `CONFIG_PROFILING` di defconfig kernel. Itu menuntut
-rebuild kernel dan `boot.img` baru, jadi ditahan sampai diputuskan — ongkosnya
-lebih besar daripada nilainya kalau rincian baterai per-aplikasi tidak dipakai.
+**Diperbaiki** 15 September 2026 (kernel `9266716`) dengan menyalakan
+`CONFIG_PROFILING`. Masuk ROM `20260914_231027`, yang karena itu **juga membawa
+boot.img baru**.
+
+Diverifikasi **sebelum** membangun apa pun, lewat kconfig dua arah:
+
+```
+tanpa PROFILING   ->  UID_CPUTIME DIBUANG dari .config
+dengan PROFILING  ->  UID_CPUTIME BERTAHAN di .config
+```
+
+Dan sesudah build, bukti definitifnya: **`uid_cputime.o` benar-benar
+terkompilasi** di `obj/KERNEL_OBJ/drivers/misc/`.
+
+`OPROFILE` sengaja tidak ikut dinyalakan — `PROFILING` hanya membuatnya bisa
+*dipilih* (`arch/Kconfig:7`), dan diverifikasi ia tidak muncul di `.config`.
+
+Baris `# CONFIG_PROFILING is not set` sebelumnya ternyata **bawaan defconfig
+awal** (`59585edea76`), bukan keputusan yang pernah diambil proyek ini —
+diperiksa lewat `git log -S`. Komentar *"NYALAKAN LAGI hanya kalau ada konsumen
+baru yang terbukti menuntutnya"* di dekatnya merujuk
+`ANDROID_TREBLE_SPOOF_KERNEL_VERSION`, bukan baris ini. Kalaupun ia merujuk
+baris ini, syaratnya justru terpenuhi: konsumennya terbukti.
 
 ---
 
