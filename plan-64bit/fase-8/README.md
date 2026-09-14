@@ -172,6 +172,71 @@ Catatan metode: magnetometer sempat dinyalakan lewat `sysfs` untuk pengujian dan
 
 ---
 
+## 7c. Senter — berfungsi, dan berkat kernel yang dipilih
+
+```
+dumpsys media.camera
+  09-14 07:27:38 : Torch for camera id 0 turned ON  for client PID 2867
+  09-14 07:27:42 : Torch for camera id 0 turned OFF for client PID 2867
+  Has a flash unit: true
+  flash-mode-values: off,auto,on,torch
+
+/sys/class/leds/torch-light0   brightness 0, max_brightness 255
+                               trigger memuat flashlight-trigger
+```
+
+PID 2867 = `com.android.systemui` — tile Quick Settings. Senter benar-benar menyala
+selama 4 detik dan mati lagi.
+
+**Node `torch-light0` itu ada BERKAT pilihan kernel.** Catatan device tree dari era
+LOS 23.2 menyatakan *"A37 tidak punya node torch (`/sys/class/leds` hanya
+`lcd-backlight`)"* — dan itu benar untuk kernel `lineage-23`. Yang mengubahnya
+commit **`cb52394` `msm_led_trigger: jangan kunci cadangan trigger torch pada
+GPIO_FLASH`** (2026-09-12), yaitu **satu-satunya commit** yang memisahkan
+`lineage-24` dari `lineage-23`.
+
+Permintaan "kernel terbaru" di awal proyek ini karena itu membeli sesuatu yang
+konkret: senter yang bekerja.
+
+⚠️ SELinux mencatat denial `/proc/qcom_flash` oleh `mm-qcamerad` dengan
+`permissive=1` — senter tetap jalan karena tidak ditegakkan. Bila kelak pindah ke
+enforcing, ini butuh aturan sendiri.
+
+---
+
+## 7d. GPS — siap, tetapi BELUM teruji
+
+```
+lshal      android.hardware.gnss@1.0::IGnss/default   pid 347
+proses     /vendor/bin/hw/android.hardware.gnss@1.0-service   ELF 64-bit
+gps provider  enabled=true  allowed=true
+              ProviderRequest[OFF]   mStarted=false   last location=null
+              sv status messages used in fix: 0
+/etc/gps.conf  SUPL_HOST=supl.google.com:7276 · NTP_SERVER=1.android.pool.ntp.org
+               CAPABILITIES=0x37 · LPP_PROFILE=3
+logcat     nol galat gnss/loc_/izat
+```
+
+Semuanya terdaftar dan tidak ada galat, tetapi **mesin GNSS belum pernah
+dijalankan sekali pun** — tidak ada klien yang meminta lokasi, dan tidak ada
+aplikasi peta/GPS terpasang di ROM ini. `cmd location` hanya menyediakan sakelar
+utama, jadi ia **tidak bisa dipicu dari adb**.
+
+**Jadi GPS tidak boleh disebut berfungsi.** Yang terbukti hanya: HAL-nya hidup
+sebagai proses 64-bit, provider-nya terdaftar dan aktif, konfigurasinya masuk akal,
+dan tidak ada yang mengeluh.
+
+Untuk membuktikannya: pasang aplikasi yang meminta lokasi (Maps, GPS Test), buka di
+dekat jendela atau di luar ruangan, lalu periksa `dumpsys location` — `mStarted`
+harus `true` dan jumlah satelit naik dari nol.
+
+⚠️ Terkait: `gps.conf` **tidak memuat `XTRA_SERVER`**, dan framework tidak
+dikonfigurasi PSDS. Artinya cold start harus mengurai almanak langsung dari sinyal
+satelit — lambat, bisa menit-menitan di langit terbuka. Itu persis **T-A6** di
+`PLAN-64BIT.md` §6, yang kini punya alasan konkret.
+
+---
+
 ## 8. Yang BELUM diuji
 
 Batas §8 `HANDOFF.md` tetap berlaku — daftar ini jujur, bukan diremehkan:
@@ -186,7 +251,8 @@ Batas §8 `HANDOFF.md` tetap berlaku — daftar ini jujur, bukan diremehkan:
 | Pemakaian harian | 4 menit uptime tidak mengukur apa pun soal stabilitas |
 | ~~Sensor~~ | **selesai — lihat §7b, keempatnya berfungsi** |
 | Proximity di pemakaian nyata | driver menjawab saat boot, tetapi belum diuji dengan menutup sensor / saat panggilan |
-| GPS, senter | belum |
+| ~~Senter~~ | **selesai — §7c, berfungsi** |
+| GPS | **§7d — siap tetapi belum pernah dijalankan.** Butuh aplikasi peminta lokasi + langit terbuka |
 
 ---
 
@@ -199,4 +265,6 @@ meminfo-20260914.txt          500 baris
 camera-20260914.txt           353 baris
 sensorservice-20260914.txt    166 baris
 input-devices-20260914.txt    113 baris
+location-20260914.txt          99 baris
+leds-gps-20260914.txt          40 baris
 ```

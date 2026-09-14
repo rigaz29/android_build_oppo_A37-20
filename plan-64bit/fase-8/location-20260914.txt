@@ -1,0 +1,99 @@
+Location Manager State:
+  User Info:
+    current users: u[0]
+  Location Settings:
+    Location Setting: true
+    Location Allow/Deny Packages:
+  Location Providers:
+    passive provider:
+      service: registered
+      listeners:
+        1000/android[SensorNotificationService]/3B2CE4D7 Request[PASSIVE, minUpdateInterval=+30m0s0ms, minUpdateDistance=100000.0, WorkSource{1000 android}]
+        1000/android[twilight]/A3DFAC69 Request[PASSIVE, minUpdateInterval=0, minUpdateDistance=20000.0, WorkSource{1000 android}]
+      last location=null
+      enabled=true
+      allowed=true
+      identity=1000/android[LocationService]
+      properties=ProviderProperties[powerUsage=Low, accuracy=Fine]
+    fused provider:
+      service: ProviderRequest[OFF]
+      last location=null
+      enabled=true
+      allowed=true
+      identity=1000/com.android.location.fused
+      properties=ProviderProperties[powerUsage=Low, accuracy=Fine, supports=[bearing,speed,altitude]]
+      stationary throttled=false (not idle) (not stationary)
+      target service=1000/com.android.location.fused/.FusedLocationService@0
+      connected=true
+    gps provider:
+      service: ProviderRequest[OFF]
+      last location=null
+      enabled=true
+      allowed=true
+      identity=1000/android[GnssService]
+      properties=ProviderProperties[powerUsage=High, accuracy=Fine, requires=satellite, supports=[bearing,speed,altitude]]
+      stationary throttled=false (not idle) (not stationary)
+      mStarted=false   (changed +14m17s169ms ago)
+      mBatchingEnabled=false
+      mBatchingStarted=false
+      mBatchSize=0
+      mFixInterval=1000
+      GNSS_KPI_START
+        KPI logging start time: +1m3s709ms
+        KPI logging end time: +21m24s274ms
+        Number of location reports: 0
+        Number of TTFF reports: 0
+        Number of position accuracy reports: 0
+        Number of CN0 reports: 0
+        Total number of sv status messages processed: 0
+        Total number of L5 sv status messages processed: 0
+        Total number of sv status messages processed, where sv is used in fix: 0
+        Total number of L5 sv status messages processed, where sv is used in fix: 0
+        Number of L5 CN0 reports: 0
+        Used-in-fix constellation types: 
+      GNSS_KPI_END
+      Power Metrics
+        Time on battery (min): 0.59525
+        Amount of time (while on battery) Top 4 Avg CN0 > 20.0 dB-Hz (min): 0.0
+        Amount of time (while on battery) Top 4 Avg CN0 <= 20.0 dB-Hz (min): 0.0
+        Energy consumed while on battery (mAh): 0.0
+      Hardware Version: 
+  Historical Aggregate Location Provider Data:
+    passive:
+      1000/android[SensorNotificationService]: min/max interval = passive/passive, total/active/foreground duration = +20m10s338ms/+20m10s337ms/+20m10s337ms, locations = 0
+      1000/android[twilight]: min/max interval = passive/passive, total/active/foreground duration = +20m10s253ms/+20m10s252ms/+20m10s253ms, locations = 0
+      10129/org.lineageos.aperture: min/max interval = 1s/1s, total/active/foreground duration = +3s269ms/+3s262ms/+3s264ms, locations = 0
+    gps:
+      1000/com.android.location.fused: min/max interval = 1s/1s, total/active/foreground duration = +3s218ms/+3s214ms/+3s216ms, locations = 0
+      10129/org.lineageos.aperture: min/max interval = 1s/1s, total/active/foreground duration = +3s233ms/+3s229ms/+3s233ms, locations = 0
+    fused:
+      10129/org.lineageos.aperture: min/max interval = 1s/1s, total/active/foreground duration = +3s246ms/+3s244ms/+3s245ms, locations = 0
+  GNSS Manager:
+    Capabilities: [SCHEDULING MSB MSA ON_DEMAND_TIME GEOFENCING]
+    Status Provider:
+      service: unregistered
+    Measurements Provider:
+      service: unregistered
+  Geofence Manager:
+    service: unregistered
+  Event Log:
+    09-14 07:14:15.094: passive provider [u0] enabled
+    09-14 07:14:21.970: gps provider [u0] enabled
+    09-14 07:14:23.723: passive provider [u0] enabled
+    09-14 07:14:23.723: gps provider [u0] enabled
+    09-14 07:14:25.601: fused provider [u0] enabled
+    09-14 07:14:32.025: passive provider +registration 1000/android[SensorNotificationService]/3B2CE4D7 -> Request[PASSIVE, minUpdateInterval=+30m0s0ms, minUpdateDistance=100000.0, WorkSource{1000 android}]
+    09-14 07:14:32.032: passive provider request = ProviderRequest[@0]
+    09-14 07:14:32.110: passive provider +registration 1000/android[twilight]/A3DFAC69 -> Request[PASSIVE, minUpdateInterval=0, minUpdateDistance=20000.0, WorkSource{1000 android}]
+    09-14 07:20:21.918: passive provider +registration 10129/org.lineageos.aperture/ECCA14E5 -> Request[@+1s0ms BALANCED, minUpdateDistance=1.0, WorkSource{10129 org.lineageos.aperture}]
+    09-14 07:20:21.943: fused provider +registration 10129/org.lineageos.aperture/ECCA14E5 -> Request[@+1s0ms BALANCED, minUpdateDistance=1.0, WorkSource{10129 org.lineageos.aperture}]
+    09-14 07:20:21.944: fused provider request = ProviderRequest[@+1s0ms, WorkSource{10129 org.lineageos.aperture}]
+    09-14 07:20:21.959: gps provider +registration 10129/org.lineageos.aperture/ECCA14E5 -> Request[@+1s0ms BALANCED, minUpdateDistance=1.0, WorkSource{10129 org.lineageos.aperture}]
+    09-14 07:20:21.964: gps provider request = ProviderRequest[@+1s0ms, WorkSource{10129 org.lineageos.aperture}]
+    09-14 07:20:21.975: gps provider +registration 1000/com.android.location.fused/C906E40F -> Request[@+1s0ms BALANCED, hiddenFromAppOps, WorkSource{10129 org.lineageos.aperture}]
+    09-14 07:20:25.188: passive provider -registration 10129/org.lineageos.aperture/ECCA14E5
+    09-14 07:20:25.189: fused provider -registration 10129/org.lineageos.aperture/ECCA14E5
+    09-14 07:20:25.189: fused provider request = ProviderRequest[OFF]
+    09-14 07:20:25.192: gps provider -registration 10129/org.lineageos.aperture/ECCA14E5
+    09-14 07:20:25.193: gps provider -registration 1000/com.android.location.fused/C906E40F
+    09-14 07:20:25.193: gps provider request = ProviderRequest[OFF]

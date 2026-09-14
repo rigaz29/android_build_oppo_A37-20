@@ -1,0 +1,40 @@
+/sys/class/leds/lcd-backlight:
+total 0
+drwxr-xr-x 3 root   root      0 1970-02-25 19:20 .
+drwxr-xr-x 3 root   root      0 1970-02-25 19:20 ..
+-rw-r--r-- 1 system system 4096 2026-09-14 07:28 brightness
+lrwxrwxrwx 1 root   root      0 1970-02-25 19:20 device -> ../../../qcom,mdss_fb_primary.121
+-rw-r--r-- 1 root   root   4096 1970-02-25 19:20 inverted
+-rw-r--r-- 1 root   root   4096 1970-02-25 19:20 max_brightness
+drwxr-xr-x 2 root   root      0 1970-02-25 19:20 power
+lrwxrwxrwx 1 root   root      0 1970-02-25 19:20 subsystem -> ../../../../../../class/leds
+-rw-r--r-- 1 root   root   4096 1970-02-25 19:20 trigger
+-rw-r--r-- 1 root   root   4096 1970-02-25 19:20 uevent
+
+/sys/class/leds/torch-light0:
+total 0
+drwxr-xr-x 3 root root    0 1970-02-25 19:20 .
+drwxr-xr-x 3 root root    0 1970-02-25 19:20 ..
+-rw-r--r-- 1 root root 4096 2026-09-14 07:33 brightness
+lrwxrwxrwx 1 root root    0 2026-09-14 07:34 device -> ../../../qcom,camera-led-flash.125
+-rw-r--r-- 1 root root 4096 2026-09-14 07:33 max_brightness
+drwxr-xr-x 2 root root    0 1970-02-25 19:20 power
+lrwxrwxrwx 1 root root    0 2026-09-14 07:34 subsystem -> ../../../../../../class/leds
+-rw-r--r-- 1 root root 4096 2026-09-14 07:33 trigger
+-rw-r--r-- 1 root root 4096 1970-02-25 19:20 uevent
+--- gps.conf ---
+XTRA_VERSION_CHECK=0
+ERR_ESTIMATE=0
+NTP_SERVER=1.android.pool.ntp.org
+DEBUG_LEVEL = 0
+INTERMEDIATE_POS=0
+SUPL_VER=0x20000
+SUPL_ES=0
+USE_EMERGENCY_PDN_FOR_EMERGENCY_SUPL=1
+CAPABILITIES=0x37
+SUPL_HOST=supl.google.com
+SUPL_PORT=7276
+LPP_PROFILE = 3
+NMEA_PROVIDER=0
+SGLTE_TARGET=0
+A_GLONASS_POS_PROTOCOL_SELECT = 0
