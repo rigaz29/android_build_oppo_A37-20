@@ -3,7 +3,7 @@
 Diperiksa **14 September 2026** atas laporan pemilik perangkat bahwa resolusi
 hasil video "sepertinya tidak pas". ROM `20260914_125924`.
 
-**Belum diperbaiki.** Dokumen ini diagnosis, bukan perubahan.
+**Diperbaiki 14 Sep 2026** lewat `patches/official/frameworks_base/0030`, masuk ROM `20260914_140455`. Hasilnya **belum diuji di perangkat** — lihat §6.
 
 ---
 
@@ -168,3 +168,58 @@ Perlu diukur setelah diterapkan, bukan diasumsikan:
 3. apakah akurasi tap-to-focus dan metering memburuk.
 
 Butuh build ulang penuh dan flash.
+
+
+---
+
+## 6. Perbaikan yang diterapkan
+
+`patches/official/frameworks_base/0030-LegacyMetadataMapper-kembalikan-ukuran-yang-sanggup-.patch`
+
+Setelah loop pembuangan work-around, ukuran dikembalikan bila memenuhi **kedua**
+syarat: tadinya ada di `getSupportedPreviewSizes()` **dan** diakui
+`getSupportedVideoSizes()`. Jadi tidak ada ukuran baru yang diiklankan, hanya
+yang dibuang work-around itu.
+
+Di A37 artinya `1920x1080` kembali sementara `1800x1080` tetap terbuang, karena
+yang kedua bukan ukuran video.
+
+```java
+List<Camera.Size> videoSizes = p.getSupportedVideoSizes();
+if (videoSizes != null && !videoSizes.isEmpty()) {
+    for (Camera.Size original : p.getSupportedPreviewSizes()) {
+        if (previewSizes.contains(original)) continue;   // tidak pernah dibuang
+        if (!videoSizes.contains(original)) continue;    // bukan ukuran rekam
+        previewSizes.add(original);
+        …
+```
+
+`Camera.Size` mengimplementasikan `equals()` dan `hashCode()` berbasis
+width/height (`Camera.java:2482`), jadi `List.contains()` sah dipakai lintas
+instance `Parameters`.
+
+### 6.1 Nomor patch, dan kesalahan yang hampir terjadi
+
+Awalnya patch ini diberi nomor `0011`. Itu **salah**: direktori
+`patches/official/frameworks_base/` berisi **29** patch, bukan 10 seperti yang
+sempat terlihat karena keluaran `ls` terpotong, dan `0011` sudah dipakai
+"Camera: Add feature extensions". Tertangkap saat memverifikasi berkas hasil
+ekspor, yang ternyata memuat **dua** patch. Dinomori ulang menjadi `0030`.
+
+`MANIFEST.md` diberi catatan bahwa `0030` **bukan** dari ekstraksi UL, supaya
+tidak hilang kalau seri itu diekstraksi ulang.
+
+### 6.2 Belum diuji, dan mungkin harus dibatalkan
+
+`framework-minus-apex` terbangun bersih (17:06) dan ROM penuh lolos percobaan
+pertama (06:57), tetapi **tidak satu pun fungsi terbukti**. Dua hal yang bisa
+membuat perubahan ini justru merugikan:
+
+1. **fps pada 1080p.** Proyek LOS 23.2 mengukur **13,4 fps pada 1080p** di
+   perangkat yang sama. Kalau di sini juga tersendat, 720p adalah pilihan yang
+   lebih benar dan patch ini sebaiknya dicabut.
+2. **Akurasi metering dan fokus.** Ukuran yang dikembalikan juga bisa dipilih
+   sebagai ukuran preview, dan itulah yang ingin dicegah work-around b/17589233.
+
+Uji yang diminta: rekam di cahaya terang dan di ruangan, lalu coba tap-to-focus
+beberapa kali.
