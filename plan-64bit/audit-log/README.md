@@ -258,9 +258,29 @@ ramoops.record_size=0x40000 ramoops.console_size=0x100000
 ramoops.pmsg_size=0x40000 ramoops.dump_oops=1 ramoops.ecc=32
 ```
 
-Yang membuktikannya berhasil nanti adalah ekor dump berikutnya: `Corrected
-bytes` harus tidak lagi nol, dan jumlah `unrecoverable blocks` harus turun
-drastis dari 2030–3388.
+### Terbukti di perangkat, 15 September 2026
+
+Ekor dump `console-ramoops-0` — dump yang **ditulis dan dibaca** oleh kernel
+ber-`ecc=32`, dikonfirmasi karena cmdline di dalam dump itu sendiri berbunyi
+`ramoops.ecc=32`:
+
+```
+sebelum :  0 Corrected bytes, 2030 unrecoverable blocks
+           0 Corrected bytes, 3388 unrecoverable blocks
+sesudah :  No errors detected
+```
+
+Dan pesan kernelnya:
+
+| | sebelum | sesudah |
+|---|---|---|
+| `persistent_ram: uncorrectable error in header` | 13× | **1×** |
+
+Satu yang tersisa itu artefak transisi sekali pakai: boot pertama sesudah flash
+membaca buffer yang masih ditulis kernel lama ber-`ecc=1`, dan tata letak ECC
+yang berbeda membuat header-nya tidak cocok. Sesudah itu bersih.
+
+Alat diagnosis proyek ini kini utuh.
 
 ## B. SetupWizard memanggil provider Google 1341× — bukan milik kita
 
