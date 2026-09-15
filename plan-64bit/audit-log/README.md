@@ -207,3 +207,76 @@ persis perilaku yang benar untuk kernel yang tidak mengekspos satu pun.
 Paket `com.google` tinggal 1 (GCam yang terpasang di `/data`). NikGApps
 memasang dirinya ke `/system/product`, dan mem-flash ROM menimpa partisi itu.
 **Setiap flash ROM menghapus GApps** — ia harus dipasang ulang sesudahnya.
+
+
+---
+
+# Putaran kedua (15 September 2026, ROM `20260914_231027`)
+
+Sisiran ulang setelah log jauh lebih bersih. **Satu bug nyata, satu perilaku
+boros yang bukan milik kita, sisanya wajar.**
+
+## A. `ramoops.ecc=1` — alat diagnosis kita sendiri rusak ✅ diperbaiki
+
+Komentar di `BoardConfig.mk` sudah menyatakan syaratnya sejak awal:
+
+> *"Nilai ini HARUS sama antara kernel ROM dan kernel recovery, karena ecc
+> mengubah tata letak buffer — kalau berbeda, recovery membaca sampah."*
+
+**Syarat itu sudah dilanggar sejak lama tanpa ada yang menyadarinya:**
+
+| | |
+|---|---|
+| device tree TWRP | `ramoops.ecc=32` sejak 31 Agustus 2026 |
+| device tree ROM | `ramoops.ecc=1` |
+
+Akibatnya terukur di ekor setiap dump:
+
+```
+0 Corrected bytes, 2030 unrecoverable blocks    (boot biasa)
+0 Corrected bytes, 3388 unrecoverable blocks    (dump kegagalan boot GApps)
+```
+
+**"0 Corrected bytes"** itu intinya — dengan `ecc=1` praktis tidak ada yang bisa
+dikoreksi. Boot ini sendiri mencatat **13×** `persistent_ram: uncorrectable
+error in header`.
+
+Yang membuatnya pantas disebut bug, bukan sekadar setelan kurang optimal: saat
+mendiagnosis kegagalan boot 14 September, dump yang dibaca memuat **3388 blok
+rusak**. Baris penyebabnya kebetulan selamat. Kalau tidak, diagnosis itu buntu.
+
+Dinaikkan ke 32, mengikuti pengukuran proyek TWRP di perangkat yang sama (laju
+kerusakan 6,9% versus kapasitas `ecc=16` yang hanya 6,25%). Device tree
+`e2614f8`. **Berlaku hanya lewat boot.img baru.**
+
+## B. SetupWizard memanggil provider Google 1341× — bukan milik kita
+
+```
+E ActivityThread: Failed to find provider info for com.google.android.setupwizard.partner
+```
+
+1457 kejadian dalam 2 menit, ~11 per detik, dari `org.lineageos.setupwizard`
+(1341) dan `com.android.settings` (116).
+
+Sumbernya `PartnerConfigHelper.SUW_AUTHORITY` di `external/setupcompat` —
+pustaka Google, bukan kode proyek ini. Ia menanyai provider partner Google untuk
+tema, dan GApps tidak terpasang sesudah flash ROM.
+
+**Transien**, hanya selama setup: diuji ulang dengan membuka Settings pada
+perangkat yang sudah ter-setup, hasilnya **0 kejadian**. Tidak ditambal —
+menambal pustaka hulu demi kebisingan log saat setup nilainya lebih kecil
+daripada risikonya. Dicatat kalau suatu saat setup terasa lambat.
+
+## C. Wajar, diperiksa dan diberhentikan
+
+| temuan | putusan |
+|---|---|
+| `SELinux: denied { find } name=suspend_control_internal` (2×) | **bukan bug** — servisnya terdaftar (`service list` #192); ini balapan sesaat saat boot |
+| `i2c: error probe() failed with err:-517` (10×) | `-517` = `EPROBE_DEFER`, probe tertunda normal |
+| `BpfHandler` (15×) | eBPF tidak ada di kernel 3.10, sudah diketahui |
+| `q6asm_send_asm_cal: DSP returned error[-2]` (3×) | kalibrasi audio opsional tidak ada di blob |
+| `msm_voice_source_tracking_get: err=-22` (2×) | fitur voice tidak didukung perangkat |
+| `set_battery_data: get bq2022 manu id fail` | chip ID baterai tidak ada, memakai profil bawaan |
+| `UserRestrictionsUtils`, `TaskPersister`, `NetlinkEvent`, `MtpServer`, `OMXNodeInstance`, `vold` xattr | semuanya sesaat atau tidak berdampak |
+| denial `zygote` (150×) ke `device` | jalur cgroup v2; proyek sudah sengaja memakai v1 |
+| denial `rild` (50×) ke `radio_core_data_file` | blob RIL 2016, ioctl tak dilabeli policy modern |
