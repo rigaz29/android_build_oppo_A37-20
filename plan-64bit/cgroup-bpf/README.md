@@ -79,7 +79,67 @@ Terbukti kecil: setelah `CONFIG_CGROUP_BPF` dinyalakan, build hanya melaporkan
 
 ---
 
-## 5. Yang tersisa — 15 galat, semuanya di `kernel/bpf/cgroup.c`
+## 5. SELESAI — kernel ter-link, keenam langkah dikerjakan
+
+`6515c3ada21`. `make Image` **exit 0, nol galat, nol undefined reference**.
+**Belum pernah di-boot.**
+
+| langkah | hasil |
+|---|---|
+| filesystem `cgroup2` | hierarki tanpa controller, memakai ulang mesin `none`/`name=` 3.10 |
+| `cgroup_get_from_fd` / `cgroup_put` | ditulis ulang **berbasis dentry**, bukan disalin dari upstream berbasis kernfs |
+| pembungkus attach/detach/query | mengambil `cgroup_mutex` seperti upstream |
+| `sock_cgroup_data` | di `struct sock`, diisi di `sock_init_data()` |
+| `cgroup_bpf_inherit` / `put` | disambungkan ke pembuatan & penghancuran cgroup |
+| hook ingress + **egress** | `filter.c:83` + `ip_finish_output()` + `ip6_finish_output()` |
+
+### ⚠️ Perangkap yang dicegah — akan gagal DIAM-DIAM kalau terlewat
+
+```c
+/* upstream 4.x  */ css_for_each_descendant_pre(css, &cgrp->self)   ← MENYERTAKAN cgrp
+/* 3.10          */ cgroup_next_descendant_pre(NULL, cgrp)          ← MELEWATI cgrp
+                    /* "pretends we just visited @cgroup" — kernel/cgroup.c:3174 */
+```
+
+Substitusi mentah akan membuat **keempat** loop itu **kosong total** di root
+hierarki `cg2_bpf` yang tidak punya anak. Program tidak akan pernah menjadi
+efektif, dan seluruh akuntansi diam-diam tidak jalan — **tanpa satu pun galat**.
+
+Karena itu `cgrp` dikerjakan **eksplisit lebih dulu** di setiap loop.
+`rcu_read_lock()` ikut dipasang: iterator 3.10 memasang
+`WARN_ON_ONCE(!rcu_read_lock_held())`.
+
+### Hook egress — tanpa ini hanya trafik masuk yang terhitung
+
+Upstream memanggilnya dengan parameter `sk`; signature 3.10 tidak membawanya,
+jadi diambil dari `skb->sk` — dan makronya memang memeriksa `sock == skb->sk`,
+sehingga setara. Diverifikasi lewat `nm`: `ip_output.o` dan `ip6_output.o`
+memuat `U __cgroup_bpf_run_filter` dan `U cgroup_bpf_enabled_key`.
+
+### Penyederhanaan yang disengaja, dan batasnya
+
+`cgroup_sk_alloc()` selalu mengisi **root** hierarki cgroup2, bukan cgroup
+tempat task berada. Itu **benar untuk pemakaian yang ada** — netd memasang
+programnya di root `/dev/cg2_bpf` dan tidak pernah membuat cgroup anak di sana.
+
+Kalau suatu saat ada yang membuat cgroup anak dengan program berbeda,
+atribusinya akan salah (semuanya jatuh ke root). Yang benar saat itu:
+`task_cgroup_from_root(current, &cgroup2_root)`. Dicatat di tempatnya.
+
+---
+
+## 6. Yang akan membuktikannya
+
+```sh
+mount | grep cgroup2                 # /dev/cg2_bpf akhirnya ter-mount?
+logcat | grep -c "attach failed"     # sekarang 3
+/data/local/tmp/dumpmap              # sekarang "total entri: 0"
+dumpsys netstats --uid               # rincian per aplikasi
+```
+
+---
+
+## 7. Yang tersisa — 15 galat, semuanya di `kernel/bpf/cgroup.c`
 
 ```
 css_for_each_descendant_pre(css, &cgrp->self)    4 tempat
