@@ -98,3 +98,71 @@ jalur jaringan, risiko nol.
 Kalau suatu saat `/data` memang terbukti jadi leher botol -- misalnya ruangnya
 menipis sampai GC f2fs tertekan -- ukur ulang dulu sebelum menyentuh kode
 sistem berkas.
+
+---
+
+# Ditinjau ulang khusus ext4 (15 Sep 2026): tetap tidak ada yang dikejar
+
+Kesimpulan awal bertumpu pada "ext4 hanya-baca", dan itu belum menyentuh
+pertanyaan apakah **jalur bacanya** tertinggal. Ditinjau ulang, dan ternyata
+memang ada celah kode -- tapi celah itu tidak berbiaya.
+
+## Celahnya nyata
+
+```c
+fs/ext4/inode.c:3046
+return mpage_readpages(mapping, pages, nr_pages, ext4_get_block);
+```
+
+Ini `mpage_readpages()` **generik** dari `fs/mpage.c`. ext4 punya versinya
+sendiri sejak 3.19 (`ext4_mpage_readpages`, di `fs/ext4/readpage.c`), dan
+berkas itu tidak ada di sini. Jadi jalur baca ext4 kita memang pra-3.19.
+
+## Tetapi tidak berbiaya, diukur
+
+Berkas 30.394.368 byte yang **tidak dipetakan proses mana pun**, cache dibuang
+tiap kali, frekuensi dikunci performance:
+
+| jalan | ext4 (`/system`) | f2fs (`/data`) |
+|---|---|---|
+| 1 | 134 MB/s | 138 MB/s |
+| 2 | 135 MB/s | 138 MB/s |
+| 3 | 135 MB/s | 138 MB/s |
+
+Selisih 2,5%, dan keduanya mentok di batas eMMC. `ext4_mpage_readpages`
+memang lahir untuk mendukung enkripsi, bukan untuk mempercepat -- ia salinan
+`mpage_readpages` yang dikhususkan. Hasil di atas cocok dengan itu.
+
+## Pelajaran metode: pengukuran pertama saya TIDAK SAH
+
+Percobaan pertama memakai `/system/framework/framework.jar` dan memberi
+**739 MB/s**. Itu mustahil: antarmuka eMMC HS200 puncaknya 200 MB/s, dan baca
+blok mentah di perangkat ini terukur 103 MB/s. Angka yang secara fisik
+mustahil adalah tanda pengukurannya yang salah, bukan temuan.
+
+Sebabnya: `framework.jar` di-mmap zygote dan setiap proses aplikasi, dan
+`drop_caches` TIDAK membuang halaman yang sedang dipetakan. Jadi yang terbaca
+RAM, bukan eMMC.
+
+Cara memilih berkas uji yang benar -- kumpulkan dulu semua yang dipetakan,
+lalu ambil yang bukan salah satunya:
+
+```sh
+cat /proc/*/maps | awk '{print $NF}' | grep '^/' | sort -u > mapped.txt
+find /system -type f -size +15M | while read f; do
+    grep -qxF "$f" mapped.txt || echo "$f"
+done
+```
+
+## Kesimpulan tetap
+
+Tiga alasan, dan ketiganya berdiri sendiri:
+
+1. ext4 di perangkat ini hanya-baca (`/`, 26 mount `/apex/*`, `/cache`,
+   `/persist`), sedangkan perbaikan besar ext4 pasca-3.10 hampir semuanya di
+   jalur TULIS -- `fast_commit` (5.10), iomap DIO, delalloc yang lebih baik.
+2. Satu-satunya celah jalur baca yang ada tidak terukur biayanya: 135 vs
+   138 MB/s, keduanya batas perangkat keras.
+3. Tidak ada keluhan nyata yang menunjuk ke ext4.
+
+Backport ext4: **tidak ada yang pantas dikejar.**
