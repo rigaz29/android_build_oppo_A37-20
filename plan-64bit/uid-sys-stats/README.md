@@ -125,14 +125,52 @@ jadi perlu dipastikan `proc` sudah siap. Sudah — `proc_root_init()` di
 `init/main.c:640` berjalan sebelum `rest_init()` di `:660`, sedangkan initcall
 baru dijalankan `do_basic_setup()` di `:900`.
 
-**Belum diuji di perangkat.** Yang harus dilihat setelah flash:
+### Terbukti di perangkat, 15 September 2026
 
-```sh
-ls /proc/uid_io/stats /proc/uid_procstat/set
-cat /proc/uid_io/stats | head          # 11 kolom per uid
+ROM `20260915_093647`, diperiksa setelah flash.
+
+```
+scheduler      noop [deadline] row cfq bfq      <- bukan lagi [noop]
+nr_requests    256                              <- bukan lagi 128
+rq_affinity    0
+sys.boot_completed = 1, scheduler TETAP deadline
 ```
 
+Baris terakhir itu yang penting: dulu justru `boot_completed` yang menimpa
+nilainya jadi `noop`. Sekarang ia bertahan.
+
+```
+/proc/uid_io/stats        77 uid, 11 kolom
+/proc/uid_procstat/set    ada
+/proc/uid_cputime/*       tetap ada, 77 baris (tidak ada yang hilang)
+```
+
+Tiga hal yang membuktikan ini benar-benar **bekerja**, bukan sekadar ada:
+
+| bukti | angka | artinya |
+|---|---|---|
+| 34 uid punya angka di **kedua** ember fg dan bg | 34/77 | `system_server` memang menulis `/proc/uid_procstat/set`, dan driver memisah embernya. Tanpa itu semua angka akan menumpuk di satu ember |
+| 36 uid punya hitungan fsync, total **1411** | kolom 10-11 | backport `inc_syscfs()` di `do_fsync()` bekerja. Field ini tidak ada di 3.10 murni |
+| `uid 1000 rchar: 969934192 -> 969934520` dalam 3 detik | naik | angkanya hidup, bukan beku |
+
+Tidak ada regresi: nol oops, nol `BUG:`, nol tombstone, nol entri di buffer
+crash — meski `task_struct` bertambah satu field. Tidak ada satu pun galat
+`storaged` atau `uid_io` di logcat.
+
 ---
+
+### Satu hal yang TIDAK terjawab oleh uji ini
+
+`ro.build.date` dan `ro.build.version.incremental` di perangkat masih menunjuk
+**13 September** (`eng.rigaz2.20260913.180619`), bukan build hari ini. Itu
+perilaku wajar AOSP -- `out/build_date.txt` hanya dibuat ulang pada build
+bersih -- tapi akibatnya nyata: **identitas build di perangkat tidak bisa
+dipakai untuk memastikan ROM mana yang terpasang.** Yang dipakai sebagai bukti
+di sini adalah scheduler dan `/proc/uid_io`, keduanya hanya mungkin ada di ROM
+baru.
+
+Ini bersaudara dengan [`../temuan-zip-hardlink/`](../temuan-zip-hardlink/):
+nama zip berbohong soal tanggal, dan build.prop pun begitu.
 
 ## 3. Temuan sampingan, BELUM diperbaiki
 
