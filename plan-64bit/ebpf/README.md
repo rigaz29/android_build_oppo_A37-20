@@ -285,6 +285,65 @@ tanda tangannya tidak berubah.
 
 ---
 
+## 5d. Tahap 3 SELESAI: seccomp dikonversi, **kernel utuh ter-link**
+
+Commit `d2eef75ee48`. `make Image` **exit 0, nol galat, nol undefined reference**.
+
+```
+Image    18.726.200 byte   (+92 KB, +0,5% dari baseline)
+```
+
+Simbol terverifikasi di `System.map`: `sys_bpf`, `bpf_check`,
+`bpf_prog_create_from_user`, `populate_seccomp_data`, `seccomp_check_filter`,
+`sock_gen_cookie`, `bpf_convert_filter`, `__alloc_percpu_gfp`,
+`skb_ensure_writable`.
+
+### ⚠️ BELUM PERNAH DI-BOOT
+
+Ini tahap yang dari awal ditandai paling berisiko. **Seccomp yang rusak berarti
+zygote gagal dan perangkat tidak boot sama sekali** — bukan fitur hilang, tapi
+mati total. Kernel ini terkompilasi dan ter-link; itu saja yang terbukti.
+
+### Inti konversinya
+
+Pada skema 3.10, program cBPF memuat data lewat opcode ancillary yang memanggil
+balik ke kernel (`seccomp_bpf_load()`) untuk membaca `pt_regs` satu per satu.
+Pada eBPF, `struct seccomp_data` menjadi **konteks program**, sehingga muatan
+`A = *(u32 *)(ctx + K)` membacanya langsung.
+
+Seluruh opcode `BPF_S_*` diganti opcode klasik, mengikuti daftar upstream
+`3ad00405c1b8` persis. Satu baris yang layak diperhatikan:
+
+```c
+case BPF_LD | BPF_W | BPF_ABS:
+        ftest->code = BPF_LDX | BPF_W | BPF_ABS;
+```
+
+Itu **bukan salah ketik** — penanda khusus seccomp yang dikenali
+`bpf_convert_filter()`. Keberadaannya di `net/core/filter.c` diverifikasi
+**sebelum** konversi dimulai; kalau tidak ada, filter seccomp akan gagal
+dikonversi dan setiap aplikasi Android gagal start.
+
+`bpf_prog_create_from_user(..., seccomp_check_filter, false)` kini mengerjakan
+penyalinan, `bpf_check_classic`, penulisan ulang seccomp, dan konversi sekaligus
+— urutan sama dengan skema lama. `save_orig = false` karena seccomp tak pernah
+membaca program cBPF aslinya, dan menyimpannya memboroskan memori di **setiap
+aplikasi Android**.
+
+### Dua ikutan
+
+`ppp_generic.c` (upstream `568f194e8bd1`): `pass_filter`/`active_filter` dari
+`sock_filter` mentah jadi `bpf_prog`.
+
+`__alloc_percpu_gfp` ditambahkan ke `mm/percpu.c`. Upstream mengubah
+`pcpu_alloc()` agar menerima gfp; di 3.10 ia belum bisa dan **selalu boleh
+tidur**. Maka permintaan atomik (tanpa `__GFP_WAIT`) **ditolak dengan NULL**
+alih-alih dilayani — melayaninya berarti berpotensi tidur di konteks atomik,
+jauh lebih buruk daripada kegagalan alokasi yang memang sudah diantisipasi
+pemanggil.
+
+---
+
 ## 6. Perkiraan jujur
 
 | tahap | keadaan |
@@ -292,10 +351,11 @@ tanda tangannya tidak berubah.
 | inti `kernel/bpf/` kompilasi | ✅ **SELESAI** — 0 galat, 12 objek |
 | `net/core/filter.c` + seluruh `net/` | ✅ **SELESAI** — 0 galat |
 | berkas pengguna API lama | ✅ ternyata hanya 2, keduanya selesai |
-| konversi seccomp | ⬜ **satu-satunya yang tersisa** — 44 galat, paling berisiko |
-| syscall, bpffs, cgroup attach, LSM | belum |
-| link kernel utuh | belum |
-| boot | belum |
+| konversi seccomp | ✅ **SELESAI** — 0 galat |
+| syscall + bpffs + LSM | ✅ selesai — `sys_bpf` ada di System.map |
+| cgroup attach (`CONFIG_CGROUP_BPF`) | ⬜ masih mati — wajib untuk program netd |
+| link kernel utuh | ✅ **SELESAI** — Image 18,7 MB, +0,5% |
+| boot | ⬜ **belum pernah dicoba** — di sinilah risikonya |
 | bpfloader memuat program | belum |
 
 Ini pekerjaan berhari-hari, bukan berjam-jam, dengan satu titik yang bisa
