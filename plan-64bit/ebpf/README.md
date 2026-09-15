@@ -415,6 +415,87 @@ Diperbaiki di `29fc3ef95ed`; menunggu uji putaran kedua.
 
 ---
 
+## 5f. Putaran kedua: eBPF BEKERJA PENUH, dan program Android termuat
+
+`29fc3ef95ed`. Boot mulus, `uname -r` cocok dengan nama zip.
+
+### Syscall `bpf()` diuji langsung, bukan disimpulkan
+
+Program bebas-libc (`svc #0`) di perangkat:
+
+```
+1. MAP_CREATE(HASH 4/4/8)     -> 3        fd, peta terbuat
+2. MAP_UPDATE_ELEM k=7 v=1234 -> 0
+3. MAP_LOOKUP_ELEM k=7        -> 0        nilai terbaca = 1234
+4. PROG_LOAD (program sah)    -> 4        verifier MENERIMA
+5. PROG_LOAD (program cacat)  -> -13      verifier MENOLAK
+   pesan verifier: 0: (95) exit
+                   R0 !read_ok
+```
+
+Baris 5 yang paling meyakinkan: verifier benar-benar **menganalisis** program,
+melacak keadaan register, dan menolak yang cacat dengan diagnosa upstream yang
+tepat. Ini bukan stub.
+
+Tipe peta yang sengaja dimatikan juga berperilaku jujur:
+
+```
+MAP_CREATE(PERF_EVENT_ARRAY) -> -22   (-EINVAL)
+```
+
+### bpfloader memuat SELURUH program Android
+
+Tanpa diminta, dan ini melampaui perkiraan:
+
+```
+/sys/fs/bpf/netd_shared/
+  prog_netd_cgroupskb_ingress_stats      <- inti akuntansi per-aplikasi
+  prog_netd_cgroupskb_egress_stats       <- idem
+  prog_netd_schedact_ingress_account
+  prog_netd_skfilter_{allowlist,denylist,egress,ingress}_xtbpf
+  + 10 peta netd
+
+/sys/fs/bpf/tethering/    8 program offload + 11 peta
+/sys/fs/bpf/              14 peta time_in_state, 3 peta GPU
+```
+
+**Verifier menerima program BPF Android yang sesungguhnya** — bukan program uji
+buatan sendiri. Galat `E BpfHandler` turun dari **39 menjadi 2**.
+
+### ⚠️ Yang menghalangi: cgroup v2, dan itu lebih besar dari perkiraan
+
+Program **dimuat**, tetapi belum **ter-attach**. Sebelumnya diperkirakan yang
+kurang hanya `CONFIG_CGROUP_BPF`. Ternyata lebih dari itu:
+
+```
+netd: avc denied open /dev/cg2_bpf     <- titik attach cgroup-BPF
+/proc/filesystems: cgroup2 TIDAK ADA   <- 3.10 hanya punya cgroup v1
+3 kegagalan attach di logcat
+```
+
+`BPF_PROG_ATTACH` untuk `BPF_CGROUP_INET_INGRESS/EGRESS` menuntut **fd cgroup
+v2 (unified hierarchy)**, yang baru ada di 4.5. Jadi yang tersisa bukan satu
+opsi Kconfig melainkan backport cgroup v2.
+
+### Dua galat tersisa punya sebab yang tepat
+
+```
+E BpfHandler: Failed to get socket cookie: Protocol not available
+```
+
+`Protocol not available` = `ENOPROTOOPT` dari `getsockopt(SO_COOKIE)`.
+`sock_gen_cookie()` sudah ada di kernel ini, tetapi **opsi soket `SO_COOKIE`
+belum** — upstream `5daab9db7b65`. Perbaikan kecil dan terdefinisi.
+
+### Jalan alternatif yang murah
+
+`net/netfilter/xt_bpf.c` **ada di pohon** tetapi
+`CONFIG_NETFILTER_XT_MATCH_BPF` tidak menyala. Jalur `skfilter/*/xtbpf`
+menempel lewat iptables, **tanpa perlu cgroup sama sekali**. Layak dicoba
+sebelum menempuh backport cgroup v2.
+
+---
+
 ## 6. Perkiraan jujur
 
 | tahap | keadaan |
@@ -427,7 +508,9 @@ Diperbaiki di `29fc3ef95ed`; menunggu uji putaran kedua.
 | cgroup attach (`CONFIG_CGROUP_BPF`) | ⬜ masih mati — wajib untuk program netd |
 | link kernel utuh | ✅ **SELESAI** — Image 18,7 MB, +0,5% |
 | boot | ✅ **BOOT**, seccomp terbukti (4 proses `Seccomp=2`, nol SIGSYS) |
-| syscall `bpf()` | 🔧 ENOSYS di putaran 1; tabel syscall dipasang, menunggu uji |
+| syscall `bpf()` | ✅ **BEKERJA** — map create/update/lookup, prog load, verifier menolak yang cacat |
+| bpfloader memuat program Android | ✅ seluruh netd + tethering ter-pin di `/sys/fs/bpf` |
+| attach ke cgroup | ❌ terhalang **cgroup v2** yang tidak ada di 3.10 — lebih besar dari perkiraan |
 | bpfloader memuat program | belum |
 
 Ini pekerjaan berhari-hari, bukan berjam-jam, dengan satu titik yang bisa
