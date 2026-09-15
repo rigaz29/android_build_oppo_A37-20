@@ -220,14 +220,79 @@ Terdaftar sekarang: `array`, `array_of_map`, `htab`, `hash_of_map`,
 
 ---
 
+## 5c. Tahap 2 SELESAI: `net/core/filter.c` bermigrasi, seluruh `net/` bersih
+
+Commit `2829e227dab` dan `ee363ac1191`. Tren galat `filter.o`:
+`70 → 34 → 20 → 14 → 11 → 0`, lalu seluruh `net/core/`: `4 → 0`, lalu seluruh
+`net/`: `1 → 0`.
+
+### ⚠️ Bug paling berbahaya yang dicegah: `CLONED_MASK`
+
+Ini nyaris tersalin begitu saja.
+
+```c
+/* a6010 (4.x) */          /* kernel ini (3.10) */
+__u8  cloned:1,   /*bit0*/ __u8  local_df:1,  /*bit0*/
+      ignore_df:1,               cloned:1,    /*bit1*/
+#define CLONED_MASK 1
+```
+
+Penulis ulang instruksi BPF memakai mask ini untuk jalur cepat *"apakah skb ini
+hasil clone"* sebelum memutuskan memanggil `bpf_skb_pull_data()`. Menyalin
+`CLONED_MASK 1` akan membuatnya membaca **`local_df`**, bukan `cloned` — skb
+hasil clone dikira bukan clone, pull dilewati, dan data skb **bersama** disentuh
+tanpa dilinearkan.
+
+Dihitung ulang untuk tata letak kita: `(1 << 1)` LE, `(1 << 6)` BE.
+`PKT_TYPE_MAX` diperiksa juga dan memang identik.
+
+### Bug a6010 lain: helper tunnel yang mengembalikan sampah
+
+Seluruh helper tunnel metadata mereka distub dengan badan `return 0;`. Tapi
+`bpf_skb_get_tunnel_key()` dideklarasikan `ARG_PTR_TO_UNINIT_MEM` — verifier
+menganggap helper **wajib** mengisi buffer keluarannya. Mengembalikan *sukses*
+tanpa menulis apa pun membuat program BPF membaca **sampah stack** dan
+memperlakukannya sebagai kunci tunnel yang sah. Upstream `memset` lalu
+mengembalikan galat.
+
+Diperbaiki dengan membuang blok itu dan mengembalikan `NULL` dari `func_proto`,
+sehingga verifier **menolak** program yang memakainya saat dimuat.
+
+Pola yang sama dipakai untuk semua yang tidak didukung kernel ini — helper VLAN,
+`bpf_skb_under_cgroup`, `bpf_bind`, `bpf_tcp_sock`: `-EOPNOTSUPP` + `func_proto`
+`NULL`. **Gagal terang-terangan, bukan berjalan dengan hasil karangan.**
+
+### Yang ditambahkan dari upstream
+
+`sk_uid` dan `sk_cookie` ke `struct sock`, `cookie_gen` ke `struct net`,
+`sock_gen_cookie()` — **inilah yang dibutuhkan `bpf_get_socket_cookie()`,
+sumber 39 galat `BpfHandler` tiap boot.** `sock_i_uid()` yang sudah ada tidak
+bisa dipakai: ia mengambil `read_lock_bh` sedangkan program BPF berjalan di
+konteks atomik.
+
+Plus dua belas inline `skbuff.h`, `skb_ensure_writable()`,
+`inet_proto_csum_replace_by_diff()`, `task_get_classid()`, `dst_tclassid()`,
+`skb_at_tc_ingress()`, `TC_ACT_REDIRECT`, `XMIT_RECURSION_LIMIT`, dan
+`qdisc_skb_cb::tc_classid` yang — seperti upstream — memakai ulang `_pad`
+sehingga ukuran `skb->cb` tidak berubah.
+
+### Kekhawatiran "41 berkas" ternyata berlebihan
+
+Setelah migrasi, hanya **dua** berkas yang benar-benar perlu disentuh:
+`af_packet.c` (`SK_RUN_FILTER` → `bpf_prog_run_clear_cb`) dan shim WireGuard
+(digerbangi, bukan dihapus). Sisanya cuma memanggil `sk_filter(sk, skb)` yang
+tanda tangannya tidak berubah.
+
+---
+
 ## 6. Perkiraan jujur
 
 | tahap | keadaan |
 |---|---|
 | inti `kernel/bpf/` kompilasi | ✅ **SELESAI** — 0 galat, 12 objek |
-| `filter.c` + `filter.h` masuk | sudah, belum dikompilasi |
-| 41 berkas pengguna API lama | **belum disentuh** |
-| konversi seccomp | **belum disentuh** — paling berisiko |
+| `net/core/filter.c` + seluruh `net/` | ✅ **SELESAI** — 0 galat |
+| berkas pengguna API lama | ✅ ternyata hanya 2, keduanya selesai |
+| konversi seccomp | ⬜ **satu-satunya yang tersisa** — 44 galat, paling berisiko |
 | syscall, bpffs, cgroup attach, LSM | belum |
 | link kernel utuh | belum |
 | boot | belum |
