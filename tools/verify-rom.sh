@@ -362,6 +362,38 @@ else
     inf "  (RRO atau aapt2 tidak ditemukan, lewati pemeriksaan pinner)"
 fi
 
+inf "Tier C (scheduler, uid_sys_stats)"
+
+# T-C1 penyetelan antrean mmcblk0 hanya boleh ada di SATU tempat. Sampai
+# 15 Sep 2026 ditulis dua kali dengan isi bertentangan -- deadline di
+# post-fs-data lalu noop di boot_completed -- dan yang belakangan diam-diam
+# menang. Jumlahnya yang diperiksa, bukan cuma nilainya, supaya percanggahan
+# yang sama tidak bisa kembali tanpa ketahuan.
+n_sched=$(grep -c 'queue/scheduler' "$RC" 2>/dev/null || echo 0)
+if [ "$n_sched" = 1 ] && grep -q 'queue/scheduler deadline' "$RC" 2>/dev/null; then
+    ok "T-C1 scheduler ditulis tepat sekali, nilainya deadline"
+else
+    bad "T-C1 queue/scheduler ditulis ${n_sched}x (harus 1x, deadline)"
+fi
+
+# T-C2 uid_sys_stats. Diperiksa dari Image yang benar-benar dibangun, bukan
+# dari defconfig -- pelajaran UID_CPUTIME: Kconfig bisa membuang simbol
+# DIAM-DIAM walau defconfig menyetelnya =y.
+IMG=$OUT/kernel
+if [ -f "$IMG" ]; then
+    hil=""
+    for s in uid_cputime uid_io uid_procstat; do
+        strings "$IMG" | grep -qx "$s" || hil="$hil $s"
+    done
+    if [ -z "$hil" ]; then
+        ok "T-C2 Image memuat uid_cputime + uid_io + uid_procstat"
+    else
+        bad "T-C2 Image tidak memuat:$hil (UID_SYS_STATS terbuang Kconfig?)"
+    fi
+else
+    bad "T-C2 $OUT/kernel tidak ada"
+fi
+
 # --------------------------------------------------------------------- zip ---
 inf "paket"
 # Beberapa nama zip adalah hardlink ke satu inode, sehingga mtime-nya seri dan

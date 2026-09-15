@@ -165,14 +165,18 @@ tidak ada yang pernah benar-benar memilih.
 
 ---
 
-## 4. Saran urutan
+## 4. Saran urutan, dan statusnya
 
-1. **Perbaiki dulu kontradiksi scheduler** (§3) — nol risiko, dan menyelesaikan
-   pertanyaan "apa yang sebenarnya berjalan".
-2. **`uid_sys_stats`** (§1B) — kecil, mandiri, melengkapi perbaikan kemarin.
-3. **Tiga penyetelan memori** (§1D) — kecil dan cocok dengan Tier A.
-4. **ROW urgent** (§1C) — sedang, imbalan terasa pada eMMC lambat.
-5. **eBPF** (§1A) — terakhir, bertahap, dan hanya kalau atribusi data jaringan
-   memang diinginkan. Ini yang paling mungkin merusak.
+1. ✅ **Kontradiksi scheduler** (§3) — nol risiko, dan menyelesaikan pertanyaan
+   "apa yang sebenarnya berjalan". **Selesai 15 Sep 2026.**
+2. ✅ **`uid_sys_stats`** (§1B) — kecil, mandiri, melengkapi perbaikan kemarin.
+   **Selesai 15 Sep 2026**, terbangun, belum diuji di perangkat.
+3. ⬜ **Tiga penyetelan memori** (§1D) — kecil dan cocok dengan Tier A.
+4. ⬜ **ROW urgent** (§1C) — sedang, imbalan terasa pada eMMC lambat.
+5. ⬜ **eBPF** (§1A) — terakhir, bertahap, dan hanya kalau atribusi data
+   jaringan memang diinginkan. Ini yang paling mungkin merusak.
 
-Belum ada yang dikerjakan; dokumen ini analisis.
+Dua yang pertama dikerjakan di
+[`../uid-sys-stats/`](../uid-sys-stats/) — termasuk satu hal yang tidak
+kelihatan dari analisis ini: `uid_sys_stats` ternyata **pengganti**
+`uid_cputime`, bukan tambahan.
