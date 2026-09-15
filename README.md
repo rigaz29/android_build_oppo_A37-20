@@ -113,7 +113,7 @@ Repo official LineageOS **tidak bisa** menggantikannya — diukur: kedua cabangn
 | `tools/apply-official-patches.sh` | **Terapkan 135 patch. WAJIB tiap habis `repo sync`** |
 | `tools/repo-doctor.sh` | Perbaiki kegagalan `repo sync` yang pernah dialami |
 | `tools/check-drift.sh` | Deteksi project yang hanyut dari basis |
-| `tools/verify-rom.sh` · `tools/test-device.sh` | Verifikasi ROM sebelum flash · uji fungsi di perangkat |
+| `tools/test-device.sh` · `tools/verify-device.sh` | Uji fungsi di perangkat setelah flash |
 | `tools/build-kernel-zip.sh` | Bangun kernel + zip AnyKernel3 tanpa membangun ROM penuh |
 | `tools/envsetup-a37.sh` | Bersihkan environment lalu `lunch`. Source ini, jangan `lunch` langsung |
 | `tools/apply-legacy-patches.sh` | ⚠️ **arsip basis UL** — jangan dipakai di tree official |
