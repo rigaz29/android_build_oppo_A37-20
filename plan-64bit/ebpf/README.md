@@ -344,6 +344,77 @@ pemanggil.
 
 ---
 
+## 5e. BOOT — dan seccomp terbukti bekerja
+
+Diuji di perangkat 15 September 2026 lewat zip AnyKernel3 (kernel saja,
+`/system` dan `/data` tidak disentuh).
+
+```
+sys.boot_completed = 1
+uname -r           = 3.10.108-lineageos-gd2eef75ee48-dirty
+crash buffer       = 0     tombstone = 0     oops/BUG = 0
+```
+
+### Seccomp: bukti langsung
+
+```
+pid 346  Seccomp=2  configstore@1.1
+pid 458  Seccomp=2  mediaextractor
+pid 476  Seccomp=2  omx@1.0-service
+pid 478  Seccomp=2  mediaswcodec
+```
+
+`Seccomp=2` adalah `SECCOMP_MODE_FILTER` — program BPF **benar-benar terpasang
+dan dijalankan pada setiap syscall** keempat proses itu. Semuanya hidup dan
+sehat, **nol SIGSYS**.
+
+Ini sekaligus membuktikan **inti eBPF** bekerja, bukan cuma seccomp: filter
+seccomp kini adalah program eBPF, jadi jalur
+`bpf_check_classic → seccomp_check_filter → bpf_convert_filter →
+bpf_prog_select_runtime → interpreter` dilewati setiap kali salah satu proses
+itu memanggil syscall.
+
+### ⚠️ Yang TIDAK terbukti oleh boot ini
+
+```
+I Zygote : seccomp disabled by setenforce 0
+```
+
+Perangkat ini **SELinux permissive**, dan Zygote melewatkan pemasangan seccomp
+untuk aplikasi biasa ketika permissive. Jadi jalur "setiap aplikasi yang start"
+**tidak diuji** — yang teruji hanya empat proses di atas, yang memasang
+filternya lewat minijail tanpa peduli mode SELinux.
+
+Cukup untuk membuktikan konversinya benar, tapi bukan cakupan penuh.
+
+### `bpf()` mengembalikan ENOSYS — dan kenapa
+
+Uji syscall langsung (program bebas-libc, `svc #0`):
+
+```
+bpf(BPF_MAP_CREATE, HASH 4/4/8) -> -38      (-ENOSYS)
+```
+
+`sys_bpf` ada di `kallsyms`, fungsinya terkompilasi — **entri tabel syscall-nya
+yang belum dipasang.** Terlewat saat penyambungan awal.
+
+### ⚠️ Jebakan a6010 ketiga belas: nomor syscall
+
+Nomor yang benar adalah **280**, karena itulah yang dipakai bionic:
+
+```
+bionic/libc/kernel/uapi/asm-generic/unistd.h:346:#define __NR_bpf 280
+```
+
+Tabel a6010 memberikan **280 kepada `userfaultfd`**, dan `__NR_bpf` **tidak ada
+sama sekali** di asm-generic mereka — kernel mereka 32-bit, dan arm punya tabel
+sendiri. **Menyalin tabel mereka akan membuat setiap panggilan `bpf()` dari
+Android mendarat di `userfaultfd`.**
+
+Diperbaiki di `29fc3ef95ed`; menunggu uji putaran kedua.
+
+---
+
 ## 6. Perkiraan jujur
 
 | tahap | keadaan |
@@ -355,7 +426,8 @@ pemanggil.
 | syscall + bpffs + LSM | ✅ selesai — `sys_bpf` ada di System.map |
 | cgroup attach (`CONFIG_CGROUP_BPF`) | ⬜ masih mati — wajib untuk program netd |
 | link kernel utuh | ✅ **SELESAI** — Image 18,7 MB, +0,5% |
-| boot | ⬜ **belum pernah dicoba** — di sinilah risikonya |
+| boot | ✅ **BOOT**, seccomp terbukti (4 proses `Seccomp=2`, nol SIGSYS) |
+| syscall `bpf()` | 🔧 ENOSYS di putaran 1; tabel syscall dipasang, menunggu uji |
 | bpfloader memuat program | belum |
 
 Ini pekerjaan berhari-hari, bukan berjam-jam, dengan satu titik yang bisa
