@@ -591,6 +591,61 @@ hanya bekerja untuk makro. Tanpa itu `fs/f2fs/node.c` gagal *redefinition*.
 
 ---
 
+## 5i. `xt_bpf` rev 1 berhasil — tetapi BUKAN jalan menuju per-aplikasi
+
+Diuji `78a02983f52`. Keempat aturan netd akhirnya terpasang:
+
+```
+raw    bw_raw_PREROUTING      -m bpf --object-pinned .../skfilter_ingress_xtbpf
+mangle bw_mangle_POSTROUTING  -m bpf --object-pinned .../skfilter_egress_xtbpf
+filter bw_happy_box           -m bpf --object-pinned .../skfilter_allowlist_xtbpf -j RETURN
+filter bw_penalty_box         -m bpf --object-pinned .../skfilter_denylist_xtbpf  -j REJECT
+```
+
+Dan datanya mengalir: `Xt stats` mencatat `rb=5495549` — persis unduhan 5 MB
+yang dibangkitkan untuk mengujinya.
+
+### ⚠️ Koreksi: perkiraan saya sebelumnya SALAH
+
+Di §5f `xt_bpf` disebut "jalur termurah menuju akuntansi per-aplikasi".
+**Itu keliru.** Program `xtbpf` hanya memanggil:
+
+```c
+/* netd.c, skfilter/{ingress,egress}/xtbpf */
+uint32_t key = skb->ifindex;
+update_iface_stats_map(skb, dir, &key);
+```
+
+`skb->ifindex` — **per-ANTARMUKA**, bukan per-UID.
+
+Yang mengisi `app_uid_stats_map` adalah `bpf_traffic_account()` di
+`netd.c:342`, dan itu **hanya** dipanggil oleh `cgroupskb/ingress/stats` dan
+`cgroupskb/egress/stats`.
+
+Dibuktikan dengan membaca petanya langsung lewat `BPF_OBJ_GET` +
+`MAP_GET_NEXT_KEY`:
+
+```
+OBJ_GET(app_uid_stats_map) -> 3      peta terbuka
+total entri: 0                       KOSONG
+```
+
+Jadi **atribusi per-aplikasi tetap menuntut cgroup v2**. Tidak ada jalan pintas.
+
+### Yang tetap didapat, dan itu nyata
+
+| | |
+|---|---|
+| `SO_COOKIE` | galat `BpfHandler` **39 → 0** |
+| Akuntansi per-antarmuka | `Xt stats` terisi, cocok dengan trafik uji |
+| **Data Saver** | `bw_happy_box` punya jalur allowlist-nya |
+| **Pembatasan data latar belakang** | `bw_penalty_box` punya jalur denylist + REJECT |
+
+Dua yang terakhir adalah fitur yang benar-benar dipakai pengguna, dan keduanya
+memang menuntut `xt_bpf` revisi 1.
+
+---
+
 ## 6. Perkiraan jujur
 
 | tahap | keadaan |
@@ -607,7 +662,8 @@ hanya bekerja untuk makro. Tanpa itu `fs/f2fs/node.c` gagal *redefinition*.
 | bpfloader memuat program Android | ✅ seluruh netd + tethering ter-pin di `/sys/fs/bpf` |
 | attach ke cgroup | ❌ terhalang **cgroup v2** yang tidak ada di 3.10 |
 | `SO_COOKIE` | ✅ galat `BpfHandler` 39 → **0** |
-| `xt_bpf` rev 1 (jalur tanpa cgroup) | 🔧 di-backport, menunggu uji |
+| `xt_bpf` rev 1 | ✅ 4 aturan netd terpasang; per-antarmuka + Data Saver jalan |
+| atribusi per-**aplikasi** | ❌ tetap butuh cgroup v2 — `app_uid_stats_map` terbukti kosong |
 | bpfloader memuat program | belum |
 
 Ini pekerjaan berhari-hari, bukan berjam-jam, dengan satu titik yang bisa
