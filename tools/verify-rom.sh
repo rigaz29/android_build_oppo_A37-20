@@ -312,7 +312,9 @@ inf "Tier B (T-B3, T-B4, T-B6, T-B7)"
 # jadi itulah berkas yang benar-benar dimuat perangkat.
 PW=$OUT/system/vendor/lib64/hw/power.msm8916.so
 if [ -f "$PW" ]; then
-    if strings "$PW" | grep -qx 800000 && strings "$PW" | grep -qx 1209600; then
+    # Sama: count_in(), bukan `strings | grep -q`. Belum pernah gagal hanya
+    # karena power HAL cukup kecil sehingga strings sempat selesai duluan.
+    if [ "$(count_in "$PW" 800000)" -gt 0 ] && [ "$(count_in "$PW" 1209600)" -gt 0 ]; then
         ok "T-B3 batas frekuensi 800000 dan 1209600 ada di power HAL lib64"
     else
         bad "T-B3 konstanta batas frekuensi tidak ada di power HAL lib64"
@@ -381,9 +383,16 @@ fi
 # DIAM-DIAM walau defconfig menyetelnya =y.
 IMG=$OUT/kernel
 if [ -f "$IMG" ]; then
+    # count_in() WAJIB di sini, bukan `strings | grep -q`. Lihat catatan di
+    # bagian adbd: pipefail + grep -q = SIGPIPE = pipeline yang berhasil
+    # dilaporkan gagal. Versi pertama cek ini melaporkan ketiga string HILANG
+    # dari Image yang sebenarnya memuat ketiganya -- jebakan yang sama, kali
+    # ketiga. Pada berkas 18 MB ia selalu kena; pada berkas kecil kadang lolos
+    # karena hulu sempat selesai menulis sebelum grep menutup pipa. Itu yang
+    # membuatnya sulit terlihat.
     hil=""
     for s in uid_cputime uid_io uid_procstat; do
-        strings "$IMG" | grep -qx "$s" || hil="$hil $s"
+        [ "$(count_in "$IMG" "$s")" -gt 0 ] || hil="$hil $s"
     done
     if [ -z "$hil" ]; then
         ok "T-C2 Image memuat uid_cputime + uid_io + uid_procstat"
