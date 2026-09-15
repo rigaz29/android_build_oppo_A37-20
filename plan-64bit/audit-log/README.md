@@ -247,7 +247,20 @@ rusak**. Baris penyebabnya kebetulan selamat. Kalau tidak, diagnosis itu buntu.
 
 Dinaikkan ke 32, mengikuti pengukuran proyek TWRP di perangkat yang sama (laju
 kerusakan 6,9% versus kapasitas `ecc=16` yang hanya 6,25%). Device tree
-`e2614f8`. **Berlaku hanya lewat boot.img baru.**
+`e2614f8`, masuk ROM **`20260915_003358`**.
+
+Diverifikasi di `boot.img` hasil build, bukan di sumber — cmdline yang tertanam
+kini berbunyi:
+
+```
+ramoops.mem_address=0x9ff00000 ramoops.mem_size=0x400000
+ramoops.record_size=0x40000 ramoops.console_size=0x100000
+ramoops.pmsg_size=0x40000 ramoops.dump_oops=1 ramoops.ecc=32
+```
+
+Yang membuktikannya berhasil nanti adalah ekor dump berikutnya: `Corrected
+bytes` harus tidak lagi nol, dan jumlah `unrecoverable blocks` harus turun
+drastis dari 2030–3388.
 
 ## B. SetupWizard memanggil provider Google 1341× — bukan milik kita
 
