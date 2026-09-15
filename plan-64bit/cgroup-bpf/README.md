@@ -163,3 +163,139 @@ Catatan: karena netd hanya menempel ke **root** hierarki `cg2_bpf`, dan hierarki
 itu tidak punya cgroup anak, penelusuran descendant praktis selalu kosong. Itu
 menyederhanakan adaptasi, tetapi jangan dijadikan alasan menulis versi yang
 salah — kalau suatu saat ada cgroup anak, hasilnya harus tetap benar.
+
+---
+
+## Panic build #12, dan mengapa satu perbaikan saja tidak cukup
+
+Zip `...-6515c3ada21-...` bootloop di logo OPPO. `console-ramoops-0` menyimpan
+sebabnya utuh (kedua `dmesg-ramoops-*` rusak berat — ECC melaporkan "1638
+unrecoverable blocks" dan teksnya tidak terbaca):
+
+```
+[ 16.473846] Unable to handle kernel NULL pointer dereference at virtual address 00000010
+[ 16.474461] Internal error: Oops: 96000085 [#1] PREEMPT SMP
+[ 16.474651] CPU: 0 PID: 311 Comm: netd  3.10.108-lineageos-g6515c3ada21 #12
+[ 16.474945] PC is at prog_list_length+0x14/0x2c
+[ 16.475041] LR is at __cgroup_bpf_attach+0xfc/0x33c
+             Call trace:  prog_list_length <- cgroup_bpf_attach <- SyS_bpf
+```
+
+ESR `96000085`: EC=0x25 (data abort EL1), **WnR=1 (tulis)**, DFSC=0x05
+(translation fault level 1).
+
+### Akar masalah
+
+`cgroup_bpf_inherit()` dipanggil dari `cgroup_create()` saja. Cgroup **root** di
+3.10 tidak lewat jalur itu — ia disiapkan `init_cgroup_root()`
+(kernel/cgroup.c:1427). Jadi `root->top_cgroup` datang dengan
+`bpf.progs[].next == NULL`.
+
+Dan root itulah satu-satunya cgroup yang dipakai: `cgroup2_mount()` menyetel
+`cgroup2_root = __d_cgrp(dentry)`, yang persis `&root->top_cgroup`, lalu netd
+mem-`BPF_PROG_ATTACH` ke sana. `prog_list_length()` menelusuri list kosong itu
+dan mati di `NULL + 0x10`.
+
+Upstream tidak kena karena `cgroup_setup_root()` (4.5+) memanggil
+`cgroup_bpf_inherit()` untuk root juga. Ini murni celah backport, bukan cacat
+upstream maupun salah salin dari a6010.
+
+### Tiga cacat, bukan satu
+
+Memperbaiki yang pertama saja hanya memindahkan panic beberapa milidetik.
+
+| # | Cacat | Akibat |
+|---|---|---|
+| 1 | root cgroup tak pernah lewat `cgroup_bpf_inherit()` | `progs[].next == NULL` → panic di atas |
+| 2 | `cgroup_sk_alloc()` menyalin `cgroup2_root` yang masih NULL sebelum mount pertama | `cgrp->bpf.effective[]` → NULL deref di jalur paket |
+| 3 | `__cgroup_bpf_run_filter_sk()` mendereference `effective[type]->progs[0]` langsung | NULL deref, **dan** hanya menjalankan program pertama |
+
+Cacat #2 pasti jadi panic berikutnya: socket yang dibuat **sebelum**
+`/dev/cg2_bpf` di-mount — milik init dan netd sendiri — menyimpan `cgrp = NULL`
+seumur hidupnya, dan tetap mengirim paket setelah program terpasang.
+
+Cacat #3 berdiri sendiri: selain NULL deref, ia diam-diam mengabaikan program
+kedua dan seterusnya sehingga `BPF_F_ALLOW_MULTI` tidak berlaku di jalur itu.
+
+### Yang dikerjakan
+
+- `init_cgroup_root()`: `INIT_LIST_HEAD()` untuk seluruh `bpf.progs[]`. Hanya
+  bagian yang tidak bisa gagal — fungsinya bertipe `void`, `-ENOMEM` tidak punya
+  tempat dilaporkan. Berlaku untuk SEMUA root, hierarki v1 sekalipun.
+- `cgroup2_mount()`: `cgroup_bpf_inherit()` penuh untuk alokasi `effective[]`,
+  digerbangi `!cgroup2_root` supaya mount kedua tidak me-reset list dan
+  membocorkan program yang sudah terpasang. Kalau gagal: `pr_warn` dan
+  `cgroup2_root` dibiarkan NULL — **mount yang sudah berhasil TIDAK dibatalkan**,
+  karena `cgroup_mount()` memulangkan dentry tanpa memegang `s_umount` sehingga
+  `deactivate_locked_super()` tidak sah dari titik itu. Menukar kegagalan
+  alokasi dengan kerusakan VFS jelas bukan perbaikan.
+- Kelima pemakai `sock_cgroup_ptr()` dijaga `if (unlikely(!cgrp)) return 0;`.
+  Untuk setsockopt/getsockopt penjagaan ditaruh di
+  `__cgroup_bpf_prog_array_is_empty()` — satu tempat, bukan dua pemanggil.
+- Jalur skb/sock_addr/sk memakai `BPF_PROG_RUN_ARRAY_CHECK`, bukan varian polos
+  seperti upstream. Upstream boleh melewatkannya karena invariannya dijaga di
+  semua tempat; di sini invarian itu baru saja terbukti bocor, dan satu cabang
+  yang hampir selalu tidak diambil jauh lebih murah daripada kernel panic.
+- `__cgroup_bpf_prog_array_is_empty()`: `!prog_array` dihitung kosong.
+
+### Catatan cara baca log
+
+`dmesg-ramoops-*` sama sekali tidak terpakai — korupsinya membuat `grep` meleset
+karena teksnya sendiri berubah ("LibBpdLOAdeR", "Intezna e ror"). `console-ramoops-0`
+jauh lebih utuh dan berisi seluruh konsol boot, bukan hanya wilayah oops. Cari
+offsetnya dengan `grep -abo 'Oops'` lalu `dd`, jangan `tail`: panic-nya tidak di
+ujung berkas.
+
+---
+
+## Terbukti di perangkat (15 Sep 2026, kernel g40bd72907a8)
+
+Boot mulus, `dmesg` tanpa oops, `E BpfHandler` tetap 0.
+
+```
+$ dumpsys connectivity trafficcontroller
+    Cgroup ingress program status: OK
+    Cgroup egress program status: OK
+```
+
+Dua baris itu yang mustahil sebelumnya — attach cgroupskb-lah yang selama ini
+menahan `app_uid_stats_map` di 0 entri.
+
+### Uji terkendali: unduh 5.242.880 byte sebagai uid 0
+
+`mAppUidStatsMap` sebelum → sesudah:
+
+| uid | rxBytes sebelum | sesudah | delta |
+|---|---|---|---|
+| 0 | 1.319 | 5.440.480 | **5.439.161** |
+| 10142 | 4.344 | 4.344 | 0 |
+| 1000 | 8.921 | 8.921 | 0 |
+
+Delta 5.439.161 atas muatan 5.242.880 = overhead 3,7%, pas untuk header TCP/IP.
+rxPackets +3.765 → 1.392 byte/paket. Dan **hanya uid 0 yang bergerak**: yang
+diuji memang atribusi per-aplikasi, bukan sekadar total.
+
+Seluruh peta konsisten satu sama lain:
+
+| Peta | wlan0 rxBytes |
+|---|---|
+| `mIfaceStatsMap` | 5.458.109 |
+| `mStatsMapB` | 687.255 (sejak swap terakhir) |
+| `mAppUidStatsMap` uid 0 | 5.440.480 |
+
+Lapisan framework ikut terisi (`dumpsys netstats detail`) — per-uid, terpisah
+`set=DEFAULT`/`set=FOREGROUND`, plus `UID tag stats`. Itulah sumber layar
+"Penggunaan data" di Setelan.
+
+### Jebakan baca: mStatsMapA kosong itu NORMAL
+
+`mStatsMapA` kosong sempat saya kira tanda program berhenti di tengah. Bukan.
+Baris `current statsMap configuration: 1 SELECT_MAP_B` menjelaskannya: A dan B
+adalah dua paruh buffer ganda yang ditukar NetworkStats tiap poll, dan yang
+sedang aktif memang B. Periksa baris konfigurasi itu dulu sebelum menyimpulkan
+apa pun dari salah satu peta yang kosong.
+
+Catatan kecil yang sama menyesatkannya: `dmesg | grep -i 'BUG:'` memberi satu
+kecocokan palsu pada `qcom,cc-debug: Registered Debug Mux successfully`
+("debug:" mengandung "bug:"). Dan `dumpsys netstats` TIDAK mencetak bagian
+per-UID kecuali diberi argumen `detail` — `full` maupun `--full` tidak cukup.
