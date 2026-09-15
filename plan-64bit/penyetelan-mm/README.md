@@ -153,6 +153,28 @@ Tabel yang benar sudah dihitung dan bisa dipakai kapan saja. Tetapi menerapkan
 perubahan pelacakan beban yang manfaatnya tak terukur, dari sumber yang
 terbukti salah hitung, bukan keputusan yang pantas diambil diam-diam.
 
+**Keputusan pemilik perangkat, 15 September 2026: dilewati.** Tabel koreksinya
+disimpan di bawah supaya tidak perlu dihitung ulang kalau suatu saat ada cara
+mengukur manfaatnya.
+
+```
+LOAD_AVG_PERIOD  16
+LOAD_AVG_MAX     24152
+
+runnable_avg_yN_inv[16]   (= entri indeks genap dari tabel p=32)
+  0xffffffff, 0xf5257d14, 0xeac0c6e6, 0xe0ccdeeb,
+  0xd744fcc9, 0xce248c14, 0xc5672a10, 0xbd08a39e,
+  0xb504f333, 0xad583ee9, 0xa5fed6a9, 0x9ef5325f,
+  0x9837f050, 0x91c3d373, 0x8b95c1e3, 0x85aac367,
+
+runnable_avg_yN_sum[17]   (INI yang salah di a6010)
+  0, 980, 1919, 2818, 3679, 4504, 5294, 6050, 6774,
+  7467, 8131, 8767, 9376, 9959, 10517, 11052, 11564,
+```
+
+`LOAD_AVG_MAX_N` perlu dihitung ulang juga; nilai 517 di patch a6010 belum
+sempat diverifikasi karena patchnya sudah gugur lebih dulu.
+
 ---
 
 ## Status
@@ -161,7 +183,7 @@ terbukti salah hitung, bukan keputusan yang pantas diambil diam-diam.
 |---|---|---|
 | 1 | `pgscan_*` datar untuk lmkd | ✅ terbangun, belum diuji di perangkat |
 | 2 | force-`SCAN_ANON` bersyarat (versi upstream) | ✅ terbangun, belum diuji di perangkat |
-| 3 | PELT halflife 16 ms | ⛔ ditahan — menunggu keputusan pemilik perangkat |
+| 3 | PELT halflife 16 ms | ⛔ **dilewati** atas keputusan pemilik perangkat |
 
 Verifikasi build: `make Image` exit 0 (1 m 16 s). `pgscan_kswapd` dan
 `pgscan_direct` ada di Image sebagai string datar; `pgscan_*_movable` hilang
