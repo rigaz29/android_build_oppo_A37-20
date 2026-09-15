@@ -110,8 +110,50 @@ Keduanya saling melengkapi, bukan bertumpuk:
 
 Menyalakan yang satu tanpa yang lain akan setengah jalan.
 
-## 6. Status
+## 6. Diperbaiki dan terbukti — ROM 20260915_105952
 
-Belum diperbaiki. Perubahannya satu baris di `device.mk`, tetapi mengubah
-kebijakan pembunuhan proses secara menyeluruh, jadi perlu keputusan pemilik
-perangkat dan pengukuran sesudahnya.
+`device.mk` menyetel `ro.lmk.use_new_strategy=true` (eksplisit, bukan sekadar
+dihapus). `ro.config.low_ram` sengaja **tetap** `true` — lihat
+[`../review-mithorium/`](../review-mithorium/) §2.
+
+Diukur 8 menit setelah boot, dengan perangkat benar-benar dipakai:
+
+| | ROM lama (`_093647`) | ROM baru (`_105952`) |
+|---|---|---|
+| `ro.lmk.use_new_strategy` | `false` | **`true`** |
+| pembunuhan lmkd | **23** | **0** |
+| dibunuh pada adj ≤ 200 | **8** | **0** |
+| dibunuh pada adj 0 (TOP) | **1** (`com.android.settings`) | **0** |
+| launcher dibunuh | ya (adj 100) | tidak |
+
+Perbandingannya adil — perangkat sama-sama dipakai, bukan dibiarkan menganggur:
+
+```
+31 kali ActivityTaskManager: START
+aplikasi dibuka: launcher3, settings, jelly, setupwizard
+47 proses aplikasi masih hidup
+memori 1806/1886 MB terpakai -- sama sesaknya
+```
+
+Dan tekanan memorinya **nyata**, bukan nihil:
+
+```
+/proc/pressure/memory
+  some total = 981.715 us   (~0,98 detik tersendat dalam 8 menit)
+  full total = 510.098 us   (~0,51 detik)
+```
+
+Jadi tekanan tetap terjadi; yang berubah adalah lmkd tidak lagi meresponsnya
+dengan membunuh. Itu tepat yang diharapkan: ambang CRITICAL naik 70 → 700 ms,
+monitor LOW tidak lagi didaftarkan, dan keputusan pindah ke `mp_event_psi` yang
+memeriksa ketersediaan memori sebelum bertindak.
+
+Efek ikutan yang ikut terverifikasi: backport `pgscan` kemarin akhirnya terpakai.
+
+```
+pgscan_kswapd_dma 93
+pgscan_kswapd_normal 0
+pgscan_kswapd 93          <- agregat, dibaca lmkd
+```
+
+`93 = 93 + 0`, dan `pgscan_*_movable` hilang seperti yang dimaksud.
