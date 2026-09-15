@@ -199,3 +199,81 @@ Imbalannya lebih luas daripada baterai saja: nomor 1-6 sekaligus membuka
 **Kandidat B (`cgroupsock/inet/create`, hanya digerbangi `KVER(4,14,0)`)
 sekarang jelas lebih murah daripada A**, dan urutan yang disarankan di atas
 sebaiknya dibalik.
+
+---
+
+# Kandidat B SELESAI dan terbukti (15 Sep 2026, kernel `gef880a42db6`)
+
+Izin `android.permission.INTERNET` kini ditegakkan **di kernel**, saat
+`socket()` dipanggil, bukan dengan membuang paket belakangan.
+
+## Yang dikerjakan
+
+1. **Kernel** — kait `BPF_CGROUP_RUN_PROG_INET_SOCK(sk)` di `inet_create()`
+   (net/ipv4/af_inet.c) dan `inet6_create()` (net/ipv6/af_inet6.c). Makronya
+   sudah ada sejak backport cgroup-BPF dan `__cgroup_bpf_run_filter_sk` sudah
+   ter-link, tetapi nol pemanggil.
+
+   Sekalian: jalur galat IPv4 diluruskan. `sk->sk_prot->init()` yang gagal
+   memanggil `sk_common_release()` lalu **jatuh terus** ke label `out`. Itu
+   benar selama tidak ada apa-apa di belakangnya, tapi salah begitu ada --
+   socket yang sudah dilepas akan dijalankan lewat program BPF. Sekarang
+   `goto out` eksplisit, seperti IPv6 yang memang sudah benar.
+
+2. **netd** — `KVER(4, 14, 0)` -> `KVER_NONE` pada `cgroupsock/inet/create`.
+   Angka 4.14 itu kebijakan umum Android soal kernel minimum untuk BPF, bukan
+   syarat teknis: programnya tidak menyentuh satu pun field `struct bpf_sock`,
+   hanya `bpf_get_current_uid_gid()` dan satu lookup peta.
+
+## Uji keamanan SEBELUM dinyalakan
+
+Ini mekanisme **menolak**, jadi peta yang salah berarti aplikasi kehilangan
+jaringan. Isi `uid_permission_map` diuji silang terhadap manifest:
+
+| uid | paket | INTERNET di manifest |
+|---|---|---|
+| 10100 | com.android.bluetoothmidiservice | tidak |
+| 10005 | com.android.theme.icon.vessel | tidak |
+| 10109 | com.android.dreams.basic | tidak |
+| 10065 | com.android.theme.icon_pack.sam.systemui | tidak |
+| 10080 | com.android.providers.downloads.ui | **ya** |
+
+uid 0 dan 1021 tidak ada di peta sehingga default-nya izinkan; 1000, 1001,
+1002, 1013 dan 2000 tercatat punya INTERNET.
+
+## Bukti fungsional
+
+Biner uji sementara (`setresuid()` lalu `socket()`), dibangun lewat build
+system AOSP, dijalankan di perangkat, lalu **modul dan binernya dihapus dari
+tree, dari out/, dan dari perangkat** supaya tidak ikut ROM berikutnya.
+
+```
+uid=10100  AF_INET=Operation not permitted  AF_INET6=Operation not permitted
+uid=10005  AF_INET=Operation not permitted  AF_INET6=Operation not permitted
+uid=10109  AF_INET=Operation not permitted  AF_INET6=Operation not permitted
+uid=10080  AF_INET=OK                       AF_INET6=OK
+uid=12345  AF_INET=OK                       AF_INET6=OK   (tidak ada di peta)
+```
+
+Membuktikan tiga hal sekaligus: kedua kait menyala (IPv4 dan IPv6), verdict
+program benar, dan jalur default-izinkan bekerja.
+
+## Tanpa regresi
+
+0 oops, 0 FATAL EXCEPTION, 0 tombstone, 0 EPERM socket tak terduga di logcat.
+Akuntansi per-aplikasi tetap jalan, unduhan 1 MB normal.
+
+## Catatan: `netd_readonly/` itu jebakan baca
+
+Program ini dideklarasikan dengan pin dir `"fs_bpf_netd_readonly"`, dan saya
+sempat menyimpulkan ia gagal dimuat karena `/sys/fs/bpf/netd_readonly/`
+kosong. Salah. Ia ter-pin di **`netd_shared/`**, dan `CGROUP_SOCKET_PROG_PATH`
+(bpf_shared.h:133) memang menunjuk ke sana. Baca kernel log, jangan tebak dari
+isi direktori.
+
+## Sisi yang belum terbukti
+
+`uid_permission_map` sebelumnya **tidak dibaca siapa pun** -- netd.c:439
+satu-satunya pemakainya. Artinya 291 entri itu diisi netd tanpa pernah diuji
+pemakaiannya, dan jalur pembaruannya (aplikasi dipasang/dicabut, izin diubah
+saat berjalan) baru akan teruji dalam pemakaian sehari-hari.
