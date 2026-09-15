@@ -98,6 +98,7 @@ Repo official LineageOS **tidak bisa** menggantikannya — diukur: kedua cabangn
 | [`plan-64bit/penyimpanan/`](plan-64bit/penyimpanan/) | **sdcardfs & FUSE passthrough** — sdcardfs ada tapi sengaja mati; passthrough mustahil di kernel 3.10; ongkos FUSE hanya ~12% |
 | [`plan-64bit/kandidat-backport/`](plan-64bit/kandidat-backport/) | **Kandidat backport kernel** — kernel.org dan ACK buntu; hanya a6010 menawarkan sesuatu. Plus satu bug scheduler yang ditemukan sambil meneliti |
 | [`plan-64bit/uid-sys-stats/`](plan-64bit/uid-sys-stats/) | **Dua backport pertama** — scheduler dikumpulkan jadi satu blok; `uid_sys_stats` menggantikan `uid_cputime` dan menambah `/proc/uid_io` + `/proc/uid_procstat` |
+| [`plan-64bit/temuan-zip-hardlink/`](plan-64bit/temuan-zip-hardlink/) | **Nama zip ROM berbohong** — sepuluh nama bertanggal berbeda ternyata satu inode; tidak ada arsip build lama sama sekali |
 | [`plan-64bit/fase-8/`](plan-64bit/fase-8/) | **Fase 8 — ROM 64-bit BOOT di perangkat** (14 Sep 2026): arm64-v8a, dua zygote, kamera 2 perangkat, RIL LTE, `/data` f2fs, nol tombstone |
 | [`plan-64bit/fase-7/`](plan-64bit/fase-7/) | **Fase 7 selesai** — audit closure dua jenis; menemukan premis Fase 4 salah dan mengembalikan kamera ke passthrough |
 | [`plan-64bit/fase-6/`](plan-64bit/fase-6/) | **Fase 6 selesai** — ROM 64-bit pertama terbangun (721 MB), `verify-rom.sh` semua lolos, isi system 1725 MB sisa 1001 MB |
