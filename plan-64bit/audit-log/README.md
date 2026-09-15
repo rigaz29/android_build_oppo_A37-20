@@ -156,3 +156,54 @@ baris ini, syaratnya justru terpenuhi: konsumennya terbukti.
 Nol tombstone, nol baris di buffer `crash`, nol servis restart-loop, dan tidak
 ada satu pun galat pada jalur kamera, RIL, sensor, Widevine, WireGuard, maupun
 audio.
+
+
+---
+
+## Terverifikasi di perangkat (ROM 20260914_231027, 15 September 2026)
+
+Ketiganya terbukti, diukur dengan membandingkan satu boot penuh sebelum dan
+sesudah:
+
+| | sebelum | sesudah |
+|---|---|---|
+| `E KernelCpuUidUserSysTimeReader` | 27 | **0** |
+| `E ThermalHalWrapper` | 7 | **0** |
+| denial SELinux di `dmesg` | 1544 | **311** (−80%) |
+| di antaranya `comm="cat"` | 1030 | **0** |
+
+### Kernel: `/proc/uid_cputime` kini ada dan terisi
+
+```
+/proc/uid_cputime/remove_uid_range      <- berkas yang dulu ENOENT
+/proc/uid_cputime/show_uid_stat
+
+show_uid_stat, 77 baris, contoh (uid: user_ns sys_ns):
+     0: 33606000  29220000
+  1000: 120236000 48473000
+  2000:   366000    236000
+```
+
+Jadi statistik CPU per-UID benar-benar dikumpulkan kernel, bukan sekadar
+berkasnya muncul.
+
+### Watchdog jauh lebih ringan
+
+Keluar pada **73,3 detik**, dibanding 137,5 detik pada boot sebelumnya —
+dexopt GApps sudah selesai, dan sapuan `/proc` yang mahal itu tidak pernah
+dijalankan karena anggaran belum mencapai separuh.
+
+### Nol regresi
+
+Kamera 2 device, keempat sensor fisik, `ThermalHAL 2.0 connected: yes` dengan
+`Thermal Status: 0`, Widevine `running`, `wg` terpasang, GPU istirahat 200 MHz,
+`hung_task` 90, pinner 146,6 MB. Nol tombstone, nol baris di buffer `crash`.
+
+`getCurrentCoolingDevices` kini mengembalikan **0 perangkat tanpa galat** —
+persis perilaku yang benar untuk kernel yang tidak mengekspos satu pun.
+
+### Catatan: GApps hilang, dan itu wajar
+
+Paket `com.google` tinggal 1 (GCam yang terpasang di `/data`). NikGApps
+memasang dirinya ke `/system/product`, dan mem-flash ROM menimpa partisi itu.
+**Setiap flash ROM menghapus GApps** — ia harus dipasang ulang sesudahnya.
