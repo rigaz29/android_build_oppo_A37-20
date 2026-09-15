@@ -91,6 +91,10 @@ export CROSS_COMPILE="$TC/aarch64-linux-android-"
 
 cd "$KDIR"
 BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo detached)"
+# Nama cabang ikut masuk nama berkas zip, dan cabang seperti "wip/ebpf" memuat
+# garis miring sehingga zip mencoba menulis ke direktori yang tidak ada. Diganti
+# tanda hubung.
+BRANCH="${BRANCH//\//-}"
 SHA="$(git rev-parse --short HEAD 2>/dev/null || echo nogit)"
 DIRTY=""
 git diff-index --quiet HEAD -- 2>/dev/null || DIRTY="-dirty"
