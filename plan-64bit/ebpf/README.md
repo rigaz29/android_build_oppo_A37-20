@@ -496,6 +496,43 @@ sebelum menempuh backport cgroup v2.
 
 ---
 
+## 5g. Dua jalur termurah: `xt_bpf` dan `SO_COOKIE`
+
+Dipilih setelah §5f membuktikan `cgroupskb` tidak bisa di-attach.
+
+| | |
+|---|---|
+| **`SO_COOKIE`** | nomor **57**, sesuai bionic. Implementasi mengikuti upstream `5daab9db7b65`; `sock_gen_cookie()` sudah ada sejak tahap sebelumnya. Inilah yang dicari `BpfHandler` |
+| **`xt_bpf`** | `net/netfilter/xt_bpf.c` sudah ada di pohon, hanya tidak pernah dibangun. Program `skfilter/*/xtbpf` menempel lewat iptables, **tanpa cgroup** |
+
+### Konversi `xt_bpf` sekaligus memperbaiki bug
+
+```c
+/* lama */
+program.filter = (struct sock_filter __user *) info->bpf_program;
+sk_unattached_filter_create(&info->filter, &program);
+```
+
+`info->bpf_program` adalah array **di memori kernel** — xtables sudah menyalin
+seluruh matchinfo dari userspace sebelum `checkentry` dipanggil. Tetapi
+`sk_unattached_filter_create()` melakukan `copy_from_user()` atas pointer itu.
+
+`bpf_prog_create()` menerima `sock_fprog_kern` dan memperlakukannya sebagai
+pointer kernel — yang memang benar.
+
+### ⚠️ Kesalahan proses, dicatat supaya tidak terulang
+
+Putaran pertama menjalankan `make olddefconfig` setelah menyunting defconfig.
+**`olddefconfig` membaca `.config` yang sudah ada dan sama sekali tidak melihat
+defconfig.** Akibatnya `CONFIG_NETFILTER_XT_MATCH_BPF` tetap mati dan `xt_bpf`
+tidak ter-link, padahal defconfig-nya sudah benar dan build "sukses".
+
+Ketahuan karena simbol `bpf_mt` tidak ada di `System.map` — pemeriksaan simbol
+inilah yang menangkapnya, bukan exit code build. Yang benar: jalankan ulang
+target defconfig.
+
+---
+
 ## 6. Perkiraan jujur
 
 | tahap | keadaan |
