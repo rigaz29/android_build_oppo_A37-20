@@ -101,6 +101,7 @@ Repo official LineageOS **tidak bisa** menggantikannya — diukur: kedua cabangn
 | [`plan-64bit/temuan-zip-hardlink/`](plan-64bit/temuan-zip-hardlink/) | **Nama zip ROM berbohong** — sepuluh nama bertanggal berbeda ternyata satu inode; tidak ada arsip build lama sama sekali |
 | [`plan-64bit/penyetelan-mm/`](plan-64bit/penyetelan-mm/) | **Tiga penyetelan memori** — dua dikerjakan (pgscan datar untuk lmkd, force-SCAN_ANON bersyarat); PELT ditahan karena tabel patch sumbernya salah hitung |
 | [`plan-64bit/temuan-lmkd-membunuh-foreground/`](plan-64bit/temuan-lmkd-membunuh-foreground/) | **lmkd membunuh aplikasi di layar** — Settings dibunuh pada adj=0 dengan 1 GB cache menganggur; sebabnya `ro.lmk.use_new_strategy=false` |
+| [`plan-64bit/review-mithorium/`](plan-64bit/review-mithorium/) | **Review Mi-Thorium** — kernel sudah sama persis; bedanya properti userspace, dan ambang CRITICAL kita 10× lebih sensitif dari yang dimaksudkan |
 | [`plan-64bit/fase-8/`](plan-64bit/fase-8/) | **Fase 8 — ROM 64-bit BOOT di perangkat** (14 Sep 2026): arm64-v8a, dua zygote, kamera 2 perangkat, RIL LTE, `/data` f2fs, nol tombstone |
 | [`plan-64bit/fase-7/`](plan-64bit/fase-7/) | **Fase 7 selesai** — audit closure dua jenis; menemukan premis Fase 4 salah dan mengembalikan kamera ke passthrough |
 | [`plan-64bit/fase-6/`](plan-64bit/fase-6/) | **Fase 6 selesai** — ROM 64-bit pertama terbangun (721 MB), `verify-rom.sh` semua lolos, isi system 1725 MB sisa 1001 MB |
