@@ -137,11 +137,94 @@ nyalakan kernelnya dulu, buktikan `bpf()` hidup, baru lepas gerbangnya.
 
 ---
 
+## 5b. Tahap 1 SELESAI: `kernel/bpf/` bersih
+
+Commit `87b787eb88b` di `wip/ebpf`. **Nol galat, nol peringatan baru**, 12 objek
+terbangun. Tren: `21 → 78 → 36 → 30 → 7 → 0`.
+
+### Prasyarat diambil dari mainline, bukan disalin dari a6010
+
+`div64_u64_rem`, `INIT_LIST_HEAD_RCU`, `u64_to_user_ptr`, `d_backing_inode`,
+`BPF_FS_MAGIC`, `prandom_seed_full_state`, `prandom_init_once`,
+`ktime_get_mono_fast_ns`, `ktime_get_boot_fast_ns`.
+
+Dua di antaranya **sengaja tidak disalin mentah**:
+
+| helper | kenapa diadaptasi |
+|---|---|
+| `prandom_init_once` | upstream memakai Tausworthe-113 (`s1..s4`); `struct rnd_state` di 3.10 masih Tausworthe-88 (`s1..s3`). Penyemaian lewat `prandom_seed_state()`, API kernel ini — bukan menulis `s4` yang tidak ada. Penjaganya ditaruh di `lib/random32.c`, bukan makro di `random.h`, karena makro itu butuh `spinlock.h` → include melingkar |
+| `ktime_get_mono_fast_ns` | upstream NMI-safe lewat timekeeper bayangan yang tidak ada di 3.10. Versi di sini pakai seqlock biasa — benar untuk program BPF jaringan yang tak pernah jalan dari NMI, dan **dicatat tegas di tempatnya** agar tidak dipakai bila program dipasang ke perf event atau kprobe |
+
+### Bug laten 3.10 yang ikut ketemu
+
+`moduleloader.h` mendereference `me->name`, padahal `struct module` hanya
+lengkap di dalam `#ifdef CONFIG_MODULES` — dan stub itu justru dipakai saat
+`CONFIG_MODULES=n`, yang berlaku di kernel ini. Tidak pernah terpicu sampai
+`kernel/bpf/core.c` menyertakan berkas itu.
+
+### ⚠️ Tiga kecerobohan a6010, diperbaiki
+
+**1. `bpf_prog_array_is_empty()` — bug logika nyata.**
+
+```c
+struct bpf_prog **prog = progs->progs;
+for (; *prog; prog++)
+        if (prog != &dummy_bpf_prog.prog)   /* ** dibandingkan dengan * */
+                return false;
+```
+
+Kompilator menandainya *"comparison of distinct pointer types lacks a cast"*.
+Perbandingan itu **selalu** tidak sama, sehingga array berisi dummy saja
+dilaporkan **tidak kosong** — kebalikan dari maksudnya. Dipakai `cgroup.c`
+untuk jalur cepat `SETSOCKOPT`/`GETSOCKOPT`. Diperbaiki jadi `*prog !=`.
+
+**2. Panjang JIT dikarang.**
+
+```c
+info.jited_prog_len = bpf_prog_size(prog->len) / 2;
+```
+
+Separuh ukuran program — angka tanpa makna — supaya NetBpfLoad Android 15
+mengira program sudah di-JIT padahal ditafsirkan. Diperiksa: **bpfloader
+Android 13 tidak memeriksa `jited` sama sekali.** Dilaporkan `0` apa adanya.
+
+**3. `map_flags` dipalsukan.**
+
+`128` untuk DEVMAP_HASH, `1` untuk LPM_TRIE, menimpa nilai sesungguhnya.
+Tidak dibutuhkan — `map_flags` sudah disimpan benar saat pembuatan peta
+(`arraymap.c:131`), peta netd A13 memakai `map_flags = 0` sehingga cocok apa
+adanya, dan `Loader.cpp` A13 hanya menambah `BPF_F_RDONLY_PROG` untuk DEVMAP
+yang tidak dibangun di sini. Nilai palsu justru bisa membuat peta **ditolak**.
+
+### Hook LSM: lengkap, termasuk yang a6010 lupakan
+
+Mengikuti upstream `afdb09c720b6`. a6010 tidak menyediakan stub
+`!CONFIG_SECURITY`, sehingga pohon mereka gagal dibangun bila `CONFIG_SECURITY`
+dimatikan — ditambahkan di sini. Default `cap_bpf*` + `set_to_cap_if_null` ikut
+dipasang; tanpa itu `security_ops->bpf` NULL dan panggilan `bpf()` pertama
+**panic**.
+
+### Tipe peta tak didukung: dimatikan jujur, bukan dipalsukan
+
+`CONFIG_BPF_FD_ARRAY_MAPS` (default `n`) memagari PERF_EVENT_ARRAY,
+CGROUP_ARRAY, STACK_TRACE, dan DEVMAP. Semuanya menuntut API 4.6
+(`perf_event_get`, `get_perf_callchain`, `cgroup_get_from_fd`, …) yang
+mem-backport-nya berarti menyentuh inti perf dan cgroup. **Tidak satu pun
+program BPF Android 13 memakainya** — netd hanya HASH dan ARRAY.
+
+`bpf(BPF_MAP_CREATE)` untuk tipe itu mengembalikan `-EINVAL` dengan jujur —
+kebalikan dari HACK a6010 *"emulate support for BPF_MAP_TYPE_DEVMAP_HASH"*.
+
+Terdaftar sekarang: `array`, `array_of_map`, `htab`, `hash_of_map`,
+`prog_array`, `lpm_trie`.
+
+---
+
 ## 6. Perkiraan jujur
 
 | tahap | keadaan |
 |---|---|
-| inti `kernel/bpf/` kompilasi | ~85% — 30 galat kecil tersisa |
+| inti `kernel/bpf/` kompilasi | ✅ **SELESAI** — 0 galat, 12 objek |
 | `filter.c` + `filter.h` masuk | sudah, belum dikompilasi |
 | 41 berkas pengguna API lama | **belum disentuh** |
 | konversi seccomp | **belum disentuh** — paling berisiko |
