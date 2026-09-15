@@ -533,6 +533,64 @@ target defconfig.
 
 ---
 
+## 5h. `SO_COOKIE` berhasil; dan penghalang `xt_bpf` ditemukan — dibuktikan, bukan ditebak
+
+Putaran ketiga (`4e5e70e3b68`) boot mulus.
+
+### `SO_COOKIE`: berhasil
+
+```
+E BpfHandler / E NetworkStats  :  39 → 2 → 0
+```
+
+Nol. Galat yang membuka seluruh penyelidikan ini akhirnya hilang.
+
+### `xt_bpf` menyala, tapi aturan netd tetap tidak terpasang
+
+Dengan `adb root`, keadaan sebenarnya terbaca:
+
+```
+/proc/net/ip_tables_matches    : ... bpf ...        ← match TERDAFTAR
+iptables -t raw    -S          : -N bw_raw_PREROUTING
+                                 -A PREROUTING -j bw_raw_PREROUTING   ← rantai ADA & terkait
+iptables -t mangle -S          : -N bw_mangle_POSTROUTING
+                                 -A POSTROUTING -j bw_mangle_POSTROUTING
+aturan "-m bpf" di filter/raw/mangle/nat : 0 0 0 0   ← isinya KOSONG
+```
+
+Aturan yang sama dicoba manual:
+
+```
+# iptables -t raw -A bw_raw_PREROUTING -m bpf --object-pinned /sys/fs/bpf/...
+iptables v1.8.7 (legacy): unknown option "--object-pinned"
+
+# iptables -t raw -A bw_raw_PREROUTING -m bpf --bytecode "1,6 0 0 1"
+exit=0     ← masuk
+```
+
+**iptables userspace memilih revisi tertinggi yang diiklankan kernel.** Karena
+kernel ini hanya punya **revisi 0**, `libxt_bpf` jatuh ke parser revisi 0 yang
+memang tidak punya opsi `--object-pinned`. Itu sebabnya netd gagal memasang
+aturannya **tanpa satu pun pesan galat** — tidak ada yang bisa dilihat di log.
+
+netd memakai jalur ini justru untuk penghitungan per-uid:
+`BandwidthController.cpp:242` (`bw_raw_PREROUTING`) dan `:255`
+(`bw_mangle_POSTROUTING`), keduanya `--object-pinned`.
+
+### Revisi 1 di-backport
+
+Upstream `2c16d6033264`. Potongan tersulitnya **sudah ada** —
+`bpf_prog_get_type_path()` di `kernel/bpf/inode.c`, ikut masuk saat
+transplantasi eBPF. Yang ditambahkan: `struct xt_bpf_info_v1`, tiga mode
+(`BYTECODE`, `FD_PINNED`, `FD_ELF`), dan pendaftaran dua revisi sekaligus lewat
+`xt_register_matches()`.
+
+`PTR_ERR_OR_ZERO` ditambahkan ke `err.h` — **disertai `#define` senama**, karena
+beberapa berkas membawa salinan lokalnya yang dijaga `#ifndef`, dan penjaga itu
+hanya bekerja untuk makro. Tanpa itu `fs/f2fs/node.c` gagal *redefinition*.
+
+---
+
 ## 6. Perkiraan jujur
 
 | tahap | keadaan |
@@ -547,7 +605,9 @@ target defconfig.
 | boot | ✅ **BOOT**, seccomp terbukti (4 proses `Seccomp=2`, nol SIGSYS) |
 | syscall `bpf()` | ✅ **BEKERJA** — map create/update/lookup, prog load, verifier menolak yang cacat |
 | bpfloader memuat program Android | ✅ seluruh netd + tethering ter-pin di `/sys/fs/bpf` |
-| attach ke cgroup | ❌ terhalang **cgroup v2** yang tidak ada di 3.10 — lebih besar dari perkiraan |
+| attach ke cgroup | ❌ terhalang **cgroup v2** yang tidak ada di 3.10 |
+| `SO_COOKIE` | ✅ galat `BpfHandler` 39 → **0** |
+| `xt_bpf` rev 1 (jalur tanpa cgroup) | 🔧 di-backport, menunggu uji |
 | bpfloader memuat program | belum |
 
 Ini pekerjaan berhari-hari, bukan berjam-jam, dengan satu titik yang bisa
