@@ -145,3 +145,89 @@ parameter. Fase 1 dan 2 mengejar pilihan itu tanpa memikul kerangka ColorOS.
 2. Kalau Fase 1 memberi perbaikan yang terlihat, **Fase 2** untuk mengganti
    tebakan dengan daftar pasti dari firmware.
 3. **Fase 3** hanya untuk sisa parameter yang tidak punya padanan properti.
+
+---
+
+# Fase 1 dijalankan (16 Sep 2026) — mekanismenya TERBUKTI, sisanya belum
+
+## Hasil utama: properti `persist.camera.*` benar-benar bekerja
+
+Dibuktikan dengan A/B terkendali, bukan dugaan. Alat ukurnya bukan foto
+melainkan **daftar parameter yang dilaporkan kamera sendiri**, diambil dari
+blok `Latest set parameters:` milik kamera 0 di `dumpsys media.camera`, dengan
+waktu mengendap 20 detik yang sama di kedua putaran:
+
+| putaran | `auto-hdr-enable` |
+|---|---|
+| `persist.camera.auto.hdr.enable` kosong | `disable` |
+| `persist.camera.auto.hdr.enable=1` | **`1`** |
+
+Dan selisihnya **tepat satu baris** — 156 parameter di kedua putaran, tidak
+ada efek samping:
+
+```
+~ 10 auto-hdr-enable: disable → auto-hdr-enable: 1
+```
+
+Properti juga terbukti berlabel SELinux dengan benar:
+`vendor_property_contexts: persist.camera.  u:object_r:camera_prop:s0`.
+
+## Peluang yang ditemukan dari daftar parameter sesungguhnya
+
+```
+auto-hdr-supported: true          <- DIDUKUNG
+auto-hdr-enable:    disable       <- tapi MATI secara baku
+zsl-hdr-supported:  true
+ae-bracket-hdr-values: Off,AE-Bracket
+scene-mode-values:  auto,asd,landscape,...,night,hdr
+iso-values: auto,ISO_HJR,ISO100..ISO3200      <- HJR = hand jitter reduction
+denoise: denoise-on                            <- sudah menyala
+tintless: enable                               <- sudah menyala
+```
+
+## KOREKSI: StillMore kemungkinan besar mati di sensor ini
+
+Saya menyebutnya "kandidat tunggal paling menjanjikan" di rencana. **Itu
+terlalu jauh.** Daftar parameter memuat `still-more: off` tetapi **tidak ada
+`still-more-values`** — bandingkan dengan `denoise-values`,
+`ae-bracket-hdr-values`, dan `scene-detect-values` yang semuanya ada. HAL
+tidak mengiklankan satu pun mode StillMore yang didukung, jadi menyetel
+propertinya kemungkinan besar sia-sia.
+
+## Yang BELUM terbukti, dan kenapa
+
+**Lima properti lain belum teruji.** Putaran pengujiannya gagal: siklus cepat
+`force-stop` + `killall mm-qcamera-daemon` + luncur ulang, lima kali beruntun,
+membuat Aperture ANR ("Kamera tidak menanggapi") dan seluruh pembacaan
+mengembalikan nol. Bukan kameranya yang rusak -- `qcamerasvr` tetap `running`
+dan tidak ada satu pun `camera_open failed`. Alat ukurnya yang roboh.
+
+**Dampak ke kualitas gambar sama sekali belum terukur.** Ponselnya tergeletak
+menempel di meja kayu sepanjang pengujian: foto acuan sepenuhnya di luar
+fokus, permukaan rata tanpa detail (`mean=111.7 stddev=27.8`). Perbedaan
+peredam derau atau HDR mustahil terlihat pada adegan seperti itu.
+
+## Pelajaran metode, supaya tidak terulang
+
+1. **Blok parameter di `dumpsys` harus diambil per batas seksi, dan kedua
+   putaran harus diberi waktu mengendap yang sama.** Dua perbandingan pertama
+   saya TIDAK SAH: yang satu membandingkan 182 lawan 163 parameter, yang lain
+   156 lawan 145, dan selisihnya penuh hal seperti `focus-mode:
+   continuous-picture` lawan `auto` serta `zsl: on` lawan `off` -- itu kamera
+   yang belum mengendap, bukan efek properti. Baru setelah keduanya sama-sama
+   156 parameter angkanya bisa dipercaya.
+2. **Jangan menyiklus kamera dengan cepat.** Beri jeda, dan periksa aplikasi
+   benar-benar mendapat fokus sebelum membaca.
+3. **Periksa `mCurrentFocus`.** Nilai `null` berarti pembacaan tidak sah --
+   bisa layar terkunci, bisa dialog ANR menutupi.
+
+## Yang dibutuhkan untuk melanjutkan
+
+Adegan yang bisa dinilai. Sandarkan ponsel menghadap sesuatu yang berdetail --
+tulisan, tekstur kain, rak buku -- pada jarak fokus wajar dan cahaya ruangan
+biasa, lalu biarkan diam. Dengan itu Fase 1 bisa diselesaikan: `auto-hdr`
+dinyalakan, foto dibandingkan pada adegan yang sama, dan keputusannya
+berdasar bukti.
+
+Perangkat ditinggalkan bersih: seluruh properti percobaan dikosongkan,
+sudah di-reboot, `qcamerasvr running`, 4 HAL device, 0 oops.
