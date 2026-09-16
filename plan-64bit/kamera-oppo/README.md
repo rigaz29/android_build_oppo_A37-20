@@ -371,3 +371,79 @@ adegan.
 **Fase 3 bukan sekadar "jalur yang tersisa" — ia satu-satunya jalur yang
 mungkin.** Yang perlu disetel aplikasi: `ae-bracket-hdr`, `scene-detect` (ASD),
 dan `scene-mode`.
+
+---
+
+# Fase 3 (16 Sep 2026) — rencananya salah, jalurnya ada, HDR akhirnya bekerja
+
+## Rencana Fase 3 saya keliru sejak awal
+
+Rencana menyebut "tambal jalur Camera1 Aperture". **Aperture tidak punya jalur
+Camera1.** Ia memakai CameraX dengan implementasi camera2
+(`androidx.camera:camera-camera2`) dan mengimpor `android.hardware.camera2.*`.
+
+Baris `CameraService::connect ... Camera API version 1` yang saya jadikan dasar
+ternyata bukan bukti aplikasinya memakai Camera1 — itu **CameraService sendiri**
+yang membuka HAL1 untuk menyusun metadata shim (terlihat sebagai
+`initializeShimMetadata` dan `Camera1 API shim is using parameters:` di
+`dumpsys`). Aplikasinya bicara Camera2; CameraService yang menerjemahkan.
+
+Akibatnya `ae-bracket-hdr` **tidak terjangkau dari Aperture**: ia parameter
+Camera1, dan Camera2 tidak punya padanannya. Dikonfirmasi di sisi HAL juga --
+`setAEBracket` hanya terjangkau lewat `KEY_QC_AE_BRACKET_HDR`, dan satu-satunya
+properti bertema HDR tetap `auto.hdr.enable` + `hdr.outcrop`.
+
+## Jalur yang benar: HDR perangkat lunak Open Camera
+
+Open Camera memakai Camera1 sungguhan dan membawa mode pengolahan sendiri:
+
+```
+photo_mode_hdr               photo_mode_noise_reduction
+photo_mode_dro               photo_mode_expo_bracketing
+photo_mode_fast_burst        photo_mode_focus_bracketing
+```
+
+Semuanya diolah aplikasi — **tidak bergantung pada `ae-bracket-hdr` milik HAL
+sama sekali**, jadi kebuntuan di atas tidak berlaku.
+
+Mode disetel lewat preferensi, tanpa meraba UI:
+
+```
+kunci  : preference_photo_mode
+nilai  : preference_photo_mode_{std,hdr,noise_reduction,dro,...}
+berkas : /data/data/net.sourceforge.opencamera/shared_prefs/
+         net.sourceforge.opencamera_preferences.xml
+```
+
+## Terbukti bekerja
+
+`IMG_20260916_203517_HDR.jpg` — sufiks `_HDR` dari aplikasinya sendiri, dan log
+memperlihatkan `imx179_fill_exposure_array` berulang, yaitu sensor digerakkan
+untuk bracketing.
+
+Adegan sama, mode ditukar:
+
+| mode | mean | stddev | entropi | highlight | shadow |
+|---|---|---|---|---|---|
+| std | 113,52 | 58,53 | 0,7757 | 0,006% | **0,057%** |
+| **hdr** | 118,53 | **44,45** | 0,7750 | **0,000%** | **0,000%** |
+
+Pemotongan di **kedua** ujung histogram hilang sama sekali, dan `stddev`
+menyusut — kompresi tonal, tanda tangan tonemapping. Bandingkan dengan
+`persist.camera.auto.hdr.enable` yang sama sekali tidak mengubah apa pun.
+
+Ongkosnya: pemrosesan ~8–16 detik per foto di perangkat ini. Nyata, dan perlu
+disebut.
+
+## Metode uji, tanpa merusak apa pun
+
+Enam siklus properti + empat siklus mode aplikasi, dan hasilnya
+`unusable device = 0`, `tombstone = 0`, kedua layanan `running` sepanjang
+waktu. Kuncinya: jangan pernah `force-stop` saat kamera sedang menyambung.
+Urutan aman: `KEYCODE_HOME` -> tunggu `Device 0 is closed` di `dumpsys` ->
+baru ubah apa pun.
+
+## Keadaan akhir perangkat
+
+Open Camera ditinggalkan pada mode HDR. `persist.camera.auto.hdr.enable`
+bernilai `0` (sah, bukan kosong).
