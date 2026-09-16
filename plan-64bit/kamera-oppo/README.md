@@ -301,3 +301,73 @@ pembacaan parameter dari `dumpsys`, plus metrik citra objektif (mean, stddev,
 entropi, persentase sorotan/bayangan terpotong) yang cukup peka — sebaran
 kondisi "mati" hanya ±0,007% pada highlight. Perubahan sekecil apa pun di
 Fase 3 akan terlihat.
+
+---
+
+# Fase 1 diulang dengan metode aman (16 Sep 2026) — sebabnya kini diketahui
+
+Pengulangan ini menjawab pertanyaan yang tertinggal dari putaran pertama:
+bukan sekadar "tidak ada beda", melainkan **kenapa**.
+
+## Metode baru: tanpa membunuh apa pun
+
+Putaran sebelumnya memakai `force-stop` + `killall mm-qcamera-daemon` dan itu
+tiga kali merusak kamera perangkat. Metode pengganti:
+
+```
+input keyevent KEYCODE_HOME
+tunggu sampai `dumpsys media.camera` melaporkan "Device 0 is closed"
+setprop persist.camera.auto.hdr.enable <0|1>
+am start ... ; endapkan 20 detik ; potret
+```
+
+Terbukti berhasil DAN aman: properti tetap berbalik (`disable` -> `1`) tanpa
+daemon disentuh, dan setelah **enam siklus penuh** hasilnya
+`unusable device = 0`, `tombstone = 0`, kedua layanan `running`.
+
+Properti selalu diisi nilai sah `0` atau `1` — **jangan pernah string kosong**.
+Properti Android tidak bisa dihapus, hanya diisi, dan `persist.*` tersimpan di
+`/data/property/persistent_properties` sehingga string kosong ikut bertahan
+melewati dirty flash.
+
+## Adegan uji kali ini layak
+
+Headphone, DAC, kabel, dinding bertekstur, sudut gelap: `min=1,43 max=255`.
+Berbeda jauh dari meja rata di luar fokus pada putaran pertama.
+
+## Hasil: derau AE menenggelamkan segalanya
+
+| kondisi | mean tiap jepretan | rata-rata |
+|---|---|---|
+| off | 133,14 / 129,18 / 150,13 | 137,5 ± 11,2 |
+| on | 122,38 / 152,42 / 147,82 | 140,9 ± 16,1 |
+
+Ragam **di dalam** tiap kondisi (±11–16) jauh melampaui selisih **antar**
+kondisi (3,4). Tidak ada efek yang bisa dideteksi.
+
+## Dan inilah sebabnya
+
+```
+auto-hdr-enable: 1        <- izin diberikan
+ae-bracket-hdr:  Off      <- sakelar eksekusinya TETAP MATI
+scene-mode:      auto     <- bukan hdr
+```
+
+Nol baris log HDR sepanjang enam penangkapan.
+
+`auto-hdr-enable` hanya membuat HAL **bersedia** memilih HDR sendiri.
+Penangkapan HDR yang sesungguhnya menuntut `ae-bracket-hdr: AE-Bracket` atau
+`scene-mode: hdr`, dan keduanya **hanya bisa disetel aplikasi** lewat
+`Camera.Parameters`. Tidak ada properti untuk keduanya — satu-satunya properti
+bertema HDR adalah `auto.hdr.enable` (ini) dan `hdr.outcrop` (kosmetik).
+
+## Kesimpulan Fase 1, sekarang dengan mekanismenya
+
+`persist.camera.auto.hdr.enable` **tidak mungkin** menghasilkan HDR sendirian.
+Ia membuka izin untuk pintu yang tidak pernah dibuka siapa pun. Konsisten di
+dua adegan yang sangat berbeda, jadi ini sifat sistemnya, bukan kebetulan
+adegan.
+
+**Fase 3 bukan sekadar "jalur yang tersisa" — ia satu-satunya jalur yang
+mungkin.** Yang perlu disetel aplikasi: `ae-bracket-hdr`, `scene-detect` (ASD),
+dan `scene-mode`.
