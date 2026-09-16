@@ -85,3 +85,108 @@ sehat, tanpa aplikasi lain, dan dengan rana ditekan lewat koordinat tombol
 
 Open Camera MASIH TERPASANG. Preview-nya aman, tetapi menekan rana akan
 mematikan kamera sampai reboot. Sebaiknya dicopot kecuali sedang diuji.
+
+---
+
+# Sisir lengkap jalur kamera, HIDL sampai kernel (16 Sep 2026)
+
+Dilakukan atas permintaan sebelum flash. Empat lapisan.
+
+## KOREKSI PENTING atas penjelasan saya sebelumnya
+
+Saya sempat menulis bahwa kernel meninggalkan "sesi basi" yang tidak pernah
+dibersihkan. **Itu tidak benar.** `camera_v4l2_close()` membersihkannya secara
+eksplisit, dan komentarnya bahkan menyebut kasus crash:
+
+```c
+/* This should take care of both normal close and application crashes */
+msm_destroy_session(pvdev->vdev->num);
+```
+
+Mekanisme yang sebenarnya adalah **balapan saat startup**, bukan kebocoran.
+`msm_post_event()` di `msm.c:702`:
+
+```c
+	if (!msm_eventq) {
+		...
+		return -ENODEV;          /* inilah rc -19 di log */
+	}
+```
+
+`msm_eventq` diisi ketika **mm-qcamera-daemon** membuka node config
+(`msm.c:875`) dan dikosongkan ketika ia mati (`msm.c:827`). Jadi ketika daemon
+belum sempat mendaftar -- atau baru saja mati -- setiap `camera_v4l2_open`
+memulangkan -ENODEV.
+
+Rantai lengkapnya:
+
+1. mm-qcamera-daemon belum terdaftar -> `msm_post_event` = -ENODEV
+2. `camera_v4l2_open` gagal rc -19
+3. blob vendor mencatat "camera_open failed" tetapi **memulangkan SUKSES**
+4. `CameraDevice::open()` lolos `rc != OK`, memanggil `set_callbacks` pada
+   device tak sah -> SIGSEGV
+5. mediaserver mati **saat enumerasi startup** -> init menghidupkannya lagi ->
+   balapan yang sama terulang -> **lingkaran**
+
+**Fix 1 memutus lingkaran di langkah 4**, dan itulah perbaikan yang esensial.
+
+**Fix 2 tetap benar tetapi BUKAN mekanisme kasus ini.** Kebocoran sesi di
+jalur galat `DeviceInfo1` adalah bug sungguhan yang layak diperbaiki, hanya
+saja bukan dia yang menyebabkan lingkaran yang kita amati. Saya menyebutnya
+"sebab" di commit sebelumnya; itu terlalu jauh.
+
+## Lapisan 1 - `CameraDevice.cpp` (implementasi HIDL HAL1)
+
+| metode | keadaan |
+|---|---|
+| `open()` | **DIPERBAIKI** -- tidak memvalidasi `mDevice`/`mDevice->ops` |
+| `dumpState()` | aman, dijaga `if (mDevice != nullptr)` |
+| `closeLocked()` | aman, dijaga `if (mDevice)` |
+| sisanya | semua dijaga `if (!mDevice) return OPERATION_NOT_SUPPORTED` |
+
+## Lapisan 2 - `CameraProviderManager.cpp`
+
+- **DIPERBAIKI**: `DeviceInfo1::DeviceInfo1` -- dua `return` sesudah `open()`
+  berhasil tanpa `close()`.
+- **DITEMUKAN TAPI MATI**: `openHal1Device` memanggil `saveRef()` sebelum
+  `open()`, dan hanya memanggil `removeRef()` pada galat transaksi. Kalau
+  transaksi sukses tetapi HAL menolak membuka (`status != Status::OK`),
+  referensinya bocor.
+
+  **Tidak ditambal, dan itu disengaja**: `saveRef`/`removeRef` keduanya
+  dibuka `if (!kEnableLazyHal) return;`, sedangkan `kEnableLazyHal` berasal
+  dari `ro.camera.enableLazyHal` yang **tidak disetel** di perangkat ini.
+  Jadi keduanya no-op. Menambal kode mati hanya menambah selisih terhadap
+  hulu tanpa imbalan.
+
+## Lapisan 3 - kernel
+
+- `camera_v4l2_open()`: tangga `goto` unwinding-nya **benar** --
+  `post_fail` -> `command_ack_q_fail` -> `session_fail` -> `vb2_q_fail` ->
+  `fh_open_fail`, masing-masing membatalkan tepat apa yang sudah dikerjakan.
+- `camera_v4l2_close()`: **benar**, termasuk untuk kasus crash.
+- **BUG DITEMUKAN, BELUM DIPERBAIKI**: `pm_relax()` tidak seimbang.
+
+  `pm_stay_awake()` hanya dipanggil di cabang pembukaan PERTAMA
+  (`if (!atomic_read(&pvdev->opened))`). Tetapi cabang `else` -- pembukaan
+  stream berikutnya -- ketika `msm_create_command_ack_q()` gagal melakukan
+  `goto session_fail`, dan label itu memanggil `pm_relax()`.
+
+  Akibatnya wakelock yang dipegang pembukaan pertama DILEPAS padahal
+  stream-nya masih terbuka, sehingga perangkat bisa suspend saat kamera masih
+  dipakai. Pemicunya sempit (kegagalan alokasi ack-queue pada stream kedua
+  atau seterusnya), tetapi bug-nya nyata.
+
+## Lapisan 4 - shim dan properti
+
+`libshim_camera` hanya memasok satu simbol yang hilang untuk
+`libmmcamera2_stats_algorithm.so`; tidak menyentuh jalur buka/tutup. Properti
+kamera yang kita setel hanya `persist.camera.cpp.duplication=false` dan
+`persist.camera.hal.debug.mask=0` -- keduanya tidak berpengaruh ke jalur ini.
+
+## Kesimpulan untuk pertanyaan "aman di-flash?"
+
+Ya. Dua perbaikan yang ada di ROM menyempitkan kerusakan, tidak melebarkannya:
+keduanya hanya menambah pemeriksaan dan pembersihan pada jalur GALAT, dan
+tidak menyentuh jalur sukses sama sekali. Satu bug tersisa (`pm_relax`) ada di
+kernel dan sudah ada sebelum semua ini -- bukan regresi baru.
