@@ -231,3 +231,73 @@ berdasar bukti.
 
 Perangkat ditinggalkan bersih: seluruh properti percobaan dikosongkan,
 sudah di-reboot, `qcamerasvr running`, 4 HAL device, 0 oops.
+
+---
+
+# Fase 1 SELESAI (16 Sep 2026) — hasilnya negatif, dan itu tetap berharga
+
+Dituntaskan pada adegan yang layak: meja berisi charger, kabel, dan ponsel —
+bertekstur, fokus benar, cahaya ruangan.
+
+## `auto-hdr`: tidak ada perbaikan yang terukur
+
+Tiga foto per kondisi, adegan sama, Aperture, HAL di-restart di antaranya.
+
+| | mean | stddev | entropi | highlight terpotong |
+|---|---|---|---|---|
+| HDR mati | 131,33 ± 0,11 | 72,32 ± 0,02 | 0,8634 | **7,699% ± 0,007** |
+| HDR hidup | 130,55 ± 0,60 | 72,90 ± 0,60 | 0,8565 | **8,271% ± 0,72** |
+
+Highlight yang terpotong justru **naik**, entropi **turun**, dan ragamnya
+melonjak 100 kali lipat.
+
+Penjelasannya bukan "HDR memperburuk", melainkan **HDR tidak pernah menyala**:
+nol baris log HDR sepanjang penangkapan. Selisih angka di atas adalah AE yang
+bergoyang, dan itu justru sesuai dengan ragam yang membengkak. Rentang
+adegannya `min=7,86 max=255` — sorotan memang terpotong, tetapi bayangannya
+sehat, jadi pemicu Auto HDR tidak terpenuhi.
+
+**Tidak diadopsi.** Properti dikosongkan kembali.
+
+## Kenapa tidak ada properti lain yang layak dikejar
+
+Daftar parameter kamera menunjukkan yang penting **sudah menyala secara baku**:
+
+```
+denoise:  denoise-on      <- sudah
+tintless: enable          <- sudah
+zsl:      on              <- sudah (kamera 0)
+```
+
+Dan yang masih mati **tidak punya properti pengendali sama sekali**:
+
+```
+scene-detect:   off    (ASD)          -- hanya lewat Camera.Parameters
+ae-bracket-hdr: Off                   -- hanya lewat Camera.Parameters
+still-more:     off                   -- tidak diiklankan HAL, mati
+```
+
+Satu-satunya properti bertema HDR yang ada adalah `auto.hdr.enable` (sudah
+diuji, nihil) dan `hdr.outcrop` (kosmetik, memotong hasil HDR).
+
+## Kesimpulan Fase 1
+
+**Tidak ada kemenangan gratis di tingkat properti.** Bawaan HAL sudah masuk
+akal. Yang saya duga di rencana — bahwa aplikasi ColorOS menyalakan banyak
+hal lewat properti yang kita biarkan mati — **tidak terbukti**.
+
+Ini mengubah nilai fase berikutnya:
+
+- **Fase 2 turun nilainya sebagai sumber properti**, karena properti yang ada
+  tidak mengendalikan fitur yang masih mati. Nilainya bergeser sepenuhnya ke
+  membaca **pilihan parameter** aplikasi bawaan.
+- **Fase 3 naik menjadi satu-satunya jalur nyata.** `scene-detect` (ASD) dan
+  `ae-bracket-hdr` hanya bisa disetel dari aplikasi, dan keduanya mati.
+
+## Yang terbukti tetap berharga
+
+Mekanismenya sahih dan alat ukurnya sekarang ada: A/B terkendali dengan
+pembacaan parameter dari `dumpsys`, plus metrik citra objektif (mean, stddev,
+entropi, persentase sorotan/bayangan terpotong) yang cukup peka — sebaran
+kondisi "mati" hanya ±0,007% pada highlight. Perubahan sekecil apa pun di
+Fase 3 akan terlihat.
