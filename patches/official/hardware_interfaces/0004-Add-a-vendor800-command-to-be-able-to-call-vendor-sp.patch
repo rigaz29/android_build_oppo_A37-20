@@ -1,7 +1,7 @@
 From 3c823b6688c7b5bd86c916e3331024534aebf284 Mon Sep 17 00:00:00 2001
 From: Pierre-Hugues Husson <phh@phh.me>
 Date: Sun, 19 Dec 2021 17:03:15 -0500
-Subject: [PATCH 4/6] Add a vendor800 command, to be able to call
+Subject: [PATCH 4/7] Add a vendor800 command, to be able to call
  vendor-specific hwc functions
 
 Change-Id: Icbef1e9e3a331ae3bd5a05687d545851d94d88a8

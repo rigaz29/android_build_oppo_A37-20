@@ -1,10 +1,10 @@
 repo: hardware/interfaces
-ul-head: ec0436fd12f197c1f4b1a4e78e6c34158138227b
+ul-head: 6c086f5f8f6b09a8e0c503ccdd22b60f9753e2d5
 ul-head-tanggal: 2026-09-16
 official-url: https://github.com/LineageOS/android_hardware_interfaces.git
 official-ref: lineage-20.0
 official-head: 2f83e1bda9536aaf406352c868a8192cc3526a69
 merge-base: 2f83e1bda9536aaf406352c868a8192cc3526a69
 merge-base-tanggal: 2024-08-09
-jumlah-patch: 6
-tanggal-ekstraksi: 2026-09-16T11:56:50Z
+jumlah-patch: 7
+tanggal-ekstraksi: 2026-09-16T23:58:16Z

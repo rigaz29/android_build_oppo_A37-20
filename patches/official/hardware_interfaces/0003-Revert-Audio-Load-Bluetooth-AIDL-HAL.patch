@@ -1,7 +1,7 @@
 From c78412451bee3d61657924708f583774c879ae07 Mon Sep 17 00:00:00 2001
 From: TARKZiM <tom8476oo@gmail.com>
 Date: Sat, 27 Aug 2022 21:20:42 +0800
-Subject: [PATCH 3/6] Revert "Audio: Load Bluetooth AIDL HAL"
+Subject: [PATCH 3/7] Revert "Audio: Load Bluetooth AIDL HAL"
 
 This reverts commit 3f8f5997ada49bcc7be7f5bccfddf024684faef1.
 ---

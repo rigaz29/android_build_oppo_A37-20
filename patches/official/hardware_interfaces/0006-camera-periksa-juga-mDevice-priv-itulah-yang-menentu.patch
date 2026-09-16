@@ -1,7 +1,7 @@
 From ec0436fd12f197c1f4b1a4e78e6c34158138227b Mon Sep 17 00:00:00 2001
 From: rigaz29 <ryanbagas27@gmail.com>
 Date: Wed, 16 Sep 2026 10:56:11 +0000
-Subject: [PATCH 6/6] camera: periksa juga mDevice->priv -- itulah yang
+Subject: [PATCH 6/7] camera: periksa juga mDevice->priv -- itulah yang
  menentukan
 
 Penjagaan yang saya tambahkan sebelumnya hanya memeriksa mDevice dan

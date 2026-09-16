@@ -95,3 +95,102 @@ memperlakukan kecurigaan ini sebagai temuan.
 Lihat `plan-64bit/kamera-oppo/` bagian Fase 3. Ringkasnya: jangan pernah
 `force-stop` saat kamera sedang menyambung; `KEYCODE_HOME` lalu tunggu
 `Device 0 is closed` di `dumpsys` sebelum mengubah apa pun.
+
+---
+
+# LANJUTAN: sebab sesungguhnya ada di kode kita (17 Sep 2026)
+
+Seluruh analisis di atas mengejar dari lapisan yang salah. Ini koreksinya.
+
+## Crash-nya BUKAN di blob vendor
+
+Tombstone menunjuk `/system/lib/hw/camera.msm8916.so` — **8,9 KB**. Blob
+vendornya `/vendor/lib/hw/camera.vendor.msm8916.so` — **7,4 MB**. Dua berkas
+berbeda, dan yang mati adalah yang kecil.
+
+Yang kecil itu dibangun dari **`device/oppo/A37/camera/CameraWrapper.cpp`** —
+device tree kita sendiri. Bukan shim simbol melainkan **HAL wrapper**: ia
+mengekspor `HAL_MODULE_INFO_SYM`, memuat HAL vendor, dan meneruskan tiap
+panggilan lewat `VENDOR_CALL`.
+
+```c
+#define VENDOR_CALL(device, func, ...) ({ \
+    __wrapper_dev->vendor->ops->func(...); \   /* tanpa memeriksa vendor */ \
+})
+```
+
+`ops` berada di offset **0x40** dalam `camera_device_t`, karena `hw_device_t`
+di depannya 64 byte. Jadi `vendor` NULL menghasilkan `fault addr 0x00000040` —
+angka yang muncul di SETIAP tombstone. Tanda tangan, bukan kebetulan.
+
+Blob memulangkan `rv == 0` tanpa mengisi `camera_device->vendor`, dan struktur
+itu dialokasikan `malloc` sehingga isinya tak terinisialisasi.
+
+## Perbaikan yang bertahan
+
+| berkas | isi |
+|---|---|
+| `CameraWrapper.cpp` | `calloc` menggantikan `malloc`; tolak `vendor == NULL` setelah open |
+| `CameraWrapper.cpp` | gelung retry juga mengulang saat `rv == 0` tetapi `vendor` NULL |
+| `CameraWrapper.cpp` | batas `cameraid` diperbaiki; `get_camera_info` memulangkan galat; kebocoran dan pointer menggantung `fixed_set_params` |
+| `CameraWrapper.cpp` | ZSL hanya untuk kamera belakang |
+| `CameraProviderManager.cpp` | tutup device HAL1 di jalur galat `DeviceInfo1` |
+
+Kenapa di wrapper dan bukan di `hardware/interfaces`: label `fail:` di
+`camera_device_open` membebaskan `camera_device` dan `camera_ops` lalu
+menyetel `*device = NULL`. Lapisan HIDL tidak mengalokasikan apa pun sehingga
+tidak punya apa-apa untuk dibersihkan — penjagaan di sana justru membocorkan
+sumber daya dan mengubah crash yang sembuh-sendiri jadi kerusakan permanen.
+
+## Dua perbaikan yang DI-REVERT, dan pelajarannya
+
+**Penjagaan `priv` di `CameraDevice::open`** — mencegah crash tetapi
+membocorkan sumber daya blob (`mm_jpeg_new_client: num of clients reached
+limit`) sampai kamera mati permanen melewati clean install.
+
+**`rc = 0` menggantikan `-EINVAL` di `msm_sensor_driver_probe`** — cabang itu
+memulangkan sukses tanpa memanggil `msm_sensor_fill_sensor_info()`.
+`-EINVAL` milik OPPO ternyata perlindungan, bukan kelalaian.
+
+## Kesalahan diagnosis yang perlu dicatat
+
+Ketika orientasi menjadi 0 dan kedua kamera dilaporkan menghadap belakang,
+saya menyalahkan perubahan kernel dan meminta pemilik perangkat mem-flash
+kernel revert. **Itu tidak menolong, karena bukan itu sebabnya.**
+
+Penyebabnya justru penjagaan `vendor == NULL` saya sendiri: `DeviceInfo1`
+mengisi info kamera HANYA kalau `open()` berhasil, jadi kegagalan bersih saat
+enumerasi membuat facing, orientation, dan flash tetap pada nilai baku.
+
+Petunjuk yang seharusnya langsung ditangkap: **`Has a flash unit: false`**
+padahal `lm3642` probe sukses di kernel. Tiga nilai baku sekaligus bukan
+gejala orientasi melainkan tanda blok info tak pernah dijalankan. Kalau
+beberapa nilai salah bersamaan, curigai jalur yang tidak dieksekusi, bukan
+nilai yang salah dihitung.
+
+Perbaikannya memakai mekanisme yang sudah ada: gelung retry di wrapper semula
+`retry = --retries > 0 && rv`, sehingga kegagalan yang menyamar sebagai sukses
+lolos tanpa satu pun percobaan ulang. Enumerasi berlomba dengan
+`mm-qcamera-daemon` yang belum mendaftarkan antrean peristiwanya; retry
+memberi daemon waktu.
+
+Sesudah perbaikan: `Back/90/flash true` dan `Front/270`.
+
+## Yang masih terbuka
+
+Kamera depan pada mode HDR Open Camera mati di dalam blob:
+
+```
+SIGSEGV @ fault addr 0x00000190
+#00 camera.vendor.msm8916.so  VDSuperPhoto_AddFrame+0
+#01 [anon:.bss]
+```
+
+`VDSuperPhoto` jalur multi-bingkai vendor. Hipotesis yang sedang diuji: ZSL
+memberi makan jalur itu, dan `params.set("zsl", "on")` dipaksakan pada KEDUA
+kamera — baris yang terbawa apa adanya dari impor wrapper Lenovo a6020
+(`caff279`), tidak pernah disetel untuk A37. Kini ZSL hanya untuk kamera
+belakang.
+
+Ditulis sebagai hipotesis: crash-nya di dalam blob dan tidak bisa ditelusuri
+lebih jauh dari luar.

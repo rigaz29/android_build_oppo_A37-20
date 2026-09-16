@@ -1,0 +1,90 @@
+From 6c086f5f8f6b09a8e0c503ccdd22b60f9753e2d5 Mon Sep 17 00:00:00 2001
+From: rigaz29 <ryanbagas27@gmail.com>
+Date: Wed, 16 Sep 2026 12:39:07 +0000
+Subject: [PATCH 7/7] Penjelasan revert: penjagaan priv adalah REGRESI,
+ terbukti di perangkat
+
+Bukti pembandingnya bersih karena hanya satu commit yang berbeda:
+
+  ROM 20260916_011842 = 05aa3980d (penjagaan ops saja)   -> kamera JALAN
+  ROM 20260916_110955 = ec0436fd1 (+ penjagaan priv)     -> kamera RUSAK
+
+Dan rusaknya bertahan melewati clean install, jadi bukan sisa keadaan di
+/data melainkan kode.
+
+Mekanismenya: penjagaan itu menolak device lalu membuang pointernya TANPA
+memanggil close(). Padahal blob sudah melaporkan sukses, sehingga menurut
+kontrak HAL kita memiliki device itu dan wajib menutupnya. Akibatnya tiap
+penolakan membocorkan sumber daya milik blob -- terlihat langsung sebagai
+"mm_jpeg_new_client: num of clients reached limit".
+
+Ironinya, crash yang hendak saya cegah justru berfungsi sebagai pemulihan
+tak sengaja: mediaserver mati, prosesnya dibersihkan, lalu percobaan
+berikutnya berhasil. Penjagaan saya menggantinya dengan kegagalan rapi yang
+TIDAK PERNAH sembuh.
+
+Yang tetap terbukti dan tidak ikut di-revert: diagnostiknya benar. Pesan
+"(device=%p ops=%p priv=%p)" memperlihatkan priv=0x0 persis seperti dugaan,
+jadi analisis soal penyebab crash-nya sahih. Yang salah adalah tindakannya,
+bukan diagnosisnya.
+
+Kalau suatu saat ini dikerjakan lagi, syaratnya: panggil
+mDevice->common.close() sebelum membuang pointer, DAN uji bahwa kamera masih
+bisa dibuka berulang kali sesudahnya -- bukan hanya bahwa mediaserver tidak
+crash.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_014BuvxqsBMX7Bb8CRVeSTBj
+Change-Id: I0b4683ccbacee8f329a1bd5db4d41d450ec09595
+---
+ camera/device/1.0/default/CameraDevice.cpp | 34 ++++------------------
+ 1 file changed, 6 insertions(+), 28 deletions(-)
+
+diff --git a/camera/device/1.0/default/CameraDevice.cpp b/camera/device/1.0/default/CameraDevice.cpp
+index bcacf830d..3226df66d 100644
+--- a/camera/device/1.0/default/CameraDevice.cpp
++++ b/camera/device/1.0/default/CameraDevice.cpp
+@@ -695,34 +695,12 @@ Return<Status> CameraDevice::open(const sp<ICameraDeviceCallback>& callback) {
+      * tersedia" alih-alih menjatuhkan mediaserver. Berlaku untuk HAL mana pun
+      * yang berperilaku sama, bukan cuma perangkat ini.
+      */
+-    /*
+-     * A37, DIPERBAIKI 16 Sep 2026: `priv` ikut diperiksa, dan justru ITULAH
+-     * yang menentukan.
+-     *
+-     * Versi pertama penjagaan ini hanya memeriksa mDevice dan mDevice->ops,
+-     * dan TIDAK MENYALA -- crash-nya tetap terjadi dan pesan di bawah tidak
+-     * pernah muncul di log. Tombstone-nya membuktikan biner baru memang jalan
+-     * (offset CameraDevice::open bergeser dari +558 menjadi +640) sementara
+-     * titik matinya tidak berubah:
+-     *
+-     *   #00 camera.msm8916.so  camera_set_callbacks+46   SIGSEGV @ 0x40
+-     *
+-     * Jadi mDevice dan mDevice->ops keduanya sah. Yang kosong adalah
+-     * `mDevice->priv`: blob memulangkan device dengan ops terisi tetapi priv
+-     * NULL, lalu camera_set_callbacks mengambil QCamera2HardwareInterface dari
+-     * priv dan mendereference anggotanya di offset 0x40.
+-     *
+-     * `priv` adalah anggota publik struct camera_device (hardware/camera.h),
+-     * dan pada HAL1 QCamera2 ia selalu terisi oleh open yang benar-benar
+-     * berhasil. Memeriksanya di sini menangkap persis kasus "HAL bilang
+-     * sukses padahal camera_open gagal".
+-     */
+-    if (mDevice == nullptr || mDevice->ops == nullptr || mDevice->priv == nullptr) {
+-        ALOGE("%s: HAL reported success but returned an unusable device for camera %s "
+-              "(device=%p ops=%p priv=%p)", __FUNCTION__, mCameraId.c_str(),
+-              mDevice, mDevice ? mDevice->ops : nullptr,
+-              mDevice ? mDevice->priv : nullptr);
+-        mDevice = nullptr;
++    if (mDevice == nullptr || mDevice->ops == nullptr) {
++        ALOGE("%s: HAL reported success but returned an unusable device for camera %s",
++                __FUNCTION__, mCameraId.c_str());
++        if (mDevice != nullptr) {
++            mDevice = nullptr;
++        }
+         return getHidlStatus(-ENODEV);
+     }
+ 
+-- 
+2.43.0
+

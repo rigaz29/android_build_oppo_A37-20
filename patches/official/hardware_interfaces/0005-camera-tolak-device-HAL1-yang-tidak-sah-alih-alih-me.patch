@@ -1,7 +1,7 @@
 From 05aa3980da273ec3fc9be509944a0192e9accb85 Mon Sep 17 00:00:00 2001
 From: rigaz29 <ryanbagas27@gmail.com>
 Date: Wed, 16 Sep 2026 00:46:31 +0000
-Subject: [PATCH 5/6] camera: tolak device HAL1 yang tidak sah alih-alih
+Subject: [PATCH 5/7] camera: tolak device HAL1 yang tidak sah alih-alih
  menjatuhkan mediaserver
 
 Blob HAL1 msm8916 (QCamera2Factory) terbukti memulangkan SUKSES padahal
