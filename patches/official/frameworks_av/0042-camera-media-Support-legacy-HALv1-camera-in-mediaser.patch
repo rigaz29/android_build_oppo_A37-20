@@ -1,4 +1,4 @@
-From 1ca4e4e2395eeb7c5f2402473ab2c02f3f333757 Mon Sep 17 00:00:00 2001
+From 2f2e83081fd154e32d9a347f4f04c6720c927c60 Mon Sep 17 00:00:00 2001
 From: Simon Shields <keepcalm444@gmail.com>
 Date: Thu, 6 Oct 2016 20:25:32 +1100
 Subject: [PATCH 42/45] camera/media: Support legacy HALv1 camera in

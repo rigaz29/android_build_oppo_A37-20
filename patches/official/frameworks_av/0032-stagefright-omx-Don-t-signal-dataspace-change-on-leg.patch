@@ -1,4 +1,4 @@
-From edf9226cfec134ce5d04563c0729b53e157551cf Mon Sep 17 00:00:00 2001
+From 05827980255a65de9b66a8583ab3c12b2055d7ad Mon Sep 17 00:00:00 2001
 From: Arne Coucheron <arco68@gmail.com>
 Date: Sun, 9 Oct 2016 06:18:47 +0200
 Subject: [PATCH 32/45] stagefright: omx: Don't signal dataspace change on

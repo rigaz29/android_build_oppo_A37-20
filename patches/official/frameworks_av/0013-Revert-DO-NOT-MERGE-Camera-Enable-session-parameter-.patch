@@ -1,4 +1,4 @@
-From 90d2774e5a26d010aca4f7f7d903e49700b6e580 Mon Sep 17 00:00:00 2001
+From 259def9905aa3951618e15e8e22280d3445718f9 Mon Sep 17 00:00:00 2001
 From: khalvat-M <mmba313@gmail.com>
 Date: Thu, 22 Jun 2023 10:13:03 +0330
 Subject: [PATCH 13/45] Revert "DO NOT MERGE Camera: Enable session parameter

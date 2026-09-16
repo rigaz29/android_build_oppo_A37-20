@@ -1,4 +1,4 @@
-From 100fbd5e5e3bc9ca968370c1e9ffa0e26fbd67e7 Mon Sep 17 00:00:00 2001
+From 93e5cd9b8cce1422133af518d3d9475a3d2494cd Mon Sep 17 00:00:00 2001
 From: khalvat-M <mmba313@gmail.com>
 Date: Thu, 22 Jun 2023 10:14:28 +0330
 Subject: [PATCH 14/45] Revert "CameraService: Update rotate and crop

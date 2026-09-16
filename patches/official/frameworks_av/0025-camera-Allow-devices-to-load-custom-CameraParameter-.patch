@@ -1,4 +1,4 @@
-From 688023852ae8828c3a4050fb3cdd8167599bed4e Mon Sep 17 00:00:00 2001
+From 605d10fc33ef1a39e4304c0dae8752f1e5473086 Mon Sep 17 00:00:00 2001
 From: Pig <pig.priv@gmail.com>
 Date: Thu, 15 Oct 2020 08:44:20 +0800
 Subject: [PATCH 25/45] camera: Allow devices to load custom CameraParameter

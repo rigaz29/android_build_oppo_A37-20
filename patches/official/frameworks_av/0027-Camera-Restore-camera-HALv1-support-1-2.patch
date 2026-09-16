@@ -1,4 +1,4 @@
-From b24da7c94b1231ee372ce4f9bccac93867a14ec2 Mon Sep 17 00:00:00 2001
+From abdd53b77681b0f28117689f840d0e5cc883d9d0 Mon Sep 17 00:00:00 2001
 From: Kyle Harrison <khwebmail@gmail.com>
 Date: Thu, 28 Oct 2021 13:54:35 +0100
 Subject: [PATCH 27/45] Camera: Restore camera HALv1 support [1/2]

@@ -1,4 +1,4 @@
-From 1cfb4cdd0376dbefaac1aafa98c76b5d76dbfcde Mon Sep 17 00:00:00 2001
+From effdd2152c722fd67573f5ee29556afa83e456a6 Mon Sep 17 00:00:00 2001
 From: z3DD3r <z3dd3r@gmail.com>
 Date: Fri, 9 Dec 2022 22:52:04 +0300
 Subject: [PATCH 06/45] Revert "Camera: Reduce latency for dejittering"

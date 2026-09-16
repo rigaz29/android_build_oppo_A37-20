@@ -1,4 +1,4 @@
-From b98838622148b54849838a34fc01bcc79c1cdf2d Mon Sep 17 00:00:00 2001
+From 7ea3ea1f0d617bc9f30b5ed93f6941e1034c659e Mon Sep 17 00:00:00 2001
 From: Manikanta Kanamarlapudi <kmanikan@codeaurora.org>
 Date: Wed, 30 Aug 2017 12:33:59 +0530
 Subject: [PATCH 34/45] libstagefright: Free buffers on observer died

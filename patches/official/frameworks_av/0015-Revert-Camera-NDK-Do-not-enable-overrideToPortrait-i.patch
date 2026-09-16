@@ -1,4 +1,4 @@
-From c7201bb9ec11283c5242da81ddd55bf5c18ddcf2 Mon Sep 17 00:00:00 2001
+From 47652f8821125bc65958ed64ae27b796bfab9aae Mon Sep 17 00:00:00 2001
 From: khalvat-M <mmba313@gmail.com>
 Date: Thu, 22 Jun 2023 10:17:35 +0330
 Subject: [PATCH 15/45] Revert "Camera NDK: Do not enable overrideToPortrait in

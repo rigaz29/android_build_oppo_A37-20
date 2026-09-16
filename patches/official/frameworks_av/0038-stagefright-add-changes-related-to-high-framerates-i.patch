@@ -1,4 +1,4 @@
-From ec98dc39cca9398bf9e752c24c8a02a88a95b598 Mon Sep 17 00:00:00 2001
+From f2766c346fa2f6c9019e5bdfb128dc1d0748177d Mon Sep 17 00:00:00 2001
 From: Paras Nagda <pnagda@codeaurora.org>
 Date: Fri, 4 May 2018 16:13:15 +0530
 Subject: [PATCH 38/45] stagefright: add changes related to high-framerates in
@@ -38,7 +38,7 @@ Signed-off-by: Volodymyr Zhdanov <wight554@gmail.com>
  3 files changed, 23 insertions(+), 3 deletions(-)
 
 diff --git a/media/libmediaplayerservice/StagefrightRecorder.cpp b/media/libmediaplayerservice/StagefrightRecorder.cpp
-index 6497b58fdc..b9be2d3c8c 100644
+index b503020f71..e5aa883ae2 100644
 --- a/media/libmediaplayerservice/StagefrightRecorder.cpp
 +++ b/media/libmediaplayerservice/StagefrightRecorder.cpp
 @@ -1905,7 +1905,7 @@ status_t StagefrightRecorder::setupCameraSource(

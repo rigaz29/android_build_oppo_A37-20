@@ -1,4 +1,4 @@
-From 8f8ae50018e4cd4220158a90c2efb4f55ada9832 Mon Sep 17 00:00:00 2001
+From 5999b6ff9b978bd734aa899a7915860a90354651 Mon Sep 17 00:00:00 2001
 From: Ethan Chen <intervigil@gmail.com>
 Date: Sun, 3 Jan 2016 14:09:23 -0800
 Subject: [PATCH 31/45] libstagefright: Support YVU420SemiPlanar camera format

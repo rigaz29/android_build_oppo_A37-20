@@ -1,4 +1,4 @@
-From 6288025d2db0db9db7e783ee52c96d3290c24016 Mon Sep 17 00:00:00 2001
+From 2854716b5fbc3c1e6b46700070f04fe99df2f7d3 Mon Sep 17 00:00:00 2001
 From: TARKZiM <tom8476oo@gmail.com>
 Date: Sat, 12 Feb 2022 18:41:32 +0800
 Subject: [PATCH 24/45] libaudiohal: Bring back 2.0 HAL

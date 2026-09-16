@@ -78,3 +78,6 @@ index 80733d190..3226df66d 100644
      initHalPreviewWindow();
      mDeviceCallback = callback;
  
+-- 
+2.43.0
+

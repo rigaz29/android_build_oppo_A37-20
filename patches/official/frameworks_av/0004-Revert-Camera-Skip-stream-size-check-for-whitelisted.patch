@@ -1,4 +1,4 @@
-From 48baf96df817f0e92826d3443fe9ef2ee16a37a7 Mon Sep 17 00:00:00 2001
+From 0b0d4cf0a71b8d8a0b7e74e6c9298ced1c2c0bc7 Mon Sep 17 00:00:00 2001
 From: Khalvat-M <mmba313@gmail.com>
 Date: Wed, 11 Jan 2023 06:50:13 +0330
 Subject: [PATCH 04/45] Revert "Camera: Skip stream size check for whitelisted

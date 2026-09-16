@@ -1,7 +1,7 @@
-From 11ea21cf9c0ad161d85d367c811767f5d731817e Mon Sep 17 00:00:00 2001
+From 33060ad223b12ad112209ac50acbc0f118b23727 Mon Sep 17 00:00:00 2001
 From: rigaz29 <ryanbagas27@gmail.com>
 Date: Sat, 8 Aug 2026 05:25:55 +0000
-Subject: [PATCH] BpfNetworkStats: report missing maps once, and check the
+Subject: [PATCH 5/7] BpfNetworkStats: report missing maps once, and check the
  right map
 
 Dua cacat pada jalur BPF-less, ditemukan dari perangkat A37 (msm8916,
@@ -76,3 +76,6 @@ index ee30f3db3..37dc47dca 100644
          return ret;
      }
      return bpfGetIfaceStatsInternal(iface, stats, ifaceStatsMap, ifaceIndexNameMap);
+-- 
+2.43.0
+

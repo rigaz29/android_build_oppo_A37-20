@@ -1,4 +1,4 @@
-From 0635dd64ef9730534461291e3ba225cf88d19df8 Mon Sep 17 00:00:00 2001
+From 946a71973eb3d13bcda03d160f6c809bebe57ea2 Mon Sep 17 00:00:00 2001
 From: z3DD3r <z3dd3r@gmail.com>
 Date: Fri, 9 Dec 2022 22:52:25 +0300
 Subject: [PATCH 19/45] Revert "Camera: Avoid latency accumulation when syncing

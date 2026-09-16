@@ -1,4 +1,4 @@
-From 72ec795a850df83e4ddf6b69cbfd9c46a5c9bd74 Mon Sep 17 00:00:00 2001
+From 715828dd24efc429db09ccf557299b7c706efcb1 Mon Sep 17 00:00:00 2001
 From: Bruno Martins <bgcngm@gmail.com>
 Date: Sat, 23 Sep 2017 18:29:21 +0100
 Subject: [PATCH 36/45] camera: include: Don't override possible overlayed

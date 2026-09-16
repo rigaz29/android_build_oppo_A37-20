@@ -1,4 +1,4 @@
-From 9dd7bcf99a794dfbb0bd83d34067c6d35776caf5 Mon Sep 17 00:00:00 2001
+From 15a967179005b2fed507b5e3e30a7d3965a149eb Mon Sep 17 00:00:00 2001
 From: html6405 <peter.schelchshorn@mhs-solutions.at>
 Date: Wed, 23 Feb 2022 16:14:39 +0100
 Subject: [PATCH 40/45] CameraSource.cpp: support PIXEL_FORMAT_YUV420SP_NV21.

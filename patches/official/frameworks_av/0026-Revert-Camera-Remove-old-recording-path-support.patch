@@ -1,4 +1,4 @@
-From 05e72ff419d00c62943e60b6c1d486d741834c71 Mon Sep 17 00:00:00 2001
+From 7272a531464d51a1141800d8531273afd96aff40 Mon Sep 17 00:00:00 2001
 From: Dominggoes Isakh <drjisakh@gmail.com>
 Date: Tue, 2 Nov 2021 09:43:53 +0100
 Subject: [PATCH 26/45] Revert "Camera: Remove old recording path support"

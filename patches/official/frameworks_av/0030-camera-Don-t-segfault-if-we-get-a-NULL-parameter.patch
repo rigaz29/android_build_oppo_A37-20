@@ -1,4 +1,4 @@
-From 5b033a305c9eadd40d3002c38c470c68b6d94d50 Mon Sep 17 00:00:00 2001
+From 2c6ab79139a836c3a1d0d4d91784aa0ba6b25396 Mon Sep 17 00:00:00 2001
 From: Steve Kondik <shade@chemlab.org>
 Date: Wed, 1 May 2013 02:58:11 -0700
 Subject: [PATCH 30/45] camera: Don't segfault if we get a NULL parameter

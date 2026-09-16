@@ -1,4 +1,4 @@
-From 54d639f197d971489a24ebfcf04842199d8c76c1 Mon Sep 17 00:00:00 2001
+From 2a063f454c7a9fbd75340c16597dc01baa855b4f Mon Sep 17 00:00:00 2001
 From: khalvat-M <mmba313@gmail.com>
 Date: Thu, 22 Jun 2023 10:08:44 +0330
 Subject: [PATCH 10/45] Revert "CameraService: Disable overrideToPortrait for

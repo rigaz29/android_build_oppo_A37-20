@@ -1,4 +1,4 @@
-From eb6b840802a53989015ecd3ef596be3c03cf8cd9 Mon Sep 17 00:00:00 2001
+From 9a7ea854bc5549a365df2d59678f1133c31b1a3f Mon Sep 17 00:00:00 2001
 From: khalvat-M <mmba313@gmail.com>
 Date: Thu, 22 Jun 2023 10:10:14 +0330
 Subject: [PATCH 11/45] Revert "Turn off overrideToPortrait where not needed."

@@ -1,4 +1,4 @@
-From 8ee0377769113f5e03d82e28973851f65b08fa3d Mon Sep 17 00:00:00 2001
+From f23197dad74a06decdee947cd877e27c14a99d7c Mon Sep 17 00:00:00 2001
 From: Khalvat-M <mmba313@gmail.com>
 Date: Wed, 22 Mar 2023 14:50:28 +0330
 Subject: [PATCH 16/45] Revert "DO NOT MERGE libcameraservice: Provide flag for

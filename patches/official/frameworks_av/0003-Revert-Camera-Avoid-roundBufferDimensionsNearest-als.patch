@@ -1,4 +1,4 @@
-From a01ba6e740f623dcb5aab53ee423b60ef58ea6d4 Mon Sep 17 00:00:00 2001
+From fbfbd5c5d9f26af9d7b30f5df230fce132578615 Mon Sep 17 00:00:00 2001
 From: Khalvat-M <mmba313@gmail.com>
 Date: Wed, 11 Jan 2023 06:49:29 +0330
 Subject: [PATCH 03/45] Revert "Camera: Avoid roundBufferDimensionsNearest also

@@ -86,3 +86,6 @@ index 3226df66d..bcacf830d 100644
          return getHidlStatus(-ENODEV);
      }
  
+-- 
+2.43.0
+

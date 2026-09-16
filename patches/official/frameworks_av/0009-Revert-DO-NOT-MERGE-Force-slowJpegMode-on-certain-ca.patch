@@ -1,4 +1,4 @@
-From 35d9559b1de4d8f1c05019d585ea708ee49a42bf Mon Sep 17 00:00:00 2001
+From 8db5e548930597f2cf22e71fc08f33b514cec013 Mon Sep 17 00:00:00 2001
 From: Khalvat-M <mmba313@gmail.com>
 Date: Wed, 21 Jun 2023 08:55:58 +0330
 Subject: [PATCH 09/45] Revert "DO NOT MERGE Force slowJpegMode on certain

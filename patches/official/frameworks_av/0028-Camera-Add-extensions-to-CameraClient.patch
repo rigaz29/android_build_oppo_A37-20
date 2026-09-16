@@ -1,4 +1,4 @@
-From ed4ee2a54cc0187cf13993f6441c0a9f2d284440 Mon Sep 17 00:00:00 2001
+From c92df04dde0f20290c611f58df1c4f6423c0a210 Mon Sep 17 00:00:00 2001
 From: Shuzhen Wang <shuzhenw@codeaurora.org>
 Date: Wed, 8 Jul 2015 15:47:46 -0700
 Subject: [PATCH 28/45] Camera: Add extensions to CameraClient

@@ -1,4 +1,4 @@
-From 35be82f39d0a1a06d2544ef8695220354e39705d Mon Sep 17 00:00:00 2001
+From 485ec2ca167842cd1277629e1139e8c0c3d8552b Mon Sep 17 00:00:00 2001
 From: Pierre-Hugues Husson <phh@phh.me>
 Date: Mon, 5 Aug 2019 18:09:50 +0200
 Subject: [PATCH 43/45] Fix BT in-call on CAF devices

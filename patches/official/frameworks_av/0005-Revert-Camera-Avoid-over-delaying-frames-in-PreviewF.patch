@@ -1,4 +1,4 @@
-From daf7b223a84bd466395b82986d23d6eaa1c76e5e Mon Sep 17 00:00:00 2001
+From 3c40a96ed56eee716e6fb67d415320f1bd8356a7 Mon Sep 17 00:00:00 2001
 From: Khalvat-M <mmba313@gmail.com>
 Date: Wed, 22 Mar 2023 14:38:39 +0330
 Subject: [PATCH 05/45] Revert "Camera: Avoid over-delaying frames in

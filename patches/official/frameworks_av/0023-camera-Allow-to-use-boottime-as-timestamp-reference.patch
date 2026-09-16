@@ -1,4 +1,4 @@
-From aa59c12fe03e51ba225bd18e824713fb9ecf1c0f Mon Sep 17 00:00:00 2001
+From caa2b8b829198bebc26f2b62ad6f238b1a6dd881 Mon Sep 17 00:00:00 2001
 From: maxwen <max.weninger@gmail.com>
 Date: Tue, 9 Oct 2018 13:52:55 +0200
 Subject: [PATCH 23/45] camera: Allow to use boottime as timestamp reference

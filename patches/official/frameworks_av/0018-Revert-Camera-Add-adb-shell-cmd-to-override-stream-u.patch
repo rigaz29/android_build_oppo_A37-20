@@ -1,4 +1,4 @@
-From c8ee96647a9e59e8327bcbf99b16404027f2f24e Mon Sep 17 00:00:00 2001
+From ccf78f493956c3bbb794875bc0fc9a5b447a124d Mon Sep 17 00:00:00 2001
 From: khalvat-M <mmba313@gmail.com>
 Date: Thu, 22 Jun 2023 10:20:25 +0330
 Subject: [PATCH 18/45] Revert "Camera: Add adb shell cmd to override stream

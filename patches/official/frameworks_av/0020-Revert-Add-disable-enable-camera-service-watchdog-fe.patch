@@ -1,4 +1,4 @@
-From 9cb8395994a21244075ddeab1deb468febe18661 Mon Sep 17 00:00:00 2001
+From 489d56d68a3f73432343268c3d368d3a59f5eab0 Mon Sep 17 00:00:00 2001
 From: z3DD3r <z3dd3r@gmail.com>
 Date: Fri, 9 Dec 2022 22:53:49 +0300
 Subject: [PATCH 20/45] Revert "Add disable/enable camera service watchdog
