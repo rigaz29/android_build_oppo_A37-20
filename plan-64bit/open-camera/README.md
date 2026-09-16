@@ -190,3 +190,55 @@ Ya. Dua perbaikan yang ada di ROM menyempitkan kerusakan, tidak melebarkannya:
 keduanya hanya menambah pemeriksaan dan pembersihan pada jalur GALAT, dan
 tidak menyentuh jalur sukses sama sekali. Satu bug tersisa (`pm_relax`) ada di
 kernel dan sudah ada sebelum semua ini -- bukan regresi baru.
+
+---
+
+# Terverifikasi di perangkat (16 Sep 2026, ROM `g4517287a0ae`, clean install)
+
+## Hasilnya melampaui perkiraan saya
+
+Saya menulis, dua kali, bahwa perbaikan ini "tidak akan membuat Open Camera
+bisa memotret" dan hanya menyempitkan kerusakannya. **Itu ternyata keliru —
+Open Camera sekarang berfungsi penuh.**
+
+```
+QCamera2HWI: take_picture(...)  mParameters.getSceneMode :0, iso_value = 516
+mm-jpeg-intf: process_sensor_data:327] new aperture = 2.275007
+MediaProvider: Moving .pending-...IMG_20260916_170936.jpg
+             -> /storage/emulated/0/DCIM/OpenCamera/IMG_20260916_170936.jpg
+```
+
+Berkasnya nyata: 2448x3264, 1,55 MB, dan gambarnya tajam, fokus tepat,
+eksposur benar.
+
+## Uji yang menentukan: kamera bawaan setelahnya, TANPA reboot
+
+Dulu, sekali Open Camera menyentuh rana, seluruh tumpukan kamera mati sampai
+perangkat di-boot ulang — Aperture ikut mati. Sekarang:
+
+```
+Aperture: Photo capture succeeded: content://media/external/images/media/1000000021
+init.svc.qcamerasvr = running
+tombstone = 0
+camera_open failed = 0
+```
+
+| pemeriksaan | sebelum | sesudah |
+|---|---|---|
+| `qcamerasvr` sesudah rana Open Camera | `restarting` | **`running`** |
+| `camera_open failed` | 3+ beruntun | **0** |
+| tombstone mediaserver | bertambah | **0** |
+| Aperture setelahnya | mati sampai reboot | **berhasil memotret** |
+| Open Camera sendiri | tidak menghasilkan berkas | **berkas 1,55 MB** |
+
+## Batas kejujuran soal atribusi
+
+Dua hal berubah sekaligus antara uji yang gagal dan uji ini: **ketiga
+perbaikan** DAN **clean install**. Saya tidak bisa memisahkan keduanya
+sepenuhnya tanpa memasang ROM lama di atas clean install, dan itu tidak
+sepadan dikerjakan.
+
+Yang bisa dikatakan: kegagalan dulu terulang dari keadaan kamera yang SEHAT
+sesudah reboot bersih, jadi ia tidak bergantung pada kotoran yang menumpuk.
+Itu membuat perbaikan menjadi penjelasan yang jauh lebih masuk akal daripada
+clean install semata — tetapi bukan bukti yang terisolasi.
