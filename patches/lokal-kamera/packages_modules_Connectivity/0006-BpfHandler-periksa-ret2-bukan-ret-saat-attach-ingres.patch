@@ -1,0 +1,64 @@
+From fb48db57d792d7e5710a6d529f7c5af9201d7a11 Mon Sep 17 00:00:00 2001
+From: rigaz29 <ryanbagas27@gmail.com>
+Date: Tue, 15 Sep 2026 16:02:53 +0000
+Subject: [PATCH 6/7] BpfHandler: periksa ret2, bukan ret, saat attach ingress
+ gagal
+
+Cabang kedua di initPrograms() memeriksa `ret` -- hasil attach EGRESS --
+padahal yang baru saja dijalankan adalah attach INGRESS. `ret2` tidak
+pernah dibaca sama sekali.
+
+Akibatnya alarm itu salah persis ketika paling dibutuhkan: kegagalan
+ingress sendirian akan diam kalau egress kebetulan sukses, dan sebaliknya
+ingress disalahkan padahal egress yang jatuh. Salin-tempel dari patch hulu
+2d75dc270 (PHH), bukan bawaan kita.
+
+Sekalian: nama diubah jadi egressRet/ingressRet supaya kekeliruan yang sama
+tidak mudah terulang, pesan galatnya membawa isi Status lewat toString()
+(ditemukan ADL dari namespace netdutils), dan alasan RETURN_IF_NOT_OK
+diganti ALOGE dicatat di tempatnya -- sejak kernel g40bd72907a8 keduanya
+benar-benar terpasang, jadi baris ini kini alarm, bukan jalan pintas.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_014BuvxqsBMX7Bb8CRVeSTBj
+Change-Id: I951620352d6af5676f05cd8c878e92197add181a
+---
+ netd/BpfHandler.cpp | 23 +++++++++++++++++------
+ 1 file changed, 17 insertions(+), 6 deletions(-)
+
+diff --git a/netd/BpfHandler.cpp b/netd/BpfHandler.cpp
+index 8262f7530..75054dbf1 100644
+--- a/netd/BpfHandler.cpp
++++ b/netd/BpfHandler.cpp
+@@ -71,14 +71,25 @@ static Status initPrograms(const char* cg2_path) {
+         ALOGE("Failed to open the cgroup directory: %s", strerror(ret));
+         return statusFromErrno(ret, "Open the cgroup directory failed");
+     }
+-    auto ret = attachProgramToCgroup(BPF_EGRESS_PROG_PATH, cg_fd, BPF_CGROUP_INET_EGRESS);
+-    if (!isOk(ret)) {
+-        ALOGE("Failed loading egress program");
++    // A37: kegagalan attach di sini SENGAJA tidak mematikan netd (cherry-pick
++    // 2d75dc270, RETURN_IF_NOT_OK diganti ALOGE) supaya kernel tanpa cgroup-BPF
++    // tetap bisa boot. Sejak kernel g40bd72907a8 keduanya benar-benar terpasang
++    // -- "Cgroup ingress/egress program status: OK" di dumpsys -- jadi baris ini
++    // kini berfungsi sebagai alarm, bukan jalan pintas.
++    //
++    // BUG DIPERBAIKI 15 Sep 2026: cabang kedua memeriksa `ret`, bukan `ret2`.
++    // `ret2` tidak pernah dibaca sama sekali, sehingga kegagalan attach INGRESS
++    // sendirian akan didiagnosis dari hasil EGRESS -- diam kalau egress kebetulan
++    // sukses, atau menyalahkan ingress padahal egress yang jatuh. Salah persis
++    // ketika alarmnya paling dibutuhkan. Salin-tempel dari patch hulu.
++    auto egressRet = attachProgramToCgroup(BPF_EGRESS_PROG_PATH, cg_fd, BPF_CGROUP_INET_EGRESS);
++    if (!isOk(egressRet)) {
++        ALOGE("Failed loading egress program: %s", toString(egressRet).c_str());
+     }
+ 
+-    auto ret2 = attachProgramToCgroup(BPF_INGRESS_PROG_PATH, cg_fd, BPF_CGROUP_INET_INGRESS);
+-    if (!isOk(ret)) {
+-        ALOGE("Failed loading ingress program");
++    auto ingressRet = attachProgramToCgroup(BPF_INGRESS_PROG_PATH, cg_fd, BPF_CGROUP_INET_INGRESS);
++    if (!isOk(ingressRet)) {
++        ALOGE("Failed loading ingress program: %s", toString(ingressRet).c_str());
+     }
+ 
+     // For the devices that support cgroup socket filter, the socket filter

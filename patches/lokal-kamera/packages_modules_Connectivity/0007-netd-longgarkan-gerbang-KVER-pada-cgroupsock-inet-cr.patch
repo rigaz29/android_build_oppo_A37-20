@@ -1,0 +1,58 @@
+From 644cf6c8a62fc2bc930261a5b7c1310d96633257 Mon Sep 17 00:00:00 2001
+From: rigaz29 <ryanbagas27@gmail.com>
+Date: Tue, 15 Sep 2026 16:59:42 +0000
+Subject: [PATCH 7/7] netd: longgarkan gerbang KVER pada cgroupsock/inet/create
+
+Angka KVER(4,14,0) itu kebijakan umum Android soal kernel minimum untuk
+BPF, bukan syarat teknis program ini. Programnya tidak menyentuh satu pun
+field struct bpf_sock -- hanya bpf_get_current_uid_gid() dan satu lookup
+peta -- jadi tidak ada akses konteks yang perlu didukung verifier.
+
+Diperiksa di kernel 3.10 TERBANGUN, bukan di source: cg_sock_type dan
+cg_sock_ops ada di System.map dan didaftarkan di net/core/filter.c:3556,
+bpf_get_current_uid_gid tersedia lewat sock_filter_func_proto, dan kait
+BPF_CGROUP_RUN_PROG_INET_SOCK kini terpasang di inet_create()/inet6_create().
+
+Isi peta diuji silang terhadap manifest sebelum dinyalakan, karena ini
+mekanisme MENOLAK: empat aplikasi PERMISSION_NONE yang dicek memang tidak
+punya android.permission.INTERNET, pembandingnya punya. uid 0 dan 1021
+tidak ada di peta sehingga default-nya izinkan; 1000, 1001, 1002, 1013 dan
+2000 tercatat punya INTERNET.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_014BuvxqsBMX7Bb8CRVeSTBj
+Change-Id: Ifc13aacbdd15c850aaf564ae56d37167ce098202
+---
+ bpf_progs/netd.c | 18 +++++++++++++++++-
+ 1 file changed, 17 insertions(+), 1 deletion(-)
+
+diff --git a/bpf_progs/netd.c b/bpf_progs/netd.c
+index 24b3fed58..93bf2315c 100644
+--- a/bpf_progs/netd.c
++++ b/bpf_progs/netd.c
+@@ -425,8 +425,24 @@ DEFINE_XTBPF_PROG("skfilter/denylist/xtbpf", AID_ROOT, AID_NET_ADMIN, xt_bpf_den
+     return BPF_NOMATCH;
+ }
+ 
++/* A37 15 Sep 2026: gerbang KVER(4,14,0) dilonggarkan ke KVER_NONE.
++ *
++ * Angka 4.14 itu kebijakan umum Android soal versi kernel minimum untuk BPF,
++ * bukan syarat teknis program ini. Programnya sendiri tidak menyentuh satu pun
++ * field `struct bpf_sock` -- hanya bpf_get_current_uid_gid() dan satu lookup
++ * peta -- sehingga tidak ada akses konteks yang perlu didukung verifier.
++ *
++ * Yang diperiksa di kernel 3.10 hasil backport, di kernel TERBANGUN bukan di
++ * source: cg_sock_type dan cg_sock_ops ada di System.map, didaftarkan di
++ * net/core/filter.c:3556; bpf_get_current_uid_gid tersedia lewat
++ * sock_filter_func_proto; __cgroup_bpf_run_filter_sk ter-link; dan kait
++ * BPF_CGROUP_RUN_PROG_INET_SOCK dipasang di inet_create()/inet6_create().
++ *
++ * Tanpa ini uid_permission_map diisi netd tetapi tidak ada yang membacanya --
++ * inet_socket_create di bawah adalah satu-satunya pemakainya.
++ */
+ DEFINE_BPF_PROG_EXT("cgroupsock/inet/create", AID_ROOT, AID_ROOT, inet_socket_create,
+-                    KVER(4, 14, 0), KVER_INF, false, "fs_bpf_netd_readonly", "")
++                    KVER_NONE, KVER_INF, false, "fs_bpf_netd_readonly", "")
+ (struct bpf_sock* sk) {
+     uint64_t gid_uid = bpf_get_current_uid_gid();
+     /*

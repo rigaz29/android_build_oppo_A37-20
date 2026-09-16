@@ -1,0 +1,74 @@
+From 5ed027bea1997a43b8e8ed5eb5ae1188b25d2519 Mon Sep 17 00:00:00 2001
+From: rigaz29 <ryanbagas27@gmail.com>
+Date: Wed, 16 Sep 2026 00:46:31 +0000
+Subject: [PATCH 45/45] CameraProviderManager: tutup device HAL1 di jalur galat
+ DeviceInfo1
+
+DeviceInfo1::DeviceInfo1 menyalakan kamera untuk memeriksa ketersediaan
+lampu kilat, lalu punya dua `return` SESUDAH open() berhasil -- ketika
+getParameters gagal dan ketika cacheCameraInfo gagal -- dan tak satu pun
+memanggil close(). Jalur suksesnya menutup dengan benar; yang bocor justru
+jalur galat, yaitu saat penutupan paling dibutuhkan.
+
+Di msm8916 akibatnya keras dan permanen sampai reboot: driver v4l2 kernel
+menyimpan sesi yang tidak pernah dibersihkan, sehingga SETIAP open
+berikutnya gagal
+
+  camera_v4l2_open : posting of NEW_SESSION event failed
+  camera_v4l2_open : Line 607 rc -19        (-19 = ENODEV)
+
+dan init membunuh qcamerasvr berulang kali.
+
+Ini pasangan dari perbaikan di hardware/interfaces camera.device@1.0:
+yang itu menghentikan lingkaran crash mediaserver (akibat), yang ini
+mencegah sesi basi yang menyebabkannya (sebab).
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_014BuvxqsBMX7Bb8CRVeSTBj
+Change-Id: I3bbbd9a181ae4b41362214887bcec661fac92180
+---
+ .../common/CameraProviderManager.cpp           | 18 ++++++++++++++++++
+ 1 file changed, 18 insertions(+)
+
+diff --git a/services/camera/libcameraservice/common/CameraProviderManager.cpp b/services/camera/libcameraservice/common/CameraProviderManager.cpp
+index df83d106a9..4dfb7af082 100644
+--- a/services/camera/libcameraservice/common/CameraProviderManager.cpp
++++ b/services/camera/libcameraservice/common/CameraProviderManager.cpp
+@@ -2354,12 +2354,29 @@ CameraProviderManager::ProviderInfo::DeviceInfo1::DeviceInfo1(const std::string&
+         return;
+     }
+     hardware::Return<void> ret;
++    /*
++     * A37, 16 Sep 2026: SETIAP jalan keluar sesudah open() yang berhasil wajib
++     * menutup device.
++     *
++     * Kedua `return` di bawah -- getParameters gagal dan cacheCameraInfo gagal
++     * -- sebelumnya keluar tanpa close(), sehingga sesi HAL bocor. Di msm8916
++     * akibatnya keras: driver v4l2 kernel menyimpan sesi yang tidak pernah
++     * dibersihkan, lalu SETIAP open berikutnya gagal
++     *
++     *   camera_v4l2_open : posting of NEW_SESSION event failed
++     *   camera_v4l2_open : Line 607 rc -19        (-19 = ENODEV)
++     *
++     * dan kamera tidak bisa dipakai lagi sampai perangkat di-reboot. Jalur
++     * sukses di bawah memang sudah memanggil close(); yang bocor hanya jalur
++     * galat, yaitu justru saat penutupan paling dibutuhkan.
++     */
+     ret = interface->getParameters([this](const hardware::hidl_string& parms) {
+                 mDefaultParameters.unflatten(String8(parms.c_str()));
+             });
+     if (!ret.isOk()) {
+         ALOGE("%s: Transaction error reading camera device %s params to check for a flash unit: %s",
+                 __FUNCTION__, id.c_str(), status.description().c_str());
++        interface->close();
+         return;
+     }
+     const char *flashMode =
+@@ -2371,6 +2388,7 @@ CameraProviderManager::ProviderInfo::DeviceInfo1::DeviceInfo1(const std::string&
+     status_t res = cacheCameraInfo(interface);
+     if (res != OK) {
+         ALOGE("%s: Could not cache CameraInfo", __FUNCTION__);
++        interface->close();
+         return;
+     }
+ 

@@ -1,0 +1,88 @@
+From ec0436fd12f197c1f4b1a4e78e6c34158138227b Mon Sep 17 00:00:00 2001
+From: rigaz29 <ryanbagas27@gmail.com>
+Date: Wed, 16 Sep 2026 10:56:11 +0000
+Subject: [PATCH 6/6] camera: periksa juga mDevice->priv -- itulah yang
+ menentukan
+
+Penjagaan yang saya tambahkan sebelumnya hanya memeriksa mDevice dan
+mDevice->ops, dan TIDAK MENYALA. Crash-nya tetap terjadi dan pesan
+diagnostiknya tidak pernah muncul di log.
+
+Tombstone membuktikan biner baru memang berjalan -- offset
+CameraDevice::open bergeser dari +558 menjadi +640 -- sementara titik matinya
+tidak berubah sama sekali:
+
+  #00 camera.msm8916.so  camera_set_callbacks+46   SIGSEGV @ 0x40
+  #01 camera.device@1.0-impl.so  CameraDevice::open+640
+
+Jadi mDevice dan mDevice->ops keduanya sah, dan saya memeriksa field yang
+salah. Yang kosong adalah mDevice->priv: blob memulangkan device dengan ops
+terisi tetapi priv NULL, lalu camera_set_callbacks mengambil
+QCamera2HardwareInterface dari priv dan mendereference anggotanya di offset
+0x40.
+
+priv adalah anggota publik struct camera_device (hardware/camera.h) dan pada
+HAL1 QCamera2 selalu terisi oleh open yang benar-benar berhasil, sehingga
+memeriksanya menangkap persis kasus "HAL bilang sukses padahal camera_open
+gagal".
+
+Pesan galatnya sekalian mencetak ketiga pointer (device/ops/priv) supaya
+kalau penjagaan ini pun tidak menyala, field mana yang lolos langsung
+terbaca tanpa perlu menebak lagi.
+
+Konsekuensi yang perlu dicatat: klaim saya sebelumnya bahwa perbaikan ini
+yang membuat kamera selamat sesudah clean install TIDAK BENAR. Penjagaannya
+tidak pernah menyala, jadi clean install-lah yang menjelaskannya.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_014BuvxqsBMX7Bb8CRVeSTBj
+Change-Id: Ic7156d62403bc5c88fd1710328520bb8c608a322
+---
+ camera/device/1.0/default/CameraDevice.cpp | 34 ++++++++++++++++++----
+ 1 file changed, 28 insertions(+), 6 deletions(-)
+
+diff --git a/camera/device/1.0/default/CameraDevice.cpp b/camera/device/1.0/default/CameraDevice.cpp
+index 3226df66d..bcacf830d 100644
+--- a/camera/device/1.0/default/CameraDevice.cpp
++++ b/camera/device/1.0/default/CameraDevice.cpp
+@@ -695,12 +695,34 @@ Return<Status> CameraDevice::open(const sp<ICameraDeviceCallback>& callback) {
+      * tersedia" alih-alih menjatuhkan mediaserver. Berlaku untuk HAL mana pun
+      * yang berperilaku sama, bukan cuma perangkat ini.
+      */
+-    if (mDevice == nullptr || mDevice->ops == nullptr) {
+-        ALOGE("%s: HAL reported success but returned an unusable device for camera %s",
+-                __FUNCTION__, mCameraId.c_str());
+-        if (mDevice != nullptr) {
+-            mDevice = nullptr;
+-        }
++    /*
++     * A37, DIPERBAIKI 16 Sep 2026: `priv` ikut diperiksa, dan justru ITULAH
++     * yang menentukan.
++     *
++     * Versi pertama penjagaan ini hanya memeriksa mDevice dan mDevice->ops,
++     * dan TIDAK MENYALA -- crash-nya tetap terjadi dan pesan di bawah tidak
++     * pernah muncul di log. Tombstone-nya membuktikan biner baru memang jalan
++     * (offset CameraDevice::open bergeser dari +558 menjadi +640) sementara
++     * titik matinya tidak berubah:
++     *
++     *   #00 camera.msm8916.so  camera_set_callbacks+46   SIGSEGV @ 0x40
++     *
++     * Jadi mDevice dan mDevice->ops keduanya sah. Yang kosong adalah
++     * `mDevice->priv`: blob memulangkan device dengan ops terisi tetapi priv
++     * NULL, lalu camera_set_callbacks mengambil QCamera2HardwareInterface dari
++     * priv dan mendereference anggotanya di offset 0x40.
++     *
++     * `priv` adalah anggota publik struct camera_device (hardware/camera.h),
++     * dan pada HAL1 QCamera2 ia selalu terisi oleh open yang benar-benar
++     * berhasil. Memeriksanya di sini menangkap persis kasus "HAL bilang
++     * sukses padahal camera_open gagal".
++     */
++    if (mDevice == nullptr || mDevice->ops == nullptr || mDevice->priv == nullptr) {
++        ALOGE("%s: HAL reported success but returned an unusable device for camera %s "
++              "(device=%p ops=%p priv=%p)", __FUNCTION__, mCameraId.c_str(),
++              mDevice, mDevice ? mDevice->ops : nullptr,
++              mDevice ? mDevice->priv : nullptr);
++        mDevice = nullptr;
+         return getHidlStatus(-ENODEV);
+     }
+ 

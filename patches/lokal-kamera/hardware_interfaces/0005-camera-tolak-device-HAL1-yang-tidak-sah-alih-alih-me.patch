@@ -1,0 +1,80 @@
+From 05aa3980da273ec3fc9be509944a0192e9accb85 Mon Sep 17 00:00:00 2001
+From: rigaz29 <ryanbagas27@gmail.com>
+Date: Wed, 16 Sep 2026 00:46:31 +0000
+Subject: [PATCH 5/6] camera: tolak device HAL1 yang tidak sah alih-alih
+ menjatuhkan mediaserver
+
+Blob HAL1 msm8916 (QCamera2Factory) terbukti memulangkan SUKSES padahal
+camera_open di bawahnya gagal -- terlihat sebagai "QCamera2HWI: camera_open
+failed." tepat sebelum crash. Pemeriksaan rc != OK yang sudah ada lolos, lalu
+set_callbacks dipanggil pada device tak sah:
+
+  Cmdline: /system/bin/mediaserver   SIGSEGV, fault addr 0x40
+  #00 camera.msm8916.so          camera_set_callbacks+46
+  #01 camera.device@1.0-impl.so  CameraDevice::open+558
+  #05 libcameraservice.so        ProviderInfo::addDevice
+  #11 libcameraservice.so        CameraService::onFirstRef
+
+Karena crash-nya di jalur enumerasi saat startup, mediaserver dibunuh lalu
+dihidupkan lagi lalu mati lagi -- lingkaran tiap ~5 detik, dan kamera tidak
+bisa dipakai sampai reboot.
+
+Blob-nya tidak bisa diperbaiki. Yang bisa: menolak device yang tidak sah di
+sini sehingga kegagalan HAL menjadi galat bersih "kamera tidak tersedia".
+Berlaku untuk HAL mana pun yang berperilaku sama, bukan khusus perangkat ini.
+
+Tidak membuat aplikasi yang memicunya jadi berfungsi; yang berubah adalah
+akibatnya tidak lagi menjatuhkan seluruh layanan kamera.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_014BuvxqsBMX7Bb8CRVeSTBj
+Change-Id: Ic8c2250d8e928de1f311e64ed566fcceaec7b27e
+---
+ camera/device/1.0/default/CameraDevice.cpp | 34 ++++++++++++++++++++++
+ 1 file changed, 34 insertions(+)
+
+diff --git a/camera/device/1.0/default/CameraDevice.cpp b/camera/device/1.0/default/CameraDevice.cpp
+index 80733d190..3226df66d 100644
+--- a/camera/device/1.0/default/CameraDevice.cpp
++++ b/camera/device/1.0/default/CameraDevice.cpp
+@@ -670,6 +670,40 @@ Return<Status> CameraDevice::open(const sp<ICameraDeviceCallback>& callback) {
+         return getHidlStatus(rc);
+     }
+ 
++    /*
++     * A37, 16 Sep 2026: jangan percaya begitu saja bahwa rc == OK berarti
++     * mDevice sah.
++     *
++     * Blob HAL1 msm8916 (QCamera2Factory) terbukti memulangkan SUKSES padahal
++     * camera_open di bawahnya gagal -- terlihat sebagai "QCamera2HWI:
++     * camera_open failed." tepat sebelum crash. Pemeriksaan rc != OK di atas
++     * lolos, lalu set_callbacks dipanggil pada device yang tidak sah dan
++     * mediaserver mati:
++     *
++     *   Cmdline: /system/bin/mediaserver   SIGSEGV, fault addr 0x40
++     *   #00 camera.msm8916.so          camera_set_callbacks+46
++     *   #01 camera.device@1.0-impl.so  CameraDevice::open+558
++     *   #05 libcameraservice.so        ProviderInfo::addDevice
++     *   #11 libcameraservice.so        CameraService::onFirstRef
++     *
++     * Karena crash-nya terjadi di enumerasi saat startup, mediaserver dibunuh
++     * lalu dihidupkan lagi lalu mati lagi -- LINGKARAN, bukan kegagalan
++     * sekali, dan kamera tidak bisa dipakai sampai reboot.
++     *
++     * Blob-nya tidak bisa kita perbaiki. Yang bisa: menolak device yang tidak
++     * sah di sini, sehingga kegagalan HAL menjadi galat bersih "kamera tidak
++     * tersedia" alih-alih menjatuhkan mediaserver. Berlaku untuk HAL mana pun
++     * yang berperilaku sama, bukan cuma perangkat ini.
++     */
++    if (mDevice == nullptr || mDevice->ops == nullptr) {
++        ALOGE("%s: HAL reported success but returned an unusable device for camera %s",
++                __FUNCTION__, mCameraId.c_str());
++        if (mDevice != nullptr) {
++            mDevice = nullptr;
++        }
++        return getHidlStatus(-ENODEV);
++    }
++
+     initHalPreviewWindow();
+     mDeviceCallback = callback;
+ 
