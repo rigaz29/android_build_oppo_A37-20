@@ -447,3 +447,39 @@ baru ubah apa pun.
 
 Open Camera ditinggalkan pada mode HDR. `persist.camera.auto.hdr.enable`
 bernilai `0` (sah, bukan kosong).
+
+---
+
+# KEPUTUSAN (16 Sep 2026): rencana ini DITUTUP
+
+Pemilik perangkat memutuskan memakai dan mematangkan **Open Camera**, dan
+membatalkan integrasi kamera bawaan OPPO A37.
+
+## Kenapa keputusan ini berpijak
+
+Bukan menyerah, melainkan mengikuti bukti yang terkumpul di dokumen ini:
+
+| yang dikejar rencana ini | hasilnya |
+|---|---|
+| blob & data penyeteleran OPPO | **sudah kita punya** — 59 `libchromatix_*`, 112 berkas kamera |
+| properti `persist.camera.*` | **nihil** — yang penting sudah menyala secara baku |
+| `auto-hdr-enable` | **tidak mungkin** bekerja sendiri; `ae-bracket-hdr` tetap `Off` |
+| menambal Aperture | **tidak terjangkau** — Aperture bicara Camera2, parameter itu Camera1 |
+| mem-port aplikasi ColorOS | menuntut menambal `framework.jar` A13 dengan kerangka A5.1 |
+| **HDR Open Camera** | **bekerja, terukur** — pemotongan sorotan dan bayangan hilang |
+
+Intinya: algoritma pencitraan ada di `libmmcamera*` dan `libchromatix*` yang
+sudah kita bawa. Yang kurang selama ini cuma **aplikasi yang mau memakainya**,
+dan Open Camera sudah melakukannya lewat Camera1 dengan pengolahannya sendiri.
+
+## Yang tetap berlaku dari dokumen ini
+
+- Daftar 235 parameter Camera1 dan 53 properti `persist.camera.*` — berguna
+  kalau suatu saat ada aplikasi Camera1 yang mau disetel lebih jauh.
+- Temuan bahwa `ae-bracket-hdr` dan `scene-detect` hanya bisa disetel aplikasi.
+- **Metode uji kamera yang tidak merusak**, di bagian Fase 3.
+
+## Kelanjutannya
+
+Pindah ke `plan-64bit/open-camera/`. Fase 2 (membongkar firmware OPPO) tidak
+jadi dikerjakan.
