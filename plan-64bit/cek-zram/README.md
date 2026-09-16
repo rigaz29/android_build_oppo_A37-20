@@ -83,3 +83,71 @@ zram: **normal**. Algoritma `lz4` (pilihan yang benar -- lebih cepat dari
 
 Bahwa ia jarang terpakai sehari-hari bukan cacat, melainkan tanda perangkat
 punya kelonggaran memori.
+
+---
+
+# Lanjutan: apakah swappiness sudah optimal?
+
+**Sudah, dan tidak bisa dinaikkan lewat sysctl -- 100 adalah PLAFON kernel ini.**
+
+```
+kernel/sysctl.c:1394-1400
+	.procname = "swappiness",
+	.extra1   = &zero,
+	.extra2   = &one_hundred,     <- batas atas
+mm/vmscan.c:140
+	int vm_swappiness = 60;       <- default kernel
+```
+
+Nilai 100 disetel sengaja 14 Sep 2026 (`init.target.rc:86`) dengan alasan yang
+masih berlaku: 60 adalah default untuk swap ke **disk**, sedangkan di sini
+swap-nya ke RAM terkompresi.
+
+## Plafonnya bisa dinaikkan, dan itu satu baris -- tapi jangan
+
+Rumus reclaim 3.10 sudah sanggup menangani nilai di atas 100:
+
+```c
+mm/vmscan.c:2066
+	anon_prio = vmscan_swappiness(sc);
+	file_prio = 200 - anon_prio;
+```
+
+Jadi mengganti `&one_hundred` menjadi `&two_hundred` cukup untuk membuka
+sampai 200. Secara teknis mungkin.
+
+Tetapi pada 200, `file_prio` menjadi **0** -- kernel tidak akan pernah lagi
+me-reclaim halaman berkas. Seluruh tekanan dialihkan ke zram 768 MB, padahal
+page cache di sini memegang kode yang di-mmap (framework.jar, boot image ART).
+Itu menukar risiko thrashing dan OOM demi sesuatu yang **tidak ada buktinya
+dibutuhkan**: di bawah ~1 GB tekanan, perilaku pada swappiness 100 sudah benar
+-- zram menyala tepat waktu, nol pembunuhan lmkd, pulih bersih.
+
+## Setelan tetangganya
+
+| tunable | nilai | penilaian |
+|---|---|---|
+| `page-cluster` | 0 | **benar**. Readahead swap-in tidak masuk akal untuk zram -- sumbernya RAM, prefetch hanya membuang CPU |
+| `vfs_cache_pressure` | 65 | wajar; menahan cache dentry/inode lebih lama daripada default 100 |
+| `min_free_kbytes` | 4096 | sedikit konservatif, lihat catatan di bawah |
+| `extra_free_kbytes` | 8192 | menaikkan watermark low, jadi ambang reclaim efektifnya lebih tinggi dari angka di atas |
+
+### KOREKSI soal min_free_kbytes
+
+Saya sempat menghitung default kernel untuk perangkat ini sebagai **22229 kB**
+dan itu **SALAH** -- rumusnya saya ingat keliru sebagai `4 * sqrt(x*16)`,
+padahal komentar kernelnya sendiri menyebut dua bentuk yang setara:
+
+```
+mm/page_alloc.c:5637
+ * min_free_kbytes = 4 * sqrt(lowmem_kbytes), for better accuracy:
+ * min_free_kbytes = sqrt(lowmem_kbytes * 16)
+```
+
+Keduanya sama; saya mengalikan 4 pada bentuk yang sudah mengandungnya. Tabel
+di kernel menyebut **2048MB -> 5792k**, jadi 4096 kB kira-kira setara default
+untuk perangkat 1 GB yang dipakai di perangkat 2 GB. Konservatif, bukan janggal
+-- dan uji tekanan menunjukkan tidak menimbulkan masalah: `MemFree` sempat
+tinggal 22 MB tanpa satu pun pembunuhan maupun oops.
+
+Tidak ada bukti yang menuntut perubahan.
