@@ -6,5 +6,5 @@ official-ref: lineage-20.0
 official-head: c0500ffe2cc283d61f1e3db1b2c979bfbd9beb8c
 merge-base: c0500ffe2cc283d61f1e3db1b2c979bfbd9beb8c
 merge-base-tanggal: 2025-02-07
-jumlah-patch: 4
-tanggal-ekstraksi: 2026-08-06T23:44:31Z
+jumlah-patch: 5
+tanggal-ekstraksi: 2026-09-19T11:37:10Z  # +0005 fix METASYNC f2fs shutdown (manual)

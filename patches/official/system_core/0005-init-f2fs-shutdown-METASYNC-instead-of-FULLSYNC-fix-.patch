@@ -1,0 +1,43 @@
+From 616360a96d4b4b1adc99b1bdd141b408f85abba1 Mon Sep 17 00:00:00 2001
+From: rigaz29 <ryanbagas27@gmail.com>
+Date: Sat, 19 Sep 2026 03:27:09 +0000
+Subject: [PATCH 5/5] init: f2fs shutdown METASYNC instead of FULLSYNC (fix reboot
+ hang on 3.10)
+
+FULLSYNC runs freeze_bdev()/freeze_super()/sb_wait_write(); on this device's
+kernel 3.10 that wait never returns when /data can't be unmounted (a writer
+still holds the sb), so PID 1 hangs during reboot -> black screen and data
+loss (f2fs rolls back to the last checkpoint on next mount).
+
+METASYNC does f2fs_sync_fs() to write a checkpoint then f2fs_stop_checkpoint(),
+never touching the freeze path. Confirmed on device: reboots are clean again
+even with rooted daemons that keep /data busy at shutdown. Same fix as
+android_build_oppo_A37-23 fc0c978, adapted to the lineage-20.0 reboot.cpp.
+
+Change-Id: If8152baa32e0f8efb2453d9b43791c79e2b5d513
+---
+ init/reboot.cpp | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/init/reboot.cpp b/init/reboot.cpp
+index b58780f56..c129b2924 100644
+--- a/init/reboot.cpp
++++ b/init/reboot.cpp
+@@ -760,7 +760,13 @@ static void DoReboot(unsigned int cmd, const std::string& reason, const std::str
+ 
+     // Reboot regardless of umount status. If umount fails, fsck after reboot will fix it.
+     if (IsDataMounted("f2fs")) {
+-        uint32_t flag = F2FS_GOING_DOWN_FULLSYNC;
++        // msm8916 / kernel 3.10: FULLSYNC freezes the superblock
++        // (freeze_super -> sb_wait_write) and never returns here, hanging PID 1
++        // during reboot -> black screen and data loss. This path is hit when
++        // /data can't be unmounted (e.g. a rooted daemon holds files open).
++        // METASYNC writes a checkpoint then stops the checkpoint thread, with no
++        // freeze. See rigaz29/android_build_oppo_A37-23 fc0c978.
++        uint32_t flag = F2FS_GOING_DOWN_METASYNC;
+         unique_fd fd(TEMP_FAILURE_RETRY(open("/data", O_RDONLY)));
+         int ret = ioctl(fd, F2FS_IOC_SHUTDOWN, &flag);
+         if (ret) {
+-- 
+2.43.0
+
