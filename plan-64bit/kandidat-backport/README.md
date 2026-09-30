@@ -171,12 +171,111 @@ tidak ada yang pernah benar-benar memilih.
    "apa yang sebenarnya berjalan". **Selesai 15 Sep 2026.**
 2. ✅ **`uid_sys_stats`** (§1B) — kecil, mandiri, melengkapi perbaikan kemarin.
    **Selesai 15 Sep 2026**, terbangun, belum diuji di perangkat.
-3. ⬜ **Tiga penyetelan memori** (§1D) — kecil dan cocok dengan Tier A.
+3. ⚠️ **Tiga penyetelan memori** (§1D) — dua selesai 15 Sep dalam bentuk yang
+   disesuaikan (`da9a8e42533`: pgscan datar untuk lmkd, force-SCAN_ANON
+   bersyarat). Halflife PELT **tidak relevan**: kernel ini memakai statistik
+   beban berbasis *window* secara default (`c497209dd64`).
 4. ⬜ **ROW urgent** (§1C) — sedang, imbalan terasa pada eMMC lambat.
-5. ⬜ **eBPF** (§1A) — terakhir, bertahap, dan hanya kalau atribusi data
-   jaringan memang diinginkan. Ini yang paling mungkin merusak.
+5. ✅ **eBPF** (§1A) — selesai 15 Sep 2026, bersama cgroup-BPF, xt_bpf, dan
+   SO_COOKIE.
 
 Dua yang pertama dikerjakan di
 [`../uid-sys-stats/`](../uid-sys-stats/) — termasuk satu hal yang tidak
 kelihatan dari analisis ini: `uid_sys_stats` ternyata **pengganti**
 `uid_cputime`, bukan tambahan.
+
+---
+
+## 5. Tinjauan ulang — 30 September 2026
+
+Ditinjau ulang setelah kernel harian pindah ke susfs (`wip/susfs`) dan ROM
+menjadi enforcing. Ketiga sumber sama, kesimpulan dasarnya tetap: kernel.org
+dan ACK buntu untuk naik versi, a6010 satu-satunya sumber nyata.
+
+### 5.1 Cara membandingkan dengan a6010
+
+Cabang a6010 yang masih aktif (`lineage-21` sampai `lineage-23.2`) sudah
+di-rebase dan **tidak berbagi riwayat git** dengan kernel kita, jadi
+`merge-base` tidak bisa dipakai. Membandingkan subjek commit juga menyesatkan,
+karena backport kita ditulis ulang dengan subjek sendiri. Yang dipakai adalah
+isi kode:
+
+```
+git grep <penanda fitur> wip/susfs          -- <path>
+git grep <penanda fitur> a6010/lineage-23.2 -- <path>
+```
+
+Commit terakhir a6010 bertanggal 12 Sep 2026, jadi tidak ada karya mereka
+yang lebih baru dari riset §1–§4.
+
+### 5.2 Yang sudah ada di kernel harian
+
+Semua hasil 15 Sep ada di `wip/susfs` (selisihnya dengan `lineage-20-64bit`
+hanya backport FunctionFS AIO beserta revert-nya, efek bersih nol): eBPF,
+hook cgroup-BPF, xt_bpf, SO_COOKIE, `uid_sys_stats`, penyetelan mm, dan -O2.
+Selain itu sudah ada PSI (`/proc/pressure`, lmkd `use_psi=true`),
+`BINDER_FREEZE`, `MADV_WIPEONFORK`, zram multistream, akselerasi crc32 arm64,
+dan `extra_free_kbytes`.
+
+### 5.3 Syscall yang diminta Android 13 tetapi tidak ada
+
+Dari log boot enforcing (nomor syscall arm64):
+
+| nr | syscall | pemanggil | akibat |
+|---|---|---|---|
+| 291 | `statx` | system_server (sebagian besar dari 782 yang tertahan rate-limit) | fallback ke `fstatat` |
+| 282 | `userfaultfd` | system_server, systemui (ART) | ART memakai GC CC |
+| 434 | `pidfd_open` | lmkd | kembali ke `kill()` |
+| 448 | `process_mrelease` | lmkd | memori korban dibebaskan lebih lambat |
+
+Semuanya punya fallback aman.
+
+### 5.4 Kandidat, diurutkan
+
+| # | kandidat | kenapa | biaya / risiko |
+|---|---|---|---|
+| 1 | **TCP SACK Panic** (CVE-2019-11477/11478/11479) | kernel kita tidak punya satu pun perbaikannya; paket TCP rakitan dari jaringan bisa memicu kernel panic | kecil / rendah |
+| 2 | **time_in_state per-UID** | `/proc/uid_time_in_state` hilang, atribusi baterai per aplikasi tidak akurat. a6010 memasangnya di `drivers/cpufreq/cpufreq_stats.c` (1.727 baris) dengan kait di `fs/proc/base.c`, `sched.h`, `uid_sys_stats.c`, hanya memakai header 3.10 | sedang / rendah-sedang |
+| 3 | **ROW urgent** (§1C) | masih belum dikerjakan; I/O scheduler sekarang `deadline` | sedang / rendah-sedang |
+| 4 | **kcompactd + multi-kswapd** | kompaksi dan reclaim latar belakang, alokasi besar kamera/GPU tidak tersendat | sedang / sedang |
+| 5 | **MADV_FREE** | jemalloc melepas memori secara malas | sedang / sedang |
+| 6 | **`pidfd_open`** tanpa `process_mrelease` | lmkd memanggilnya | kecil-sedang / rendah |
+
+Map BPF time_in_state sudah dimuat bpfloader (`/sys/fs/bpf/map_time_in_state_*`),
+tetapi programnya tidak bisa menempel ke tracepoint karena `bpf_trace` tidak
+terbangun (tracing mati). Jalur procfs a6010 (#2) tidak butuh itu.
+
+### 5.5 Tanpa backport
+
+- zram `max_comp_streams=1` di 4 inti; bisa dinaikkan ke 4, perlu diuji
+  (disetel sebelum `disksize`).
+- `extra_free_kbytes` (8192) sudah ada, jadi backport `watermark_scale_factor`
+  tidak perlu; cukup disetel.
+
+### 5.6 Tidak disarankan
+
+- **App freezer (cgroup v2):** `BINDER_FREEZE` sudah ada, tetapi a6010 menulis
+  ulang cgroup ke gaya 4.x (`kernel/cgroup/cgroup.c` 6.906 baris,
+  `freezer.c`). Terlalu besar untuk perangkat harian.
+- **schedutil, uclamp, PELT:** msm8916 hanya satu cluster 4×A53 dengan HMP dan
+  governor interactive.
+- **oom_reaper, `process_mrelease`:** dicabut sendiri oleh a6010 (§2).
+- **userfaultfd, statx, binderfs, tracefs, zstd, incfs:** fallback aman atau
+  nilainya kecil. `/dev/binderfs` di perangkat hanya direktori fallback dari
+  init, bukan binderfs.
+- **Akselerasi AES/SHA CE:** CPU tidak punya ekstensinya
+  (`Features: fp asimd evtstrm crc32`).
+
+### 5.7 Keamanan
+
+Commit keamanan di kernel kita berhenti sekitar 2019. Dari sampel acak:
+
+| CVE | kita | a6010 |
+|---|---|---|
+| CVE-2016-5195 Dirty COW | ada | ada |
+| CVE-2019-2215 binder epoll UAF | ada | — |
+| **CVE-2019-11477/11478/11479 SACK** | **tidak ada** | ada |
+
+SACK ketemu dari sampel acak, jadi kemungkinan besar masih ada CVE 3.10 lain
+dari 2019–2023. Itu layak jadi audit tersendiri berdasarkan buletin keamanan
+Android.
