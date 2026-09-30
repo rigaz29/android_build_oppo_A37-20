@@ -20,7 +20,7 @@ diambil langsung dari fork UL yang checkout-nya terbukti menjalankan ROM A37
 | Tier | Repo | Patch | Catatan |
 |---|---|--:|---|
 | T0 | `packages_modules_adb` | 1 | FunctionFS legacy (Gerrit 326385) |
-| T0 | `art` | 1 | gerbang memfd_create |
+| T0 | `art` | 2 | gerbang memfd_create; **0002** gerbang JIT zygote64 (bukan dari UL, lihat bawah) |
 | T0 | `system_bpf` | 2 | gerbang eBPF kernel < 4.9 |
 | T0 | `external_perfetto` | 1 | gerbang memfd_create |
 | T0 | `frameworks_libs_net` | 1 | BpfMap isValid non-fatal |
@@ -100,6 +100,15 @@ perangkatnya sanggup 1080p. Diagnosis lengkap di
 [`plan-64bit/temuan-video/`](../../plan-64bit/temuan-video/). Kalau suatu saat
 patch UL di-ekstraksi ulang, patch ini harus DIPERTAHANKAN dan dinomori ulang ke
 akhir seri.
+
+**`art/0002` BUKAN dari ekstraksi UL** — ditulis untuk proyek ini 30 September
+2026. `CacheOperationsMaySegFault()` menolak JIT zygote di arm64 < 3.12, padahal
+kernel A37 (3.10.108) sudah memuat perbaikan upstream `db6f41063cbd`
+(`arch/arm64/mm/fault.c`). Akibatnya zygote64 mencatat *"Zygote memory only works
+with dual mappings"* dan semua aplikasi 64-bit berjalan tanpa JIT; Native
+Detector melaporkannya sebagai *"Futile jit-cache hiding"*. Proyek `art` di tree
+ini tidak punya objek git (`.repo/projects/art.git` tanpa `objects`), jadi
+patch dibuat dari diff dan diuji dengan `git am` di repo sementara.
 
 ## Yang sengaja tidak diekstrak
 

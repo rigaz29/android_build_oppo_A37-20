@@ -1,0 +1,34 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: rigaz29 <ryanbagas27@gmail.com>
+Date: Wed, 30 Sep 2026 18:00:00 +0000
+Subject: [PATCH] art: allow the dual view zygote JIT on the A37 3.10 kernel
+
+CacheOperationsMaySegFault() refuses the zygote JIT on arm64 kernels
+older than 3.12, because before db6f41063cbd ("arm64: mm: don't treat
+user cache maintenance faults as writes") cache maintenance on a
+read-only view could fault. The A37 kernel is 3.10.108 but has that fix,
+so zygote64 logged "Zygote memory only works with dual mappings" and
+every 64-bit app ran without JIT. The 32-bit zygote was unaffected.
+
+---
+ libartbase/base/utils.cc | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/libartbase/base/utils.cc b/libartbase/base/utils.cc
+--- a/libartbase/base/utils.cc
++++ b/libartbase/base/utils.cc
+@@ -167,8 +167,11 @@
+   //
+   // This behaviour means we should avoid the dual view JIT on the device. This is just
+   // an issue when running tests on devices that have an old kernel.
++  //
++  // The OPPO A37 kernel is 3.10.108 but carries that fix, so 3.10 is enough here.
++  // Without this the 64-bit zygote runs with no JIT at all.
+   static constexpr int kRequiredMajor = 3;
+-  static constexpr int kRequiredMinor = 12;
++  static constexpr int kRequiredMinor = 10;
+   struct utsname uts;
+   int major, minor;
+   if (uname(&uts) != 0 ||
+-- 
+2.43.0
