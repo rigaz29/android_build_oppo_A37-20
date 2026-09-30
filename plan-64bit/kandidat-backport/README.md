@@ -244,7 +244,7 @@ Semuanya punya fallback aman.
 | 1 | **TCP SACK Panic** (CVE-2019-11477/11478/11479) | kernel kita tidak punya satu pun perbaikannya; paket TCP rakitan dari jaringan bisa memicu kernel panic | kecil / rendah |
 | 2 | **time_in_state per-UID** | `/proc/uid_time_in_state` hilang, atribusi baterai per aplikasi tidak akurat. a6010 memasangnya di `drivers/cpufreq/cpufreq_stats.c` (1.727 baris) dengan kait di `fs/proc/base.c`, `sched.h`, `uid_sys_stats.c`, hanya memakai header 3.10 | sedang / rendah-sedang |
 | 3 | ✅ **ROW urgent** (§1C) | selesai 30 Sep: `row` asli jadi default, patch a6010 ditolak setelah diukur | kecil / rendah |
-| 4 | **kcompactd + multi-kswapd** | kompaksi dan reclaim latar belakang, alokasi besar kamera/GPU tidak tersendat | sedang / sedang |
+| 4 | ✅ **kcompactd + multi-kswapd** | selesai 30 Sep; satu bug a6010 diperbaiki (lihat §5.8) | sedang / sedang |
 | 5 | **MADV_FREE** | jemalloc melepas memori secara malas | sedang / sedang |
 | 6 | **`pidfd_open`** tanpa `process_mrelease` | lmkd memanggilnya | kecil-sedang / rendah |
 
@@ -329,3 +329,53 @@ Android.
    aktif sejak boot, dan baris `deadline` serta `row` asli di atas diukur di
    konfigurasi itu. Rework a6010 disimpan di cabang lokal
    `backup/row-urgent-a6010-*`.
+4. ✅ **kcompactd + multi-kswapd** — delapan commit, sumber a6010 ditambah satu
+   dari upstream:
+
+   | commit | asal |
+   |---|---|
+   | `mm: compaction: encapsulate defer reset logic` | upstream `de6c60a6c115` (di a6010 hanya ada di commit akar) |
+   | `mm, kswapd: remove bogus check of balance_classzone_idx` | a6010 `46e5666d15d` |
+   | `mm, compaction: introduce kcompactd` | a6010 `0e2275db526` |
+   | `[fixup] mm: psi/compaction` | a6010 `06c188b54a3` (+ `#include <linux/psi.h>`) |
+   | `mm, kswapd: replace kswapd compaction with waking up kcompactd` | a6010 `235c265f45a`, **diperbaiki** |
+   | `mm: wake kcompactd before kswapd's short sleep` | a6010 `322ef4c8f3e` |
+   | `mm/compaction.c: fix zoneindex in kcompactd()` | a6010 `e3bb32df85a` |
+   | `vmscan: Support multiple kswapd threads per node` | a6010 `e6fb3d08832`, thread 0 tetap `kswapd0` |
+
+   **Bug a6010:** `235c265f45a` membuang loop di `balance_pgdat()` bersama
+   kompaksi kswapd, padahal di 3.10 loop itu juga menjumlah `lru_pages` yang
+   diteruskan `kswapd_shrink_zone()` ke `shrink_slab()`. Dengan nilai 0, setiap
+   putaran kswapd menyuruh semua shrinker memindai sampai 2× isi cache-nya
+   (dentry/inode, pool ION dan kgsl, zsmalloc). Upstream aman membuangnya karena
+   sejak 4.0 kswapd tidak lagi memberi `lru_pages` ke `shrink_slab()`. Loop itu
+   dipertahankan hanya untuk `lru_pages`. `fix zoneindex` wajib ikut: tanpa itu
+   loop `zoneid < classzone_idx` melewati satu-satunya zona (DMA, indeks 0) dan
+   kcompactd tidak pernah bekerja. `wakeup_kswapd()` tetap memakai cek low
+   watermark kita, yang sudah menguji order sebenarnya.
+
+   multi-kswapd tetap 1 thread (`/proc/sys/vm/kswapd_threads`). kswapd hanya
+   memakai ±1–5% satu core, dan zram memakai satu stream kompresi, jadi thread
+   tambahan belum ada gunanya tanpa uji terpisah.
+
+   Terbukti pada kernel #23 (`wip/susfs` `a18838c784a`, `lineage-20-64bit`
+   `2ba7be9021d`): enforcing, `kcompactd0` dan `kswapd0` berjalan, tidak ada
+   BUG/WARNING. Pada boot yang tenang, bangun pertama kcompactd menaikkan blok
+   bebas order-3 dari 0 ke 49 dan order-4 dari 0 ke 12 dalam ±1,5 menit. Di
+   bawah game (Hill Climb Racing), dinormalkan per 100 ribu halaman swap-out
+   terhadap sesi berat di #20:
+
+   | per 100k swap-out | #20 | #23 |
+   |---|---|---|
+   | `allocstall` | 1003 | 381 (−62%) |
+   | `pgscan_direct` | 79.770 | 37.862 (−53%) |
+   | `compact_stall` | 146 | 118 (−19%) |
+   | direct compaction berhasil | 24% | 36% |
+
+   kcompactd bangun 547 kali dalam 16 menit, total 5,9 detik CPU. Rasio
+   `slabs_scanned`/`pgscan_kswapd` 0,096 (#20: 0,117) dan `SReclaimable` tetap
+   ±44 MB, bukti perbaikan `lru_pages` bekerja. Dua sesi ini beban
+   pemakaiannya berbeda, jadi arahnya jelas tetapi bukan A/B terkontrol.
+   Direct compaction tidak hilang di bawah tekanan berat: kswapd jarang tidur
+   (kcompactd baru bangun setelahnya) dan `compaction_suitable()` menolak saat
+   memori memang habis, bukan terpecah.
