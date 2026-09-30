@@ -41,6 +41,10 @@ CFG="$OUT/.config"
 SYSMAP="$OUT/System.map"
 JOBS="${JOBS:-$(nproc --all)}"
 DEFCONFIG="${DEFCONFIG:-lineageos_a37f_defconfig}"
+# Nama user@host di /proc/version. Default mesin build (root@<hostname>) ikut
+# terbaca aplikasi lewat uname -v / /proc/version; pakai nama netral.
+export KBUILD_BUILD_USER="${KBUILD_BUILD_USER:-builder}"
+export KBUILD_BUILD_HOST="${KBUILD_BUILD_HOST:-localhost}"
 REFCFG="$HERE/ref/evidence/kernel-config-reference.txt"
 DTBTOOL_SRC="${DTBTOOL_SRC:-$HERE/research/dt-rigaz29-19.1/dtbtool/dtbtool.c}"
 AK3_REPO="https://github.com/osm0sis/AnyKernel3.git"
