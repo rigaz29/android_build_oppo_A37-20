@@ -245,7 +245,7 @@ Semuanya punya fallback aman.
 | 2 | **time_in_state per-UID** | `/proc/uid_time_in_state` hilang, atribusi baterai per aplikasi tidak akurat. a6010 memasangnya di `drivers/cpufreq/cpufreq_stats.c` (1.727 baris) dengan kait di `fs/proc/base.c`, `sched.h`, `uid_sys_stats.c`, hanya memakai header 3.10 | sedang / rendah-sedang |
 | 3 | ✅ **ROW urgent** (§1C) | selesai 30 Sep: `row` asli jadi default, patch a6010 ditolak setelah diukur | kecil / rendah |
 | 4 | ✅ **kcompactd + multi-kswapd** | selesai 30 Sep; satu bug a6010 diperbaiki (lihat §5.8) | sedang / sedang |
-| 5 | **MADV_FREE** | jemalloc melepas memori secara malas | sedang / sedang |
+| 5 | ❌ **MADV_FREE** | dibatalkan 30 Sep: tidak ada pemakainya di ROM ini (lihat §5.8) | sedang / sedang |
 | 6 | **`pidfd_open`** tanpa `process_mrelease` | lmkd memanggilnya | kecil-sedang / rendah |
 
 Map BPF time_in_state sudah dimuat bpfloader (`/sys/fs/bpf/map_time_in_state_*`),
@@ -379,3 +379,20 @@ Android.
    Direct compaction tidak hilang di bawah tekanan berat: kswapd jarang tidur
    (kcompactd baru bangun setelahnya) dan `compaction_suitable()` menolak saat
    memori memang habis, bukan terpecah.
+5. ❌ **MADV_FREE — dibatalkan, tidak ada pemakainya.** Alasan awal ("jemalloc
+   melepas memori secara malas") ternyata tidak berlaku di Android 13 ROM ini:
+   - libc memakai jemalloc (`MALLOC_SVELTE := true`), dan Android membangunnya
+     **tanpa** `JEMALLOC_PURGE_MADVISE_FREE` (`external/jemalloc_new`,
+     `jemalloc_internal_defs.h`: *"MADV_FREE available since kernel 4.5 but not
+     all devices support this yet"*). Jadi semua proses native tetap memakai
+     `MADV_DONTNEED`, apa pun kemampuan kernelnya.
+   - Kalaupun diaktifkan, decay jemalloc di Android adalah 0 ms
+     (`arena_types.h`), atau 1 detik untuk aplikasi (zygote memanggil
+     `mallopt(M_DECAY_TIME, 1)`). Halaman yang di-MADV_FREE akan kena
+     `MADV_DONTNEED` lagi paling lambat 1 detik kemudian: dua syscall untuk
+     jendela manfaat yang sangat pendek.
+   - ART, bionic, dan scudo di pohon sumber tidak memanggil MADV_FREE.
+
+   Seri a6010 (`472a3c75b42`, `bde0e6f13f2`, `448a655effc`, `cd3acdc27d9`,
+   `e525f2784fb`) tetap tersedia kalau kelak ada pemakainya, misalnya biner
+   Termux yang memanggil MADV_FREE sendiri.
