@@ -94,6 +94,12 @@ Pada eMMC yang terukur **~30 MB/s**, mendahulukan I/O UI di atas latar belakang
 adalah jenis perbaikan yang benar-benar terasa. Ruang lingkupnya sedang dan
 terbatas di `block/` + `drivers/mmc/`.
 
+> **Koreksi 30 Sep 2026 (diukur):** rework a6010 justru lebih buruk. ROW asli
+> di kernel kita sudah menandai baca sinkron sebagai urgent dan eMMC (HPI)
+> menyela tulis yang sedang berjalan. Rework itu membatasi urgent hanya untuk
+> RenderThread, sehingga pembaca lain kembali ke ~30 MB/s. Yang dipakai
+> hanyalah `row` sebagai scheduler default. Lihat §5.8.
+
 ### D. Tiga penyetelan memori yang cocok dengan pekerjaan Tier A kita
 
 | commit a6010 | kenapa relevan di sini |
@@ -175,7 +181,8 @@ tidak ada yang pernah benar-benar memilih.
    disesuaikan (`da9a8e42533`: pgscan datar untuk lmkd, force-SCAN_ANON
    bersyarat). Halflife PELT **tidak relevan**: kernel ini memakai statistik
    beban berbasis *window* secara default (`c497209dd64`).
-4. ⬜ **ROW urgent** (§1C) — sedang, imbalan terasa pada eMMC lambat.
+4. ✅ **ROW urgent** (§1C) — cukup ganti scheduler ke `row` asli, patch a6010
+   tidak dipakai. **Selesai 30 Sep 2026**, lihat §5.8.
 5. ✅ **eBPF** (§1A) — selesai 15 Sep 2026, bersama cgroup-BPF, xt_bpf, dan
    SO_COOKIE.
 
@@ -236,7 +243,7 @@ Semuanya punya fallback aman.
 |---|---|---|---|
 | 1 | **TCP SACK Panic** (CVE-2019-11477/11478/11479) | kernel kita tidak punya satu pun perbaikannya; paket TCP rakitan dari jaringan bisa memicu kernel panic | kecil / rendah |
 | 2 | **time_in_state per-UID** | `/proc/uid_time_in_state` hilang, atribusi baterai per aplikasi tidak akurat. a6010 memasangnya di `drivers/cpufreq/cpufreq_stats.c` (1.727 baris) dengan kait di `fs/proc/base.c`, `sched.h`, `uid_sys_stats.c`, hanya memakai header 3.10 | sedang / rendah-sedang |
-| 3 | **ROW urgent** (§1C) | masih belum dikerjakan; I/O scheduler sekarang `deadline` | sedang / rendah-sedang |
+| 3 | ✅ **ROW urgent** (§1C) | selesai 30 Sep: `row` asli jadi default, patch a6010 ditolak setelah diukur | kecil / rendah |
 | 4 | **kcompactd + multi-kswapd** | kompaksi dan reclaim latar belakang, alokasi besar kamera/GPU tidak tersendat | sedang / sedang |
 | 5 | **MADV_FREE** | jemalloc melepas memori secara malas | sedang / sedang |
 | 6 | **`pidfd_open`** tanpa `process_mrelease` | lmkd memanggilnya | kecil-sedang / rendah |
@@ -297,3 +304,26 @@ Android.
    ketiga berkas `/proc/uid_*` terisi dan bertambah, labelnya benar dalam
    enforcing, BatteryStats membaca `CPU freqs`. Data per aplikasi baru
    terakumulasi saat perangkat berjalan dengan baterai.
+3. ✅ **ROW urgent** — patch a6010 **tidak dipakai**. Uji: baca 128 MB
+   sementara 200 MB ditulis dengan fsync, dua jenis pembaca (proses bernama
+   RenderThread dan pembaca biasa):
+
+   | scheduler | RenderThread | pembaca biasa |
+   |---|---|---|
+   | `deadline` (sebelumnya) | 20–21 MB/s | 31–32 MB/s |
+   | `row` asli | 92–98 MB/s | 96–99 MB/s |
+   | `row` + rework a6010 (kernel #22) | 62–63 MB/s | 26–27 MB/s |
+
+   Putaran kernel #22 lebih bising (`deadline` di putaran yang sama hanya
+   9–19 MB/s), tetapi polanya jelas: pembaca biasa jatuh ke tingkat
+   `deadline`, dan RenderThread pun tidak melampaui ROW asli.
+
+   ROW asli sudah menandai semua baca sinkron sebagai urgent dan
+   `mmc_stop_request` (HPI) menyela tulis yang sedang jalan. Rework a6010
+   membatasi urgent hanya untuk RenderThread, jadi aplikasi lain kehilangan
+   keuntungan itu. Perubahannya cukup satu baris di device tree:
+   `init.target.rc` menulis `row`, bukan `deadline` (`rb_device_oppo_A37`
+   `212e054`). Terbukti pada ROM `20260930_121455` + kernel #20: `[row]`
+   aktif sejak boot, dan baris `deadline` serta `row` asli di atas diukur di
+   konfigurasi itu. Rework a6010 disimpan di cabang lokal
+   `backup/row-urgent-a6010-*`.
