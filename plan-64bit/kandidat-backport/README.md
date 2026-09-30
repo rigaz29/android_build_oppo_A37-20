@@ -312,11 +312,13 @@ Android.
    |---|---|---|
    | `deadline` (sebelumnya) | 20–21 MB/s | 31–32 MB/s |
    | `row` asli | 92–98 MB/s | 96–99 MB/s |
-   | `row` + rework a6010 (kernel #22) | 62–63 MB/s | 26–27 MB/s |
+   | `row` + rework a6010 (kernel #22) | 110–114 MB/s | 19–34 MB/s |
 
-   Putaran kernel #22 lebih bising (`deadline` di putaran yang sama hanya
-   9–19 MB/s), tetapi polanya jelas: pembaca biasa jatuh ke tingkat
-   `deadline`, dan RenderThread pun tidak melampaui ROW asli.
+   Baris a6010 diambil dari putaran yang tenang (`deadline` di putaran yang
+   sama 20–33 MB/s). Putaran sesaat setelah boot lebih bising (`deadline`
+   9–19, a6010 62–63 / 26–27 MB/s) dan tidak dipakai. Rework a6010 memang
+   membuat RenderThread ±20% lebih cepat, tetapi pembaca biasa jatuh ke
+   tingkat `deadline`.
 
    ROW asli sudah menandai semua baca sinkron sebagai urgent dan
    `mmc_stop_request` (HPI) menyela tulis yang sedang jalan. Rework a6010
