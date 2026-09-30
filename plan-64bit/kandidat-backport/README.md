@@ -246,7 +246,7 @@ Semuanya punya fallback aman.
 | 3 | ✅ **ROW urgent** (§1C) | selesai 30 Sep: `row` asli jadi default, patch a6010 ditolak setelah diukur | kecil / rendah |
 | 4 | ✅ **kcompactd + multi-kswapd** | selesai 30 Sep; satu bug a6010 diperbaiki (lihat §5.8) | sedang / sedang |
 | 5 | ❌ **MADV_FREE** | dibatalkan 30 Sep: tidak ada pemakainya di ROM ini (lihat §5.8) | sedang / sedang |
-| 6 | **`pidfd_open`** tanpa `process_mrelease` | lmkd memanggilnya | kecil-sedang / rendah |
+| 6 | ✅ **`pidfd_open`** tanpa `process_mrelease` | selesai 30 Sep; ditulis tangan, bukan dari a6010 (lihat §5.8) | kecil-sedang / rendah |
 
 Map BPF time_in_state sudah dimuat bpfloader (`/sys/fs/bpf/map_time_in_state_*`),
 tetapi programnya tidak bisa menempel ke tracepoint karena `bpf_trace` tidak
@@ -396,3 +396,40 @@ Android.
    Seri a6010 (`472a3c75b42`, `bde0e6f13f2`, `448a655effc`, `cd3acdc27d9`,
    `e525f2784fb`) tetap tersedia kalau kelak ada pemakainya, misalnya biner
    Termux yang memanggil MADV_FREE sendiri.
+6. ✅ **pidfd (`pidfd_open` + `pidfd_send_signal` + poll)** — ditulis tangan
+   dari upstream, karena a6010 tidak bisa dipakai. Kernel a6010 adalah
+   **ARM 32-bit**, kode pidfd-nya terkubur di commit akar, dan ia menaruh
+   pidfd di nomor 282/283 tabel asm-generic. Di arm64 kedua nomor itu milik
+   `userfaultfd`/`membarrier`.
+
+   | commit | upstream |
+   |---|---|
+   | `signal: add pidfd_send_signal() syscall` | `3eb39f47934f`, syscall **424**, hanya menerima pidfd |
+   | `pidfd: add polling support` | `b53b0b9d9a61` |
+   | `pidfd: fix a poll race when setting exit_state` | `b191d6491be6` |
+   | `pid: add pidfd_open()` | `32fcb426ec00`, syscall **434** |
+
+   Urutannya disengaja: `pidfd_open` masuk terakhir, supaya lmkd tidak pernah
+   melihat dukungan setengah jadi. lmkd menguji `pidfd_open` saat mulai; kalau
+   berhasil, ia membunuh lewat `pidfd_send_signal`, jadi `pidfd_open` tanpa
+   `pidfd_send_signal` akan membuat semua kill gagal. Penyesuaian 3.10:
+   - tidak ada `PIDTYPE_TGID`, jadi pemimpin thread group dicek dengan
+     `thread_group_leader()`;
+   - `INIT_STRUCT_PID` ikut menginisialisasi `wait_pidfd`;
+   - `show_fdinfo` mengembalikan `int`;
+   - `/proc/<pid>` fd tidak diterima, dan tidak ada entri compat 32-bit.
+
+   `process_mrelease` tetap tidak ada, jadi lmkd tidak menyalakan thread
+   reaper-nya dan kill tetap sinkron.
+
+   Terbukti pada kernel #24 (`wip/susfs` `c51ce9ac7c8`, `lineage-20-64bit`
+   `dd35b260b33`):
+   - Tabel syscall di vmlinux: 424/434 terisi, sisanya `sys_ni_syscall`.
+   - lmkd mencatat *"Process polling is supported"* (di #23: *not
+     supported*) dan memegang pidfd untuk setiap proses yang dilacak (41–58
+     fd, fdinfo `Pid:` cocok).
+   - Biner uji statis (fork → `pidfd_open` → epoll → `pidfd_send_signal`
+     SIGKILL) bangun dalam 0 ms. Semua jalur galat sesuai upstream
+     (`EINVAL`/`ESRCH`/`EBADF`), dan poll tetap POLLIN setelah zombie dan
+     setelah di-reap.
+   - Tidak ada denial SELinux baru.
