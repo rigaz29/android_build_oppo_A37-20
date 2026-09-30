@@ -1,0 +1,61 @@
+From 12185588772557d8b11077e0c62b7f4727760bf9 Mon Sep 17 00:00:00 2001
+From: rigaz29 <ryanbagas27@gmail.com>
+Date: Wed, 30 Sep 2026 00:12:40 +0000
+Subject: [PATCH] Expose bootanim/media/recovery/servicemanager service status
+
+Legacy vendor rc files trigger on init.svc.media and init.svc.servicemanager
+to restart the camera daemon, and the msm8916 composer polls init.svc.bootanim.
+Vendor domains cannot read init_service_status_private_prop, so under enforcing
+init drops those triggers as unexported and the composer never sees bootanim
+stop. Label them init_service_status_prop like the other globally readable
+service props.
+
+Change-Id: Idc09f46cc9bd9e29683005da9fc96fb51aa774b4
+---
+ prebuilts/api/33.0/private/property_contexts | 4 ++++
+ private/property_contexts                    | 4 ++++
+ 2 files changed, 8 insertions(+)
+
+diff --git a/prebuilts/api/33.0/private/property_contexts b/prebuilts/api/33.0/private/property_contexts
+index 3ce06b68b..dfe6cd1d3 100644
+--- a/prebuilts/api/33.0/private/property_contexts
++++ b/prebuilts/api/33.0/private/property_contexts
+@@ -740,11 +740,15 @@ init.svc. u:object_r:init_service_status_private_prop:s0 prefix string
+ 
+ # Globally-readable init service props
+ init.svc.adbd           u:object_r:init_service_status_prop:s0 exact string
++init.svc.bootanim       u:object_r:init_service_status_prop:s0 exact string
+ init.svc.bugreport      u:object_r:init_service_status_prop:s0 exact string
+ init.svc.bugreportd     u:object_r:init_service_status_prop:s0 exact string
+ init.svc.console        u:object_r:init_service_status_prop:s0 exact string
+ init.svc.dumpstatez     u:object_r:init_service_status_prop:s0 exact string
++init.svc.media          u:object_r:init_service_status_prop:s0 exact string
+ init.svc.mediadrm       u:object_r:init_service_status_prop:s0 exact string
++init.svc.recovery       u:object_r:init_service_status_prop:s0 exact string
++init.svc.servicemanager u:object_r:init_service_status_prop:s0 exact string
+ init.svc.statsd         u:object_r:init_service_status_prop:s0 exact string
+ init.svc.surfaceflinger u:object_r:init_service_status_prop:s0 exact string
+ init.svc.tombstoned     u:object_r:init_service_status_prop:s0 exact string
+diff --git a/private/property_contexts b/private/property_contexts
+index 3ce06b68b..dfe6cd1d3 100644
+--- a/private/property_contexts
++++ b/private/property_contexts
+@@ -740,11 +740,15 @@ init.svc. u:object_r:init_service_status_private_prop:s0 prefix string
+ 
+ # Globally-readable init service props
+ init.svc.adbd           u:object_r:init_service_status_prop:s0 exact string
++init.svc.bootanim       u:object_r:init_service_status_prop:s0 exact string
+ init.svc.bugreport      u:object_r:init_service_status_prop:s0 exact string
+ init.svc.bugreportd     u:object_r:init_service_status_prop:s0 exact string
+ init.svc.console        u:object_r:init_service_status_prop:s0 exact string
+ init.svc.dumpstatez     u:object_r:init_service_status_prop:s0 exact string
++init.svc.media          u:object_r:init_service_status_prop:s0 exact string
+ init.svc.mediadrm       u:object_r:init_service_status_prop:s0 exact string
++init.svc.recovery       u:object_r:init_service_status_prop:s0 exact string
++init.svc.servicemanager u:object_r:init_service_status_prop:s0 exact string
+ init.svc.statsd         u:object_r:init_service_status_prop:s0 exact string
+ init.svc.surfaceflinger u:object_r:init_service_status_prop:s0 exact string
+ init.svc.tombstoned     u:object_r:init_service_status_prop:s0 exact string
+-- 
+2.43.0
+
