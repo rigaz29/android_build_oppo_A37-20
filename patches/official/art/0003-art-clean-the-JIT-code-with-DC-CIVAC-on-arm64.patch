@@ -1,0 +1,60 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: rigaz29 <ryanbagas27@gmail.com>
+Date: Wed, 30 Sep 2026 19:00:00 +0000
+Subject: [PATCH] art: clean the JIT code with DC CIVAC on arm64
+
+On arm64 FlushCpuCaches() used __builtin___clear_cache(), which cleans
+with DC CVAU. Cortex-A53 r0p0-r0p2 (errata 819472, 824069, 826319,
+827319) may not complete DC CVAU correctly; Linux 4.10+ traps EL0 cache
+maintenance on those cores and upgrades it to DC CIVAC. The A37 has an
+r0p0 A53 and a 3.10 kernel without that trap, and 0002 turns the 64-bit
+zygote JIT on, so do the upgrade in ART.
+
+Same sequence as compiler-rt otherwise: CTR_EL0 line sizes, dc, dsb
+ish, ic ivau, dsb ish, isb. DC CIVAC needs only read permission, so it
+works on the read-only executable view.
+
+---
+ libartbase/base/utils.cc | 28 ++++++++++++++++++++++++++++
+ 1 file changed, 28 insertions(+)
+
+diff --git a/libartbase/base/utils.cc b/libartbase/base/utils.cc
+--- a/libartbase/base/utils.cc
++++ b/libartbase/base/utils.cc
+@@ -149,6 +149,34 @@
+   return true;
+ }
+ 
++#elif defined(__aarch64__)
++
++// Same sequence as __builtin___clear_cache(), except that the data cache is cleaned with
++// DC CIVAC instead of DC CVAU. Cortex-A53 r0p0-r0p2 (errata 819472, 824069, 826319 and 827319)
++// may not complete DC CVAU correctly. Linux 4.10+ traps EL0 cache maintenance on those cores
++// and upgrades it to DC CIVAC (ARM64_WORKAROUND_CLEAN_CACHE). The OPPO A37 has an r0p0 A53 and a
++// 3.10 kernel without that workaround, so the JIT does the upgrade itself. DC CIVAC only needs
++// read permission, so it is fine on the read-only executable view of the dual view JIT.
++bool FlushCpuCaches(void* begin, void* end) {
++  uint64_t ctr_el0;
++  asm volatile("mrs %0, ctr_el0" : "=r"(ctr_el0));
++  const uintptr_t dcache_line = UINT64_C(4) << ((ctr_el0 >> 16) & 0xf);
++  const uintptr_t icache_line = UINT64_C(4) << (ctr_el0 & 0xf);
++  const uintptr_t start = reinterpret_cast<uintptr_t>(begin);
++  const uintptr_t limit = reinterpret_cast<uintptr_t>(end);
++
++  for (uintptr_t addr = start & ~(dcache_line - 1); addr < limit; addr += dcache_line) {
++    asm volatile("dc civac, %0" : : "r"(addr) : "memory");
++  }
++  asm volatile("dsb ish" : : : "memory");
++  for (uintptr_t addr = start & ~(icache_line - 1); addr < limit; addr += icache_line) {
++    asm volatile("ic ivau, %0" : : "r"(addr) : "memory");
++  }
++  asm volatile("dsb ish" : : : "memory");
++  asm volatile("isb" : : : "memory");
++  return true;
++}
++
+ #else
+ 
+ bool FlushCpuCaches(void* begin, void* end) {
+-- 
+2.43.0
