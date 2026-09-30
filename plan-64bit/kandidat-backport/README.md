@@ -279,3 +279,21 @@ Commit keamanan di kernel kita berhenti sekitar 2019. Dari sampel acak:
 SACK ketemu dari sampel acak, jadi kemungkinan besar masih ada CVE 3.10 lain
 dari 2019–2023. Itu layak jadi audit tersendiri berdasarkan buletin keamanan
 Android.
+
+### 5.8 Status pengerjaan (30 September 2026)
+
+1. ✅ **TCP SACK Panic** — lima patch resmi dari `linux-3.16.y`
+   (git.kernel.org): `ef27e3c5`, `dc97a907`, `6b7e7997`, `7ce5a579`,
+   `edb0a012`. Versi a6010 terkubur di satu commit squash, jadi tidak dipakai.
+   Dua patch perlu penyesuaian konteks 3.10 (dicatat di commit). Terbukti di
+   perangkat pada kernel #19: `tcp_min_snd_mss=48`, penghitung
+   `TCPWqueueTooBig` ada, TCP normal.
+2. ✅ **time_in_state per-UID** — `drivers/cpufreq/cpufreq_times.c` dari ACK
+   `deprecated/android-4.9-q` beserta kaitnya, bukan versi a6010 (yang
+   mengubah `cpufreq_stats.c` lebih luas). Penyesuaian 3.10: tabel frekuensi
+   lewat `cpufreq_frequency_get_table()`, pemisah `seq_put_decimal_ull()`
+   berupa char, `single_uid` dibuang (tidak ada `/proc/uid/`), dan jalur tick
+   tidak memanggil `cpufreq_cpu_get()`. Terbukti di perangkat pada kernel #20:
+   ketiga berkas `/proc/uid_*` terisi dan bertambah, labelnya benar dalam
+   enforcing, BatteryStats membaca `CPU freqs`. Data per aplikasi baru
+   terakumulasi saat perangkat berjalan dengan baterai.
