@@ -247,6 +247,7 @@ Semuanya punya fallback aman.
 | 4 | ✅ **kcompactd + multi-kswapd** | selesai 30 Sep; satu bug a6010 diperbaiki (lihat §5.8) | sedang / sedang |
 | 5 | ❌ **MADV_FREE** | dibatalkan 30 Sep: tidak ada pemakainya di ROM ini (lihat §5.8) | sedang / sedang |
 | 6 | ✅ **`pidfd_open`** tanpa `process_mrelease` | selesai 30 Sep; ditulis tangan, bukan dari a6010 (lihat §5.8) | kecil-sedang / rendah |
+| 7 | ✅ **OFD lock** (`F_OFD_GETLK/SETLK/SETLKW`) | selesai 2 Okt: FuseDaemon (MediaProvider) gagal mengecek lock lalu mematikan cache FUSE untuk semua file /sdcard; diambil dari mainline 3.15, bukan dari a6010 (lihat §5.8) | sedang / sedang |
 
 Map BPF time_in_state sudah dimuat bpfloader (`/sys/fs/bpf/map_time_in_state_*`),
 tetapi programnya tidak bisa menempel ke tracepoint karena `bpf_trace` tidak
@@ -433,3 +434,58 @@ Android.
      (`EINVAL`/`ESRCH`/`EBADF`), dan poll tetap POLLIN setelah zombie dan
      setelah di-reap.
    - Tidak ada denial SELinux baru.
+7. ✅ **OFD lock (open file description locks)** — diambil dari mainline,
+   bukan dari a6010. Gejalanya: setiap kali file dibuka lewat /sdcard,
+   MediaProvider mencatat *"FuseDaemon: Failed to check lock: Invalid
+   argument"*. `is_file_locked()` di `FuseDaemon.cpp` memakai `F_OFD_GETLK`
+   (Linux 3.15); di 3.10 hasilnya `EINVAL`, daemon menganggap file terkunci,
+   lalu memaksa `direct_io`. Akibatnya cache halaman FUSE mati untuk semua
+   file /sdcard dan setiap baca bolak-balik ke daemon. Ini bukan regresi: log
+   20 September (sebelum kerja JIT) sudah memuat pesan itu, dan seri OFD
+   tidak pernah ada di branch kita.
+
+   18 commit, masing-masing tetap atas nama penulis upstream dengan baris
+   `(cherry picked from commit ...)` dan catatan `[backport: ...]`:
+
+   | kelompok | upstream |
+   |---|---|
+   | prasyarat | `8c3cac5e6a85` (tanpa BUG() saat close), `ef12e72a01f3` (overflow range lock), `bce7560d4946`, `78ed8a13382b` (`locks_remove_file`) |
+   | inti | `c918d42a27a9`, `3fd80cddc6af` (`l_pid` = -1), `c1e62b8fc355`, `57b65325fe34` (lewati deteksi deadlock), `5d50ffd7c31d` (perintah fcntl baru, compat 32-bit, SELinux) |
+   | pengerasan | `90478939dce0` (`l_pid` wajib 0), `d7a06983a01a` + `29723adee118` (mandatory lock), `0d3f7a2dd2f5` + `cff2fce58b2b` (nama `F_OFD_*`, `FL_OFDLCK`) |
+   | perbaikan susulan | `cf01f4eef9fe` (GETLK di fd read-only tidak boleh `EBADF`, persis panggilan FuseDaemon), `130d1f956ab3` + `0c27362998a8` (`fl_owner` flock), `0752ba807b04` (balapan close tidak menyentuh OFD lock) |
+
+   Tidak diambil: `24cbe7845ea5`, `46dad7603f21`, `6ca10ed8edfd`,
+   `b03dfdec0381` (lease/kosmetik, butuh rombakan `i_lock` 3.11);
+   `7f3697e24dc3` sudah ada lewat 3.10.y (`29ec60ccee5`); fix compat 2017
+   `4d2dc2cc766c` tidak berlaku karena compat 3.10 membandingkan dengan
+   `COMPAT_LOFF_T_MAX` (2^63-1).
+
+   Penyesuaian 3.10: lock global `lock_flocks()` menggantikan `i_lock`;
+   `blocked_list` (bukan `blocked_hash`) untuk melewati deteksi deadlock;
+   cek `filp->f_op` yang masih ada di 3.10; hunk ceph `130d1f956ab3` tidak
+   berlaku (ceph 3.10 tidak mengirim owner ke MDS); lustre tidak ada.
+
+   Jebakan: `patch(1)` dengan fuzz menempelkan hunk `fcntl_getlk()` ke
+   `fcntl_getlk64()`, yang hanya dikompilasi di kernel 32-bit. Build tetap
+   sukses, tetapi OFD tidak akan jalan di arm64. Hunk itu dipasang ulang
+   dengan tangan; patch penggantian nama diselesaikan dengan substitusi kata
+   utuh dan himpunan baris yang berubah dicocokkan dengan upstream. Fungsi
+   kunci identik dengan v3.15, kecuali perbedaan 3.10 dan fix 2016 di atas.
+
+   a6010 `lineage-20.0` punya OFD lock, tetapi tidak lengkap: tanpa
+   `57b65325fe34`, `90478939dce0`, `d7a06983a01a`, dan `29723adee118`.
+
+   Terbukti pada kernel #32 (`wip/susfs` `3f72834811f`,
+   `lineage-20-64bit` `d703ff529ca`):
+   - Biner uji statis arm64 (`do_fcntl`) dan arm32 (`compat_sys_fcntl64`):
+     19/19 lulus — konflik antar-OFD dalam satu proses, `F_OFD_GETLK`
+     `F_WRLCK` di fd read-only, lock bertahan saat `dup` ditutup dan lepas
+     saat referensi terakhir ditutup, `l_pid` = -1, `EINVAL`/`EBADF`,
+     `OFDLCK` di `/proc/locks`. Di #31 semua perintah OFD ditolak `EINVAL`.
+   - *"Failed to check lock"* tidak muncul lagi (0 sejak boot, 0 setelah
+     membuka file lewat /sdcard).
+   - Baca ulang 5 × 12 MB lewat /sdcard: MediaProvider memakai 0 tick CPU,
+     jadi dilayani cache FUSE; operasi metadata sebagai kontrol memakai 47
+     tick.
+   - Tidak ada peringatan kernel. KSU, susfs, ROW, kcompactd, pidfd lmkd,
+     JIT zygote64, dan USB tetap jalan; enforcing.
