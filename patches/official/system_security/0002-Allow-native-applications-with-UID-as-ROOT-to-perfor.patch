@@ -1,0 +1,44 @@
+From e466fd96eb3d2665c454de9bd655b07e2937aac9 Mon Sep 17 00:00:00 2001
+From: Rajesh Nyamagoud <nyamagoud@google.com>
+Date: Wed, 26 Jun 2024 01:11:49 +0000
+Subject: [PATCH 2/2] Allow native applications with UID as ROOT to perform
+ attestation.
+
+Attestation application ID is collected for the applications having
+package names but for the native applications due to unavailibility of
+package name, it was failing to get AAID. For example key attestation
+tests were failing in native tests - keystore2_client_tests.
+
+Changes are made to allow caller with UID as AID_ROOT to perform
+attestaion with indicating caller package info as AndroidSystem.
+
+Bug: 349350267
+Test: atest keystore2_client_tests
+Change-Id: I5cb8189c526df74f73c53f240df9665ba5ad0b79
+
+Backported to Android 13: only the AID_ROOT condition. This branch has
+no retry/UnknownPackage refactor, so the removed constants and comment from
+the original change do not apply here.
+
+(cherry picked from commit 41e98ee9470f592fcca8cabca99843c5d6c83ce4)
+Change-Id: Idcb3b41275b869ea4ceb10f2b7fa131d5e56db54
+---
+ keystore/keystore_attestation_id.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/keystore/keystore_attestation_id.cpp b/keystore/keystore_attestation_id.cpp
+index 75c62dd7..ad182ea5 100644
+--- a/keystore/keystore_attestation_id.cpp
++++ b/keystore/keystore_attestation_id.cpp
+@@ -269,7 +269,7 @@ build_attestation_application_id(const KeyAttestationApplicationId& key_attestat
+ StatusOr<std::vector<uint8_t>> gather_attestation_application_id(uid_t uid) {
+     KeyAttestationApplicationId key_attestation_id;
+ 
+-    if (uid == AID_SYSTEM) {
++    if (uid == AID_SYSTEM || uid == AID_ROOT) {
+         /* Use a fixed ID for system callers */
+         auto pinfo = std::make_optional<KeyAttestationPackageInfo>(
+             String16(kAttestationSystemPackageName), 1 /* version code */,
+-- 
+2.43.0
+

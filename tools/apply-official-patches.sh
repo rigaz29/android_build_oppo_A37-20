@@ -74,9 +74,13 @@ T1 frameworks_native             frameworks/native
 T1 packages_modules_Wifi         packages/modules/Wifi
 T1 packages_modules_Bluetooth    packages/modules/Bluetooth
 T1 hardware_ril                  hardware/ril
+T1 system_security               system/security
 T2 frameworks_av                 frameworks/av
 T2 frameworks_base               frameworks/base
 T3 hardware_qcom-caf_wlan        hardware/qcom-caf/wlan"
+# system_security DITAMBAHKAN 4 Okt 2026: backport AOSP 8d08cd9 (waitForService)
+# + 41e98ee (AAID tetap untuk AID_ROOT). keystore2 A13 men-deref binder provider
+# AAID yang null bila dipanggil sebelum system_server hidup (TrickyStoreOSS#92).
 # hardware_ril DITAMBAHKAN 13 Sep 2026 untuk build 64-bit: rild dipaksa 32-bit
 # (LOCAL_MULTILIB := 32). Tanpa itu rild terbangun arm64 sementara libpath, pemetaan
 # shim, dan set blob yang terbukti semuanya menunjuk /system/vendor/lib -- 32-bit.

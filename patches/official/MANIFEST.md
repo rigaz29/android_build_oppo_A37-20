@@ -35,6 +35,7 @@ diambil langsung dari fork UL yang checkout-nya terbukti menjalankan ROM A37
 | T1 | `frameworks_native` | 21 | tweak SF/binder UL — port utuh |
 | T1 | `packages_modules_Wifi` | 1 | mWifiLinkLayerStatsSupported |
 | T1 | `packages_modules_Bluetooth` | 1 | toleransi le_set_event_mask. ⚠️ Dua patch device kita (opcode vendor OCF-only + standard inquiry scan) **tidak termasuk di sini** — dipasang terpisah oleh skrip apply |
+| T1 | `system_security` | 2 | **bukan dari UL**: backport AOSP `8d08cd9` (waitForService, A14) + `41e98ee` (AAID tetap untuk `AID_ROOT`, A15). Menghentikan SIGSEGV keystore2 per boot saat daemon root (TrickyStoreOSS) meminta attestation sebelum system_server hidup — lihat TrickyStoreOSS#92 |
 | T2 | `frameworks_av` | **44** | 45 diekstrak, **1 dibuang** (lihat di bawah) |
 | T2 | `frameworks_base` | 30 | 29 dari ekstraksi UL + **`0030` milik proyek ini** (lihat di bawah); termasuk 5 patch kosmetik |
 | T3 | `bionic` | 7 | kondisional — ⚠️ `0002`/`d51393f91` (per-process target SDK override) diverifikasi dulu terhadap `TARGET_PROCESS_SDK_VERSION_OVERRIDE` kita |
