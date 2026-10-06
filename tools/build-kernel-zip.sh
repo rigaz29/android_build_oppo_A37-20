@@ -29,6 +29,9 @@
 #   TC=/path/ke/toolchain  direktori bin toolchain
 #   JOBS=8                 paralelisme make
 #   DEFCONFIG=...          default: lineageos_a37f_defconfig
+#   KSU_KEYDIR=...         kunci manager KernelSU spoofed (default:
+#                          work/ksu-manager-key); KSU_KEYDIR= (kosong) untuk
+#                          kernel yang hanya mengenali manager resmi
 
 set -euo pipefail
 
@@ -41,6 +44,7 @@ CFG="$OUT/.config"
 SYSMAP="$OUT/System.map"
 JOBS="${JOBS:-$(nproc --all)}"
 DEFCONFIG="${DEFCONFIG:-lineageos_a37f_defconfig}"
+KSU_KEYDIR="${KSU_KEYDIR-$WORK/ksu-manager-key}"
 # Nama user@host di /proc/version. Default mesin build (root@<hostname>) ikut
 # terbaca aplikasi lewat uname -v / /proc/version; pakai nama netral.
 export KBUILD_BUILD_USER="${KBUILD_BUILD_USER:-builder}"
@@ -67,7 +71,7 @@ while [ $# -gt 0 ]; do
                 FROM_ROM="/root/los19/out/target/product/A37"
             fi
             ;;
-        -h|--help)    sed -n '2,32p' "$0" | sed 's/^# \?//'; exit 0 ;;
+        -h|--help)    sed -n '2,35p' "$0" | sed 's/^# \?//'; exit 0 ;;
         *) echo "opsi tidak dikenal: $1" >&2; exit 2 ;;
     esac
     shift
@@ -89,6 +93,22 @@ if [ ! -x "$TC/aarch64-linux-android-gcc" ]; then
     git clone -q --depth 1 "$TC_REPO" "$(dirname "$TC")"
 fi
 [ -x "$TC/aarch64-linux-android-gcc" ] || die "toolchain tidak tersedia di $TC"
+
+# Manager KernelSU spoofed. Nama paket dan cert penandatangan ditanam lewat
+# variabel make upstream (KSU_PACKAGE_NAME, KSU_EXPECTED_SIZE/HASH), bukan patch
+# source. Tanpa ketiganya kernel hanya mengenali manager resmi, dan manager
+# spoofed tampil "tidak terpasang".
+KSU_MAKE=()
+if [ -n "$KSU_KEYDIR" ]; then
+    KSU_PKG="$(cat "$KSU_KEYDIR/package-name.txt" 2>/dev/null || true)"
+    [ -n "$KSU_PKG" ] && [ -s "$KSU_KEYDIR/cert.der" ] || die "kunci manager tidak lengkap di $KSU_KEYDIR
+  (butuh package-name.txt dan cert.der; KSU_KEYDIR= untuk manager resmi)"
+    KSU_HASH="$(sha256sum "$KSU_KEYDIR/cert.der" | cut -d' ' -f1)"
+    KSU_MAKE=(KSU_PACKAGE_NAME="$KSU_PKG"
+              KSU_EXPECTED_SIZE="$(printf '0x%x' "$(stat -c%s "$KSU_KEYDIR/cert.der")")"
+              KSU_EXPECTED_HASH="$KSU_HASH")
+    c_i "Manager KernelSU: $KSU_PKG (cert ${KSU_HASH:0:16}...)"
+fi
 
 export ARCH=arm64
 export CROSS_COMPILE="$TC/aarch64-linux-android-"
@@ -137,7 +157,7 @@ if [ "$DO_BUILD" = 1 ]; then
     [ -f "$CFG" ] || { c_i "make $DEFCONFIG"; make -s O="$OUT" "$DEFCONFIG"; }
 
     c_i "make Image dtbs -j$JOBS"
-    make -s O="$OUT" -j"$JOBS" Image dtbs
+    make -s O="$OUT" -j"$JOBS" "${KSU_MAKE[@]}" Image dtbs
 fi
 
 if [ -n "$FROM_ROM" ]; then
@@ -213,6 +233,17 @@ if [ "$(count_in "$IMAGE" BINDER_SET_CONTEXT_MGR)" -gt 0 ]; then
     c_ok "binder membawa jalur BINDER_SET_CONTEXT_MGR (security context A12)"
 else
     c_wr "jalur security context tidak terdeteksi di Image"
+fi
+
+# Variabel make manager yang lupa diteruskan tidak membuat build gagal; manager
+# spoofed cuma tidak dikenali di HP. Jadi pastikan keduanya ada di Image.
+if [ ${#KSU_MAKE[@]} -gt 0 ] && grep -qx "CONFIG_KSU=y" "$CFG"; then
+    if [ "$(count_in "$IMAGE" "$KSU_PKG")" -gt 0 ] && [ "$(count_in "$IMAGE" "$KSU_HASH")" -gt 0 ]; then
+        c_ok "manager KernelSU $KSU_PKG + cert tertanam di Image"
+    else
+        c_wr "nama paket/cert manager spoofed TIDAK ada di Image"
+        fail=1
+    fi
 fi
 
 # Simbol yang menentukan boot Android 12. Dibandingkan ke .config hasil build,
