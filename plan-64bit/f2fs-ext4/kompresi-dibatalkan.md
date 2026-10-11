@@ -95,3 +95,38 @@ Prasyaratnya bukan "backport f2fs" melainkan **"backport API bio"**. Selama
 `f2fs_read_end_io()` masih berbentuk `(bio, err)`, seluruh jalur post-read
 modern tidak bisa dipasang, dan kompresi ikut mustahil. Kerjakan itu dulu,
 sebagai proyek tersendiri, dengan tolok ukurnya sendiri.
+
+## Percobaan kedua, 10-11 Okt 2026: dihentikan lagi
+
+f2fs dinaikkan ke f2fs-stable `linux-6.1.y` (head ff55757ac531, setara f2fs
+v6.9) plus semua fix CVE sesudahnya. Penghalang API bio di atas ternyata bisa
+dilewati di dalam f2fs saja (jalur post-read dan `compress.c` dipasang dengan
+shim 3.10 seperti `BIO_UPTODATE`), tanpa backport API bio seluruh kernel.
+fscrypt v2 tidak di-port, jadi `FS_ENCRYPTION=n` di semua branch ini.
+
+Hasil di perangkat:
+
+- tanpa kompresi (`wip/f2fs-6.0`): boot, fsck bersih, stress test 0 gagal;
+- dengan kompresi, TWRP bootloop: oops di `kmem_cache_destroy(NULL)` dari
+  `f2fs_destroy_page_array_cache()` saat umount `/data`. Di 3.10 fungsi itu
+  tidak tahan NULL (fix upstream 3942d2991852, v4.3); setelah di-backport,
+  TWRP boot dan `/sys/fs/f2fs/features` memuat `compression`;
+- Format Data dengan kompresi macet lebih dari 2 jam di tahap discard
+  `make_f2fs` (eMMC Micron). Tahap itu bukan khusus kompresi, tetapi tetap
+  membuat varian ini tidak layak dipakai harian.
+
+Pemilik perangkat menghentikannya 11 Okt: tidak reliable dan terlalu banyak
+bug. Kodenya disimpan apa adanya, tidak digabung:
+
+| repo | branch | head |
+|---|---|---|
+| kernel_oppo_msm8939 | `wip/f2fs-6.0` (di atas `wip/susfs`, kompresi mati) | 9ba040b85fb |
+| kernel_oppo_msm8939 | `lineage-20-64bit-f2fs` (kernel ROM, kompresi nyala) | 92620d0383d |
+| kernel_oppo_msm8939 | `twrp-12.1-f2fs` (kernel TWRP, kompresi nyala) | c80b16b7e5a6 |
+| android_device_oppo_A37f | `twrp-12.1-f2fs` | d3b8ba8 |
+| android_build_oppo_A37-twrp | `twrp-12.1-f2fs` (dibalik di `main` oleh 089ebe5) | 1ebec2d |
+
+Branch utama (`wip/susfs`, `wip/kernelsu`, `lineage-20-64bit`) tetap di
+f2fs-stable `linux-3.18.y` plus 58 fix CVE, tanpa kode kompresi, dengan
+`FS_ENCRYPTION=y`. ROM 20261011_082212 dan kernel KSU g20e5b5f992e dari
+branch itu sudah terpasang dan berjalan normal di perangkat.
