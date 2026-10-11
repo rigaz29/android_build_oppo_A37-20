@@ -120,13 +120,14 @@ bug. Kodenya disimpan apa adanya, tidak digabung:
 
 | repo | branch | head |
 |---|---|---|
-| kernel_oppo_msm8939 | `wip/f2fs-6.0` (di atas `wip/susfs`, kompresi mati) | 9ba040b85fb |
-| kernel_oppo_msm8939 | `lineage-20-64bit-f2fs` (kernel ROM, kompresi nyala) | 92620d0383d |
-| kernel_oppo_msm8939 | `twrp-12.1-f2fs` (kernel TWRP, kompresi nyala) | c80b16b7e5a6 |
+| kernel_oppo_msm8939 | `wip/f2fs-6.0` (di atas `wip/susfs`, kompresi mati) | 1478b79c317 |
+| kernel_oppo_msm8939 | `lineage-20-64bit-f2fs` (kernel ROM, kompresi nyala) | 8a4eb5e6ce0 |
+| kernel_oppo_msm8939 | `twrp-12.1-f2fs` (kernel TWRP, kompresi nyala) | 47f29cf7d61 |
 | android_device_oppo_A37f | `twrp-12.1-f2fs` | d3b8ba8 |
 | android_build_oppo_A37-twrp | `twrp-12.1-f2fs` (dibalik di `main` oleh 089ebe5) | 1ebec2d |
 
 Branch utama (`wip/susfs`, `wip/kernelsu`, `lineage-20-64bit`) tetap di
 f2fs-stable `linux-3.18.y` plus 58 fix CVE, tanpa kode kompresi, dengan
-`FS_ENCRYPTION=y`. ROM 20261011_082212 dan kernel KSU g20e5b5f992e dari
-branch itu sudah terpasang dan berjalan normal di perangkat.
+`FS_ENCRYPTION=y`. ROM 20261011_082212 dan kernel KSU dari branch itu sudah
+terpasang dan berjalan normal di perangkat. Hash di atas sesudah riwayat kernel
+ditulis ulang 11 Okt; hash lama ada di `ref/kernel-hash-map-20261011.txt`.
